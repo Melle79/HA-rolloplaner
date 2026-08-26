@@ -59,6 +59,7 @@ const ZUSTAND_TEXT = {
   beschattung: "Hitzeschutz", urlaub: "Urlaub", rauch: "Rauchsperre",
   fenster: "Fenster offen", manuell: "Handbetrieb", aus: "aus",
   gesperrt: "gesperrt", ohne_plan: "kein Plan", nur_schliessen: "nur schließen",
+  von_hand: "von Hand",
 };
 
 /* Der Rollladen vor einem Fenster oder einer Tür – siehe die Erklärung im

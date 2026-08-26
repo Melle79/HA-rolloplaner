@@ -124,6 +124,12 @@ Der erste Treffer gewinnt:
 
 Gerechnet wird **je Rollo**:
 
+**Betriebsarten** je Rollo: *Plan* (auf und zu), *nur schließen* (öffnet nie von
+selbst), *nur von Hand* (kein Zeitplan, und das ist Absicht – der Planer zeigt
+es an, überwacht es und hält bei Rauch die Finger davon, fährt es aber nicht
+nach der Uhr) und *beobachten* (rechnet mit, schaltet nichts – für den Probelauf
+eines einzelnen Rollos).
+
 | Rang | Zustand | Was er bedeutet |
 | --- | --- | --- |
 | 1 | **aus** | Das Rollo oder die Automatik ist abgeschaltet |

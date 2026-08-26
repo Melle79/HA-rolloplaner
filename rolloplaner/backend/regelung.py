@@ -321,6 +321,10 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
     if not rollo.get("aktiv", True):
         ergebnis.update(zustand="aus", begruendung="Rollo ist abgeschaltet")
         return ergebnis
+    if rollo.get("betriebsart") == "von_hand":
+        ergebnis.update(zustand="von_hand",
+                        begruendung="Ohne Zeitplan – wird von Hand gefahren")
+        return ergebnis
     if not lage["automatik"]:
         ergebnis.update(zustand="aus", begruendung="Automatik ist aus")
         return ergebnis

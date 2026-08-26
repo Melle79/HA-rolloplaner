@@ -433,6 +433,7 @@ const ZUSTAND_TEXT = {
   plan:"Zeitplan", beschattung:"Hitzeschutz", urlaub:"Urlaub", rauch:"Rauchsperre",
   fenster:"Fenster offen", manuell:"Handbetrieb", aus:"aus", gesperrt:"gesperrt",
   ohne_plan:"kein Plan", nur_schliessen:"nur schließen", fehlt:"fehlt",
+  von_hand:"von Hand",
 };
 
 let CONFIG = null, ENTITAETEN = null, BERICHT = null;
@@ -853,7 +854,9 @@ function zeichneRollos(){
           ${r.aktiv ? "" : ' <span class="hinweis">(aus)</span>'}
           <div class="hinweis">${esc(r.entity_id)}</div></td>
         <td>${esc(artName.get(r.art) || r.art)}</td>
-        <td>${plan ? `<span class="planschild">${esc(plan.name)}</span>`
+        <td>${r.betriebsart === "von_hand"
+              ? `<span class="planschild eigen">nur von Hand</span>`
+              : plan ? `<span class="planschild">${esc(plan.name)}</span>`
               : `<span class="planschild eigen">${r.zeitplan.length} eigene Punkte</span>`}</td>
         <td class="hinweis">${r.beschattung && r.ausrichtung !== null
               ? (RICHTUNGEN.find(([g]) => Number(g) === r.ausrichtung)?.[1] || r.ausrichtung + "°")
@@ -916,9 +919,14 @@ function zeichneRolloDialog(){
       <label class="feld"><span>Betriebsart</span>
         ${auswahl("betriebsart", [["plan","Plan – auf und zu"],
                                   ["nur_schliessen","nur schließen"],
-                                  ["beobachten","beobachten, nicht fahren"]], r.betriebsart)}</label>
+                                  ["von_hand","ohne Zeitplan, nur von Hand"],
+                                  ["beobachten","beobachten, nicht fahren"]], r.betriebsart)}
+        <span class="hinweis">„nur von Hand“ heißt: Der Planer zeigt das Rollo an,
+          überwacht es und hält bei Rauch die Finger davon – aber er fährt es
+          nicht nach der Uhr.</span></label>
     </div>
 
+    ${r.betriebsart === "von_hand" ? "" : `
     <div class="abschnitt"><h3>Zeitplan</h3>
       <label class="feld"><span>Welchem Zeitplan folgt dieses Rollo?</span>
         ${auswahl("plan", plaene.map((p) => [p.id, p.name]), r.plan,
@@ -927,7 +935,7 @@ function zeichneRolloDialog(){
         ? `<p class="hinweis">Die Schaltpunkte stehen unter <b>Zeitpläne</b> –
              was dort geändert wird, gilt für alle Rollos, die diesem Plan folgen.</p>`
         : punktliste(r.zeitplan || [])}
-    </div>
+    </div>`}
 
     <div class="abschnitt"><h3>Hitzeschutz</h3>
       <div class="gitter g3">
@@ -982,6 +990,8 @@ function zeichneRolloDialog(){
   if (planwahl) planwahl.onchange = () => { sammleDialog(); zeichneRolloDialog(); };
   const artwahl = $("#dlg-inhalt select[name=art]");
   if (artwahl) artwahl.onchange = () => { sammleDialog(); zeichneRolloDialog(); };
+  const betrieb = $("#dlg-inhalt select[name=betriebsart]");
+  if (betrieb) betrieb.onchange = () => { sammleDialog(); zeichneRolloDialog(); };
 }
 
 /* ──────────────────────────────────────────────────────────── Zeitpläne ─── */

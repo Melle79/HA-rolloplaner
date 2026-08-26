@@ -868,11 +868,14 @@ def api_gesundheit():
                   else rollo.get("zeitplan") or [])
         if rollo.get("plan") and rollo["plan"] not in plaene:
             melden("fehler", "Folgt einem Zeitplan, den es nicht mehr gibt", name)
-        elif not punkte:
+        elif not punkte and rollo.get("betriebsart") != "von_hand":
+            # Kein Befund, wenn das Absicht ist: Die Betriebsart „von Hand“ sagt
+            # genau das, und eine Dauerwarnung ließe echte Warnungen untergehen.
             melden("warnung", "Kein Schaltpunkt – dieses Rollo fährt nie", name)
         if rollo.get("beschattung") and rollo.get("ausrichtung") is None:
             melden("warnung", "Hitzeschutz ohne Ausrichtung – er bleibt wirkungslos", name)
-        if rollo.get("art") in store.TUERARTEN and not rollo.get("fenster"):
+        if (rollo.get("art") in store.TUERARTEN and not rollo.get("fenster")
+                and rollo.get("betriebsart") != "von_hand"):
             melden("hinweis",
                    "Tür ohne Kontakt: Der Planer kann nicht merken, ob jemand "
                    "draußen steht, wenn er zufährt", name)

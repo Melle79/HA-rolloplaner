@@ -455,6 +455,7 @@ def _zu_plaenen(je_rollo: dict, bereiche: dict, cover: list[dict]) -> tuple[list
                                       "hinweise": ["Für dieses Rollo gibt es heute "
                                                    "keine Zeitautomation"]}
         name = namen.get(eid, eid)
+        eigene_punkte = [] if eid in zuordnung else daten["zeitplan"]
         rollos.append({
             "entity_id": eid,
             "name": "",
@@ -462,7 +463,12 @@ def _zu_plaenen(je_rollo: dict, bereiche: dict, cover: list[dict]) -> tuple[list
             "art": art_raten(name, eid),
             "anzeige": name,
             "plan": zuordnung.get(eid, ""),
-            "zeitplan": [] if eid in zuordnung else daten["zeitplan"],
+            # Wofür sich keine Automation fand, läuft „von Hand“ – der Planer
+            # führt es mit, steuert es aber nicht. Sonst stünde dafür dauerhaft
+            # eine Warnung da, obwohl nichts fehlt.
+            "betriebsart": ("plan" if (eid in zuordnung or eigene_punkte)
+                            else "von_hand"),
+            "zeitplan": eigene_punkte,
             "quellen": daten["quellen"],
             "hinweise": daten["hinweise"],
         })

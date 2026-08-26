@@ -1,5 +1,18 @@
 # Änderungen
 
+## 2.0.1 – 26.08.2026
+
+**Neue Betriebsart „nur von Hand“.** Nicht jedes Rollo braucht einen Zeitplan –
+die beiden im Schlafzimmer etwa fahren nur bei Rauch und im Urlaub, und das ist
+so gewollt. Bisher stand dafür dauerhaft eine Warnung da („Kein Schaltpunkt –
+dieses Rollo fährt nie“), und in so einer Dauerwarnung geht die eine unter, die
+zählt.
+
+Jetzt sagt die Betriebsart, dass es Absicht ist: Der Planer führt das Rollo
+weiter mit – Anzeige, Wächter, Rauchsperre, Fahren von Hand über die Karte –
+aber er steuert es nicht nach der Uhr. Die Übernahme setzt sie von selbst für
+jedes Rollo, zu dem sich keine Automation findet.
+
 ## 2.0.0 – 26.08.2026
 
 **Die Steuereinheit ist jetzt das Rollo, nicht der Raum.**

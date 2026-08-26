@@ -53,9 +53,14 @@ GELTUNG = ["immer", "schultag", "schulfrei", "morgen_schultag", "morgen_schulfre
 # "plan"           – der Planer fährt auf und zu.
 # "nur_schliessen" – er fährt abends zu, öffnet aber nie von selbst.
 # "beobachten"     – er rechnet mit, schaltet aber nichts. Für den Probelauf
-#                    eines einzelnen Raumes, ohne die Automatik im Haus
+#                    eines einzelnen Rollos, ohne die Automatik im Haus
 #                    insgesamt abzuschalten.
-BETRIEBSARTEN = ["plan", "nur_schliessen", "beobachten"]
+# "von_hand"       – kein Zeitplan, und das ist Absicht. Der Planer führt das
+#                    Rollo weiter (Anzeige, Wächter, Rauchsperre, Fahren von
+#                    Hand), steuert es aber nicht nach der Uhr. Ohne diese Art
+#                    stünde für jedes bewusst ungeplante Rollo dauerhaft eine
+#                    Warnung da – und echte Warnungen gingen darin unter.
+BETRIEBSARTEN = ["plan", "nur_schliessen", "beobachten", "von_hand"]
 
 ZUSTAENDE = ["an", "aus"]
 
