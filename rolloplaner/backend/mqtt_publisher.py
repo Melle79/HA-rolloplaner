@@ -236,6 +236,12 @@ class Publisher:
                               json.dumps(gemeinsam))
             else:
                 gemeinsam["default_entity_id"] = f"switch.{DEVICE_ID}_{_slug(eintrag['name'])}"
+                # Ein MQTT-Switch erwartet von Haus aus „ON“/„OFF“ in
+                # Großbuchstaben. Der Planer führt seine Zustände klein – ohne
+                # diese vier Zeilen steht jeder eigene Schalter in Home
+                # Assistant auf „unknown“, weil dort niemand „on“ erkennt.
+                gemeinsam.update({"payload_on": "on", "payload_off": "off",
+                                  "state_on": "on", "state_off": "off"})
                 self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/{key}/config",
                               json.dumps(gemeinsam))
             wert = zustaende.get(kennung, eintrag["vorgabe"])

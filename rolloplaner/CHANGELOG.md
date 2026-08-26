@@ -1,5 +1,11 @@
 # Änderungen
 
+## 1.5.1 – 26.08.2026
+
+**Die eigenen Schalter standen in Home Assistant auf „unknown“.** Ein
+MQTT-Switch erwartet von Haus aus `ON`/`OFF` in Großbuchstaben; der Planer
+führt seine Zustände klein. Die Discovery sagt das jetzt dazu.
+
 ## 1.5.0 – 26.08.2026
 
 **Der Planer bringt seine Schalter jetzt selbst mit.** Bisher hingen die
