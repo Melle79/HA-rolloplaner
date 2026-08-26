@@ -1,0 +1,21 @@
+name: "Rolloplaner"
+version: "1.0.0"
+slug: "rolloplaner"
+description: "Rollladensteuerung: Zeitplan je Raum nach Uhrzeit oder Sonnenstand, Hitzeschutz nach Sonnenrichtung, Urlaubssimulation und Fenstersperre"
+url: "https://github.com/Melle79/HA-rolloplaner"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+init: false
+ingress: true
+ingress_port: 8100
+panel_icon: "mdi:window-shutter"
+panel_title: "Rollos"
+homeassistant_api: true
+map:
+  - homeassistant_config:rw
+services:
+  - "mqtt:need"
+options: {}
+schema: {}

@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rolloplaner</title>
+<style>
+  :root{
+    --bg:#10141a; --flaeche:#181d25; --flaeche2:#1e2530; --flaeche3:#242c38;
+    --linie:#2b323d; --text:#e9edf2; --leise:#8b95a4; --grau:#5f6875;
+    --marke:#5aa9e6; --sonne:#e8a23d; --offen:#4cc38a; --zu:#5f6875;
+    --achtung:#e36d6d; --warnung:#e0a44a; --ok:#4cc38a;
+
+    --l1:4px; --l2:8px; --l3:12px; --l4:16px; --l5:24px; --l6:36px;
+    --rund:10px; --rund-gross:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Avenir Next","Segoe UI",system-ui,sans-serif;
+    font-size:15px; line-height:1.55; min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ═══ Kopf ═══ */
+  .kopf{display:flex; align-items:center; gap:var(--l4); flex-wrap:wrap;
+    padding:var(--l3) var(--l5); border-bottom:1px solid var(--linie);
+    background:var(--flaeche)}
+  .kopf .marke{display:flex; align-items:baseline; gap:var(--l2); flex:1; min-width:180px}
+  .kopf h1{font-size:1.05rem; font-weight:600; letter-spacing:.01em}
+  .kopf .fassung{font-size:.72rem; color:var(--grau)}
+  .kopf-rechts{display:flex; align-items:center; gap:var(--l3); flex-wrap:wrap}
+  .punkt{width:8px; height:8px; border-radius:50%; background:var(--achtung); flex:none}
+  .punkt.ok{background:var(--ok)}
+  .kopf .zustand{display:flex; align-items:center; gap:var(--l1);
+    font-size:.8rem; color:var(--leise)}
+
+  nav{display:flex; gap:var(--l1); padding:0 var(--l5); border-bottom:1px solid var(--linie);
+    overflow-x:auto; background:var(--flaeche)}
+  nav button{background:none; border:none; border-bottom:2px solid transparent;
+    color:var(--leise); padding:var(--l3) var(--l4); font-size:.9rem; font-weight:500;
+    cursor:pointer; white-space:nowrap; font-family:inherit}
+  nav button:hover{color:var(--text)}
+  nav button.an{color:var(--text); border-bottom-color:var(--marke)}
+  nav button:focus{outline:none}
+  nav button:focus-visible{outline:2px solid var(--marke); outline-offset:-2px}
+  nav .zaehler{display:inline-block; margin-left:6px; padding:0 6px; border-radius:9px;
+    background:var(--achtung); color:#fff; font-size:.7rem; font-weight:700}
+
+  main{width:100%; max-width:1120px; margin:0 auto; padding:var(--l5) var(--l5) var(--l6)}
+  section{display:none}
+  section.an{display:block}
+
+  /* ═══ Bausteine ═══ */
+  .tafel{background:var(--flaeche); border:1px solid var(--linie);
+    border-radius:var(--rund-gross); padding:var(--l4) var(--l5)}
+  .tafel + .tafel{margin-top:var(--l4)}
+  .tafel > h2{font-size:.72rem; text-transform:uppercase; letter-spacing:.13em;
+    color:var(--leise); font-weight:600; margin-bottom:var(--l4)}
+  .abschnitt{margin-bottom:var(--l5)}
+  .abschnitt:last-child{margin-bottom:0}
+  .abschnitt > h3{font-size:.86rem; font-weight:600; margin-bottom:var(--l3);
+    padding-bottom:var(--l2); border-bottom:1px solid var(--linie)}
+
+  button{border:none; border-radius:var(--rund); padding:var(--l2) var(--l4);
+    font-size:.88rem; font-weight:600; cursor:pointer;
+    background:var(--marke); color:#06172a; font-family:inherit}
+  button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.4; cursor:default; filter:none}
+  button.leise{background:transparent; color:var(--leise); border:1px solid var(--linie);
+    font-weight:500; padding:6px var(--l3)}
+  button.leise:hover{color:var(--text); border-color:var(--leise); filter:none}
+  button.leise.gefahr:hover{color:var(--achtung); border-color:var(--achtung)}
+
+  input[type=text],input[type=number],input[type=time],input[type=search],select,textarea{
+    background:var(--flaeche2); border:1px solid var(--linie); border-radius:var(--rund);
+    color:var(--text); padding:7px var(--l3); font-size:.88rem; width:100%;
+    color-scheme:dark; font-family:inherit}
+  input:focus,select:focus{outline:2px solid var(--marke); outline-offset:1px;
+    border-color:transparent}
+  label.feld{display:block; margin-bottom:var(--l3)}
+  label.feld > span{display:block; font-size:.78rem; color:var(--leise); margin-bottom:3px}
+  label.haken{display:flex; align-items:baseline; gap:var(--l2); font-size:.88rem;
+    cursor:pointer; margin-bottom:var(--l2)}
+  label.haken input{width:auto; flex:none; accent-color:var(--marke); margin:0}
+  .gitter{display:grid; gap:var(--l3)}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .hinweis{font-size:.78rem; color:var(--grau); margin-top:2px}
+
+  .hakenliste{background:var(--flaeche2); border:1px solid var(--linie);
+    border-radius:var(--rund); padding:var(--l1); max-height:190px; overflow-y:auto}
+  .hakenliste.kurz{max-height:150px}
+  .hakenliste label{display:flex; align-items:baseline; gap:var(--l2);
+    padding:4px 6px; border-radius:5px; font-size:.86rem; cursor:pointer}
+  .hakenliste .h-text{flex:1 1 auto; min-width:0; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis}
+  .hakenliste label:hover, .hakenliste label.an{background:var(--flaeche3)}
+  .hakenliste input{width:auto; flex:none; accent-color:var(--marke); margin:0}
+  .hakenliste .h-eid{color:var(--grau); font-size:.78rem}
+  .hakenliste .h-gruppe{font-size:.72rem; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--grau); padding:8px 6px 3px}
+  .hakenliste .h-gruppe:first-child{padding-top:2px}
+  .hakenliste .h-leer{padding:10px 6px; color:var(--grau); font-size:.82rem}
+
+  /* ═══ Räume ═══ */
+  .raumliste{display:grid; gap:var(--l3);
+    grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+  .raum{background:var(--flaeche); border:1px solid var(--linie);
+    border-radius:var(--rund-gross); padding:var(--l4); position:relative}
+  .raum.aus{opacity:.55}
+  .raum-kopf{display:flex; align-items:baseline; gap:var(--l2); margin-bottom:var(--l3)}
+  .raum-kopf h3{font-size:.98rem; font-weight:600; flex:1}
+  .raum-ziel{font-size:1.5rem; font-weight:300; letter-spacing:-.02em}
+  .raum-ziel small{font-size:.8rem; color:var(--leise); margin-left:2px}
+  .raum-grund{font-size:.82rem; color:var(--leise); min-height:2.4em}
+  .raum-fuss{display:flex; align-items:center; gap:var(--l2); flex-wrap:wrap;
+    margin-top:var(--l3); padding-top:var(--l3); border-top:1px solid var(--linie);
+    font-size:.78rem; color:var(--grau)}
+  .balken{height:6px; border-radius:3px; background:var(--flaeche3); overflow:hidden;
+    margin:var(--l2) 0}
+  .balken > i{display:block; height:100%; background:var(--offen); border-radius:3px}
+  .rollo-zeile{display:flex; align-items:baseline; gap:var(--l2); font-size:.8rem;
+    padding:2px 0}
+  .rollo-zeile .r-name{flex:1; min-width:0; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; color:var(--leise)}
+  .rollo-zeile .r-wert{font-variant-numeric:tabular-nums}
+
+  .marke-schild{display:inline-flex; align-items:center; gap:4px; padding:1px 8px;
+    border-radius:20px; font-size:.72rem; font-weight:600; letter-spacing:.02em}
+  .m-plan{background:#1d3247; color:#8fc4ee}
+  .m-beschattung{background:#3d3016; color:#e8c07d}
+  .m-urlaub{background:#173a2c; color:#79d3a8}
+  .m-rauch{background:#3f1d1d; color:#f0a0a0}
+  .m-fenster{background:#2f2a45; color:#b8aae4}
+  .m-manuell{background:#2f3540; color:#b5bdc9}
+  .m-aus,.m-gesperrt{background:#242a33; color:#7b8493}
+
+  table{width:100%; border-collapse:collapse; font-size:.85rem}
+  th{text-align:left; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--grau); font-weight:600; padding:var(--l2) var(--l3);
+    border-bottom:1px solid var(--linie)}
+  td{padding:var(--l2) var(--l3); border-bottom:1px solid var(--linie);
+    vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.zeit{color:var(--grau); font-variant-numeric:tabular-nums; white-space:nowrap}
+  .art-fehler{color:var(--achtung)} .art-warnung{color:var(--warnung)}
+  .art-gut{color:var(--ok)}
+
+  /* ═══ Zeitplan ═══ */
+  .punktliste{display:grid; gap:var(--l2)}
+  .punkt-zeile,.punkt-kopf{display:grid; gap:var(--l2); align-items:center;
+    grid-template-columns:minmax(120px,1fr) minmax(96px,auto) minmax(110px,1fr)
+                          minmax(130px,1fr) auto}
+  .punkt-zeile{background:var(--flaeche2); border:1px solid var(--linie);
+    border-radius:var(--rund); padding:var(--l2) var(--l3)}
+  /* Ohne Beschriftung ist „Sonnenuntergang · 0 · --:-- · 22:00 · 0“ nicht zu
+     lesen: Vier Zahlenfelder nebeneinander, und keines sagt, wofür es steht. */
+  .punkt-kopf{padding:0 var(--l3); font-size:.7rem; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--grau); font-weight:600}
+  .punkt-kopf span:last-child{opacity:0}
+  .punkt-zeile select,.punkt-zeile input{width:100%}
+  .wennzeile{display:flex; gap:var(--l2); align-items:center; flex-wrap:wrap;
+    grid-column:1/-1; font-size:.8rem; color:var(--leise)}
+  .wennzeile select{width:auto; max-width:260px; flex:1 1 180px}
+  .wennzeile input{width:auto; max-width:150px}
+  .wennzeile .w-weg{padding:2px 8px}
+  .tagewahl{display:flex; gap:2px; flex-wrap:wrap}
+  .tagewahl label{position:relative}
+  .tagewahl input{position:absolute; opacity:0; width:1px; height:1px}
+  .tagewahl span{display:inline-block; min-width:26px; text-align:center;
+    padding:3px 4px; border-radius:6px; background:var(--flaeche3);
+    color:var(--grau); font-size:.72rem; font-weight:600; cursor:pointer}
+  .tagewahl input:checked + span{background:var(--marke); color:#06172a}
+  .tagewahl input:focus-visible + span{outline:2px solid var(--marke); outline-offset:1px}
+
+  .leerhinweis{color:var(--grau); font-size:.86rem; padding:var(--l4) 0; text-align:center}
+  dialog{background:var(--flaeche); color:var(--text); border:1px solid var(--linie);
+    border-radius:var(--rund-gross); padding:0; max-width:min(860px,94vw); width:100%}
+  dialog::backdrop{background:rgba(6,9,13,.72)}
+  .dlg-kopf{display:flex; align-items:center; gap:var(--l3); padding:var(--l4) var(--l5);
+    border-bottom:1px solid var(--linie)}
+  .dlg-kopf h2{font-size:1rem; font-weight:600; flex:1}
+  .dlg-inhalt{padding:var(--l4) var(--l5); max-height:66vh; overflow-y:auto}
+  .dlg-fuss{display:flex; gap:var(--l2); justify-content:flex-end;
+    padding:var(--l3) var(--l5); border-top:1px solid var(--linie)}
+  .fehler{background:#33191b; border:1px solid #5c2a2d; color:#f0b4b4;
+    border-radius:var(--rund); padding:var(--l2) var(--l3); font-size:.84rem;
+    margin-bottom:var(--l3)}
+  .befund{display:flex; gap:var(--l3); padding:var(--l2) 0; font-size:.86rem;
+    border-bottom:1px solid var(--linie)}
+  .befund:last-child{border-bottom:none}
+  .befund .b-raum{color:var(--grau); font-size:.78rem; white-space:nowrap}
+  .melder{position:fixed; right:var(--l4); bottom:var(--l4); z-index:9;
+    background:var(--flaeche3); border:1px solid var(--linie); color:var(--text);
+    border-radius:var(--rund); padding:var(--l2) var(--l4); font-size:.85rem;
+    box-shadow:0 8px 24px rgba(0,0,0,.4); opacity:0; transform:translateY(8px);
+    transition:opacity .18s, transform .18s; pointer-events:none}
+  .melder.an{opacity:1; transform:none}
+  .melder.schlecht{border-color:#5c2a2d; color:#f0b4b4}
+  .sonne-zeile{display:flex; gap:var(--l4); flex-wrap:wrap; font-size:.82rem;
+    color:var(--leise)}
+  .sonne-zeile b{color:var(--text); font-weight:600}
+</style>
+</head>
+<body>
+
+<header class="kopf">
+  <div class="marke">
+    <h1>Rolloplaner</h1>
+    <span class="fassung" id="fassung"></span>
+  </div>
+  <div class="kopf-rechts">
+    <span class="zustand"><span class="punkt" id="punkt"></span><span id="kopfstatus">…</span></span>
+    <button class="leise" id="btn-durchsetzen"
+            title="Den gemerkten Stand verwerfen und den geltenden Schaltpunkt neu ausführen">Plan durchsetzen</button>
+    <button class="leise" id="btn-takt">Jetzt rechnen</button>
+  </div>
+</header>
+
+<nav>
+  <button data-reiter="uebersicht" class="an">Übersicht</button>
+  <button data-reiter="raeume">Räume</button>
+  <button data-reiter="einstellungen">Einstellungen</button>
+  <button data-reiter="protokoll">Protokoll</button>
+  <button data-reiter="einrichtung">Einrichtung<span class="zaehler" id="z-einrichtung" hidden></span></button>
+</nav>
+
+<main>
+  <!-- ══════════════════════════════════════════════════ Übersicht ═══ -->
+  <section id="s-uebersicht" class="an">
+    <div class="tafel">
+      <h2>Lage</h2>
+      <div class="sonne-zeile" id="lage"></div>
+    </div>
+    <div class="tafel" id="stoerungen-tafel" hidden>
+      <h2>Störungen</h2>
+      <div id="stoerungen"></div>
+    </div>
+    <div class="raumliste" id="uebersicht-raeume"></div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ Räume ═══ -->
+  <section id="s-raeume">
+    <div class="tafel">
+      <h2>Räume</h2>
+      <div id="raum-verwaltung"></div>
+      <div style="margin-top:var(--l4)">
+        <button id="btn-raum-neu">Raum anlegen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════ Einstellungen ═══ -->
+  <section id="s-einstellungen">
+    <div class="tafel"><h2>Einstellungen</h2><div id="einstellungen"></div>
+      <div class="dlg-fuss" style="border-top:1px solid var(--linie); margin-top:var(--l4);
+        padding-left:0; padding-right:0">
+        <button class="leise" id="btn-probe">Probemeldung senden</button>
+        <button id="btn-einst-speichern">Speichern</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ Protokoll ═══ -->
+  <section id="s-protokoll">
+    <div class="tafel">
+      <h2>Protokoll</h2>
+      <table><thead><tr><th>Zeit</th><th>Raum</th><th>Was</th><th>Warum</th></tr></thead>
+        <tbody id="protokoll"></tbody></table>
+      <div style="margin-top:var(--l4)">
+        <button class="leise gefahr" id="btn-protokoll-leeren">Protokoll leeren</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════ Einrichtung ═══ -->
+  <section id="s-einrichtung">
+    <div class="tafel">
+      <h2>Aus den vorhandenen Automationen</h2>
+      <p class="hinweis" style="margin-bottom:var(--l4)">
+        Der Planer liest <code>automations.yaml</code> und schlägt vor, was er dort findet.
+        Übernommen wird nichts von selbst – erst wenn Sie hier zustimmen.
+        <b>Die alten Automationen bleiben aktiv</b>; schalten Sie sie ab, sobald der
+        Planer läuft, sonst fahren beide gegeneinander.
+      </p>
+      <div id="vorschlag"></div>
+    </div>
+    <div class="tafel">
+      <h2>Selbstauskunft</h2>
+      <div id="gesundheit"></div>
+      <div style="margin-top:var(--l4)"><button class="leise" id="btn-gesundheit">Neu prüfen</button></div>
+    </div>
+  </section>
+</main>
+
+<div class="melder" id="melder"></div>
+
+<dialog id="raum-dialog">
+  <form method="dialog" id="raum-form">
+    <div class="dlg-kopf"><h2 id="dlg-titel">Raum</h2>
+      <button class="leise" value="abbruch" formnovalidate>Schließen</button></div>
+    <div class="dlg-inhalt" id="dlg-inhalt"></div>
+    <div class="dlg-fuss">
+      <button type="button" class="leise gefahr" id="btn-raum-loeschen">Löschen</button>
+      <button type="button" id="btn-raum-speichern">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+"use strict";
+const TAGE = [["mon","Mo"],["tue","Di"],["wed","Mi"],["thu","Do"],["fri","Fr"],
+              ["sat","Sa"],["sun","So"]];
+const AUSLOESER = [["uhrzeit","Uhrzeit"],["sonnenaufgang","Sonnenaufgang"],
+                   ["sonnenuntergang","Sonnenuntergang"],["daemmerung","Dämmerung"]];
+const GELTUNG = [["immer","immer"],["schultag","an Schultagen"],
+                 ["schulfrei","an schulfreien Tagen"],
+                 ["morgen_schultag","wenn morgen Schule ist"],
+                 ["morgen_schulfrei","wenn morgen schulfrei ist"]];
+const RICHTUNGEN = [["","unbekannt"],["0","Nord"],["45","Nordost"],["90","Ost"],
+                    ["135","Südost"],["180","Süd"],["225","Südwest"],["270","West"],
+                    ["315","Nordwest"]];
+const ZUSTAND_TEXT = {
+  plan:"Zeitplan", beschattung:"Hitzeschutz", urlaub:"Urlaub", rauch:"Rauchsperre",
+  fenster:"Fenster offen", manuell:"Handbetrieb", aus:"aus", gesperrt:"gesperrt",
+  ohne_plan:"kein Plan", nur_schliessen:"nur schließen",
+};
+
+let CONFIG = null, ENTITAETEN = null, BERICHT = null, AKTUELLER_RAUM = null;
+
+const $ = (s, wurzel=document) => wurzel.querySelector(s);
+const $$ = (s, wurzel=document) => [...wurzel.querySelectorAll(s)];
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g,
+  (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function melden(text, schlecht=false){
+  const m = $("#melder");
+  m.textContent = text;
+  m.classList.toggle("schlecht", schlecht);
+  m.classList.add("an");
+  clearTimeout(melden._t);
+  melden._t = setTimeout(() => m.classList.remove("an"), 3600);
+}
+
+async function hole(pfad, optionen){
+  const antwort = await fetch(pfad, optionen);
+  const text = await antwort.text();
+  let daten = null;
+  try { daten = text ? JSON.parse(text) : null; } catch { daten = null; }
+  if (!antwort.ok) throw new Error((daten && daten.fehler) || antwort.statusText);
+  return daten;
+}
+const holeJSON = (pfad, methode, koerper) => hole(pfad, {
+  method: methode, headers: {"Content-Type":"application/json"},
+  body: koerper === undefined ? undefined : JSON.stringify(koerper)});
+
+function uhrzeit(iso){
+  if (!iso) return "–";
+  const d = new Date(iso);
+  return isNaN(d) ? "–" : d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+}
+function stellungstext(p){
+  if (p === null || p === undefined) return "–";
+  if (p >= 100) return "offen";
+  if (p <= 0) return "zu";
+  return p + " %";
+}
+
+/* ─────────────────────────────────────────────────────────── Übersicht ─── */
+
+function zeichneUebersicht(){
+  const b = BERICHT || {};
+  const sonne = b.sonne || {};
+  const teile = [];
+  if (b.zeit) teile.push(`Stand <b>${uhrzeit(b.zeit)}</b>`);
+  teile.push(`Sonne <b>${uhrzeit(sonne.aufgang)}</b> bis <b>${uhrzeit(sonne.untergang)}</b>`);
+  if (sonne.elevation !== undefined)
+    teile.push(`steht <b>${Math.round(sonne.elevation)}°</b> hoch bei <b>${Math.round(sonne.azimut)}°</b>`);
+  if (b.aussen !== null && b.aussen !== undefined) teile.push(`außen <b>${b.aussen} °C</b>`);
+  if (b.schulfrei !== null && b.schulfrei !== undefined)
+    teile.push(`heute <b>${b.schulfrei ? "schulfrei" : "Schultag"}</b>`);
+  if (b.schulfrei_morgen !== null && b.schulfrei_morgen !== undefined)
+    teile.push(`morgen <b>${b.schulfrei_morgen ? "schulfrei" : "Schule"}</b>`);
+  if (b.urlaub) teile.push(`<b>Urlaub</b>`);
+  if (b.trockenlauf) teile.push(`<b>Trockenlauf</b> – es wird nichts gefahren`);
+  if (b.rauch) teile.push(`<b>Rauchsperre</b>: ${esc(b.rauch_grund||"")}`);
+  $("#lage").innerHTML = teile.map((t) => `<span>${t}</span>`).join("");
+
+  const stoerungen = b.stoerungen || [];
+  $("#stoerungen-tafel").hidden = stoerungen.length === 0;
+  $("#stoerungen").innerHTML = stoerungen.map((s) =>
+    `<div class="befund"><span class="art-${s.schwere==="fehler"?"fehler":"warnung"}">
+      ${esc(s.text)}</span></div>`).join("");
+
+  const raeume = b.raeume || [];
+  $("#uebersicht-raeume").innerHTML = raeume.length ? raeume.map(karte).join("")
+    : `<div class="leerhinweis">Noch kein Raum eingerichtet –
+       schauen Sie unter <b>Einrichtung</b>, was sich aus den vorhandenen
+       Automationen übernehmen lässt.</div>`;
+  $$("#uebersicht-raeume [data-fahren]").forEach((el) =>
+    el.onclick = () => fahren(el.dataset.fahren, Number(el.dataset.position)));
+  $$("#uebersicht-raeume [data-hand]").forEach((el) =>
+    el.onclick = () => handbetriebAufheben(el.dataset.hand));
+}
+
+function karte(raum){
+  const zustand = raum.zustand || "plan";
+  const ziel = raum.ziel;
+  const rollos = (raum.rollos || []).map((r) => `
+    <div class="rollo-zeile"><span class="r-name">${esc(r.name)}</span>
+      <span class="r-wert">${r.ist === null || r.ist === undefined ? "?" : r.ist + " %"}</span>
+      ${r.hinweis ? `<span class="r-wert" style="color:var(--grau)">${esc(r.hinweis)}</span>` : ""}
+    </div>`).join("");
+  const naechster = raum.naechste_uhrzeit
+    ? `dann ${stellungstext(raum.naechste_stellung)} um ${esc(raum.naechste_uhrzeit)} Uhr` : "";
+  const hand = (raum.rollos || []).some((r) => (r.hinweis || "").includes("Hand"));
+  return `<article class="raum ${zustand === "aus" ? "aus" : ""}">
+    <div class="raum-kopf">
+      <h3>${esc(raum.name)}</h3>
+      <span class="raum-ziel">${ziel === null || ziel === undefined ? "–" : ziel}<small>%</small></span>
+    </div>
+    <div class="balken"><i style="width:${Math.max(0, Math.min(100, ziel ?? 0))}%"></i></div>
+    <div><span class="marke-schild m-${zustand}">${ZUSTAND_TEXT[zustand] || zustand}</span></div>
+    <p class="raum-grund">${esc(raum.begruendung || "")}</p>
+    ${rollos}
+    <div class="raum-fuss">
+      <span style="flex:1">${esc(naechster)}</span>
+      <button class="leise" data-fahren="${raum.id}" data-position="100">auf</button>
+      <button class="leise" data-fahren="${raum.id}" data-position="0">zu</button>
+      ${hand ? `<button class="leise" data-hand="${raum.id}">Handbetrieb aufheben</button>` : ""}
+    </div>
+  </article>`;
+}
+
+async function fahren(raumId, position){
+  try {
+    await holeJSON("api/fahren", "POST", {raum: raumId, position});
+    melden(`gefahren auf ${position} %`);
+    setTimeout(aktualisieren, 1200);
+  } catch (err) { melden(err.message, true); }
+}
+
+async function handbetriebAufheben(raumId){
+  try {
+    const r = await holeJSON(`api/handbetrieb?raum=${encodeURIComponent(raumId)}`, "DELETE");
+    melden(`Handbetrieb aufgehoben (${r.aufgehoben})`);
+    setTimeout(aktualisieren, 900);
+  } catch (err) { melden(err.message, true); }
+}
+
+/* ─────────────────────────────────────────────────────────────── Räume ─── */
+
+function zeichneRaeume(){
+  const raeume = (CONFIG && CONFIG.raeume) || [];
+  $("#raum-verwaltung").innerHTML = raeume.length ? `<table>
+    <thead><tr><th>Raum</th><th>Rollos</th><th>Schaltpunkte</th><th>Betrieb</th><th></th></tr></thead>
+    <tbody>${raeume.map((r) => `<tr>
+      <td><b>${esc(r.name)}</b>${r.aktiv ? "" : ' <span class="hinweis">(aus)</span>'}</td>
+      <td>${r.rollos.length}</td>
+      <td>${r.zeitplan.length}</td>
+      <td>${r.betriebsart === "plan" ? "Plan"
+           : r.betriebsart === "nur_schliessen" ? "nur schließen" : "beobachten"}</td>
+      <td style="text-align:right"><button class="leise" data-raum="${r.id}">Bearbeiten</button></td>
+    </tr>`).join("")}</tbody></table>`
+    : `<div class="leerhinweis">Noch kein Raum eingerichtet.</div>`;
+  $$("#raum-verwaltung [data-raum]").forEach((el) =>
+    el.onclick = () => raumDialog(raeume.find((r) => r.id === el.dataset.raum)));
+}
+
+function hakenliste(feldname, kandidaten, gewaehlt, gruppieren=true){
+  if (!kandidaten.length)
+    return `<div class="hakenliste kurz"><div class="h-leer">Nichts gefunden</div></div>`;
+  const gruppen = new Map();
+  kandidaten.forEach((k) => {
+    const gruppe = gruppieren ? (k.bereich || "Ohne Bereich") : "";
+    if (!gruppen.has(gruppe)) gruppen.set(gruppe, []);
+    gruppen.get(gruppe).push(k);
+  });
+  let html = "";
+  for (const [gruppe, liste] of gruppen) {
+    if (gruppe) html += `<div class="h-gruppe">${esc(gruppe)}</div>`;
+    html += liste.map((k) => {
+      const an = gewaehlt.includes(k.entity_id);
+      return `<label class="${an ? "an" : ""}">
+        <input type="checkbox" name="${feldname}" value="${esc(k.entity_id)}" ${an ? "checked" : ""}>
+        <span class="h-text">${esc(k.name)} <span class="h-eid">${esc(k.entity_id)}</span></span>
+      </label>`;
+    }).join("");
+  }
+  return `<div class="hakenliste">${html}</div>`;
+}
+
+function auswahl(feldname, optionen, wert, leer=null){
+  const eintraege = leer ? [["", leer], ...optionen] : optionen;
+  return `<select name="${feldname}">${eintraege.map(([w, t]) =>
+    `<option value="${esc(w)}" ${String(w) === String(wert ?? "") ? "selected" : ""}>${esc(t)}</option>`
+  ).join("")}</select>`;
+}
+
+function bedingungsKandidaten(){
+  const e = ENTITAETEN || {};
+  return [...(e.auswahl || []), ...(e.schalter || []), ...(e.sonstige_melder || [])]
+    .map((k) => [k.entity_id, k.name]);
+}
+
+/* Alle vorkommenden Werte in einer Vorschlagsliste: „normal“, „24 Uhr“, „aus“
+   stehen dann zur Auswahl, statt abgetippt werden zu müssen. */
+function werteListe(){
+  const werte = new Set(["on", "off"]);
+  ((ENTITAETEN || {}).auswahl || []).forEach((k) =>
+    (k.optionen || []).forEach((o) => werte.add(o)));
+  return `<datalist id="werte-liste">${[...werte].map((w) =>
+    `<option value="${esc(w)}">`).join("")}</datalist>`;
+}
+
+function punktZeile(punkt, index){
+  const sonnenauslöser = punkt.ausloeser !== "uhrzeit";
+  return `<div class="punkt-zeile" data-punkt="${index}">
+    ${auswahl(`p${index}_ausloeser`, AUSLOESER, punkt.ausloeser)}
+    <input type="${sonnenauslöser ? "number" : "time"}"
+           name="p${index}_start"
+           value="${sonnenauslöser ? (punkt.versatz_min || 0) : esc(punkt.start || "")}"
+           ${sonnenauslöser ? 'step="5" min="-180" max="180" title="Versatz in Minuten"' : ""}>
+    <div style="display:flex; gap:4px; align-items:center">
+      <input type="time" name="p${index}_frueh" value="${esc(punkt.frueh || "")}"
+             title="frühestens" placeholder="frühestens" ${sonnenauslöser ? "" : "disabled"}>
+      <input type="time" name="p${index}_spaet" value="${esc(punkt.spaet || "")}"
+             title="spätestens" placeholder="spätestens" ${sonnenauslöser ? "" : "disabled"}>
+    </div>
+    <div style="display:flex; gap:4px; align-items:center">
+      <input type="number" name="p${index}_position" value="${punkt.position}" min="0" max="100"
+             step="5" title="Stellung in Prozent" style="max-width:74px">
+      ${auswahl(`p${index}_gilt`, GELTUNG, punkt.gilt)}
+    </div>
+    <button type="button" class="leise gefahr" data-punkt-weg="${index}">×</button>
+    <div class="tagewahl" style="grid-column:1/-1">
+      ${TAGE.map(([w, t]) => `<label>
+        <input type="checkbox" name="p${index}_tage" value="${w}"
+               ${(punkt.tage || []).includes(w) ? "checked" : ""}><span>${t}</span></label>`).join("")}
+    </div>
+    ${(punkt.wenn || []).map((bedingung, j) => `<div class="wennzeile">
+      <span>nur wenn</span>
+      ${auswahl(`p${index}_w${j}_entity`, bedingungsKandidaten(), bedingung.entity)}
+      <span>=</span>
+      <input type="text" name="p${index}_w${j}_wert" value="${esc(bedingung.wert)}"
+             list="werte-liste" placeholder="on">
+      <button type="button" class="leise gefahr w-weg"
+              data-wenn-weg="${index}:${j}">×</button>
+    </div>`).join("")}
+    <div class="wennzeile">
+      <button type="button" class="leise" data-wenn-neu="${index}">Bedingung hinzufügen</button>
+      ${(punkt.wenn || []).length ? "" : `<span class="hinweis" style="margin:0">
+        ohne Bedingung gilt der Punkt immer</span>`}
+    </div>
+  </div>`;
+}
+
+function raumDialog(raum){
+  const neu = !raum;
+  AKTUELLER_RAUM = raum ? JSON.parse(JSON.stringify(raum)) : {
+    name: "", aktiv: true, betriebsart: "plan", rollos: [], zeitplan: [],
+    fenster: [], praesenz: [], personen: [], freigabe_entity: "",
+    ausrichtung: null, oeffnungswinkel: 90, beschattung: false,
+    beschattung_position: null, raumtemp: "", raumtemp_ab: null,
+    urlaub_simulation: true, position_offen: 100, position_zu: 0,
+  };
+  $("#dlg-titel").textContent = neu ? "Raum anlegen" : AKTUELLER_RAUM.name;
+  $("#btn-raum-loeschen").hidden = neu;
+  zeichneDialog();
+  $("#raum-dialog").showModal();
+}
+
+function zeichneDialog(){
+  const r = AKTUELLER_RAUM;
+  const e = ENTITAETEN || {};
+  $("#dlg-inhalt").innerHTML = werteListe() + `
+    <div id="dlg-fehler"></div>
+    <div class="abschnitt">
+      <div class="gitter g2">
+        <label class="feld"><span>Name</span>
+          <input type="text" name="name" value="${esc(r.name)}" required maxlength="60"></label>
+        <label class="feld"><span>Betriebsart</span>
+          ${auswahl("betriebsart", [["plan","Plan – auf und zu"],
+                                    ["nur_schliessen","nur schließen"],
+                                    ["beobachten","beobachten, nicht fahren"]], r.betriebsart)}
+          <span class="hinweis">„beobachten“ rechnet mit, fährt aber nichts – für den Probelauf
+            eines einzelnen Raumes.</span></label>
+      </div>
+      <label class="haken"><input type="checkbox" name="aktiv" ${r.aktiv ? "checked" : ""}>
+        Raum ist eingeschaltet</label>
+    </div>
+
+    <div class="abschnitt"><h3>Rollos</h3>
+      ${hakenliste("rollos", e.rollos || [], r.rollos)}
+    </div>
+
+    <div class="abschnitt"><h3>Zeitplan</h3>
+      <div class="punktliste" id="punktliste">
+        ${(r.zeitplan || []).length ? `<div class="punkt-kopf">
+          <span>Auslöser</span><span>Zeit / Versatz</span><span>frühestens · spätestens</span>
+          <span>Stellung · gilt</span><span>x</span></div>` : ""}
+        ${(r.zeitplan || []).map(punktZeile).join("") ||
+          `<div class="leerhinweis">Noch kein Schaltpunkt.</div>`}
+      </div>
+      <div style="margin-top:var(--l3); display:flex; gap:var(--l2); flex-wrap:wrap">
+        <button type="button" class="leise" id="btn-punkt-neu">Schaltpunkt hinzufügen</button>
+        <span style="max-width:220px">${auswahl("vorlage",
+          [["","Vorlage einfügen …"],["wohnraum","Wohnraum"],
+           ["kinderzimmer","Kinderzimmer"],["schlafzimmer","Schlafzimmer"],
+           ["buero","Büro"]], "")}</span>
+      </div>
+      <p class="hinweis">Bei einem Sonnenauslöser ist die zweite Spalte der Versatz in Minuten;
+        „frühestens“ und „spätestens“ klammern ihn ein.</p>
+    </div>
+
+    <div class="abschnitt"><h3>Hitzeschutz</h3>
+      <div class="gitter g3">
+        <label class="feld"><span>Fenster zeigt nach</span>
+          ${auswahl("ausrichtung", RICHTUNGEN.slice(1), r.ausrichtung, "unbekannt")}</label>
+        <label class="feld"><span>Öffnungswinkel</span>
+          <input type="number" name="oeffnungswinkel" value="${r.oeffnungswinkel}"
+                 min="10" max="180" step="10"></label>
+        <label class="feld"><span>Stellung (leer = Vorgabe)</span>
+          <input type="number" name="beschattung_position" min="0" max="100" step="5"
+                 value="${r.beschattung_position ?? ""}"></label>
+      </div>
+      <label class="haken"><input type="checkbox" name="beschattung" ${r.beschattung ? "checked" : ""}>
+        Hitzeschutz für diesen Raum</label>
+      <p class="hinweis">Ohne Ausrichtung bleibt er wirkungslos – der Planer kann nicht raten,
+        wohin ein Fenster zeigt.</p>
+      <div class="gitter g2" style="margin-top:var(--l3)">
+        <label class="feld"><span>Raumfühler (freiwillig)</span>
+          ${auswahl("raumtemp", (e.raumtemp || []).map((k) => [k.entity_id, k.name]),
+                    r.raumtemp, "keiner")}</label>
+        <label class="feld"><span>… erst ab dieser Raumtemperatur</span>
+          <input type="number" name="raumtemp_ab" step="0.5" min="10" max="40"
+                 value="${r.raumtemp_ab ?? ""}"></label>
+      </div>
+    </div>
+
+    <div class="abschnitt"><h3>Sperren</h3>
+      <label class="feld"><span>Freigabeschalter (leer = immer freigegeben)</span>
+        ${auswahl("freigabe_entity", (e.schalter || []).map((k) => [k.entity_id, k.name]),
+                  r.freigabe_entity, "keiner")}</label>
+      <label class="feld"><span>Fensterkontakte – solange einer offen ist, wird nicht zugefahren</span></label>
+      ${hakenliste("fenster", e.fenster || [], r.fenster)}
+      <label class="haken" style="margin-top:var(--l3)">
+        <input type="checkbox" name="urlaub_simulation" ${r.urlaub_simulation ? "checked" : ""}>
+        Im Urlaub mitsimulieren</label>
+    </div>
+
+    <div class="abschnitt"><h3>Stellungen</h3>
+      <div class="gitter g2">
+        <label class="feld"><span>„offen“ heißt</span>
+          <input type="number" name="position_offen" value="${r.position_offen}"
+                 min="0" max="100" step="5"></label>
+        <label class="feld"><span>„zu“ heißt</span>
+          <input type="number" name="position_zu" value="${r.position_zu}"
+                 min="0" max="100" step="5"></label>
+      </div>
+    </div>`;
+
+  $("#btn-punkt-neu").onclick = () => {
+    sammleDialog();
+    AKTUELLER_RAUM.zeitplan.push({ausloeser:"uhrzeit", start:"07:00", versatz_min:0,
+      frueh:"", spaet:"", position:100, gilt:"immer",
+      tage:TAGE.map(([w]) => w), name:""});
+    zeichneDialog();
+  };
+  $$("#dlg-inhalt [data-punkt-weg]").forEach((el) => el.onclick = () => {
+    sammleDialog();
+    AKTUELLER_RAUM.zeitplan.splice(Number(el.dataset.punktWeg), 1);
+    zeichneDialog();
+  });
+  $$("#dlg-inhalt [data-wenn-neu]").forEach((el) => el.onclick = () => {
+    sammleDialog();
+    const punkt = AKTUELLER_RAUM.zeitplan[Number(el.dataset.wennNeu)];
+    (punkt.wenn = punkt.wenn || []).push({entity: "", wert: "on"});
+    zeichneDialog();
+  });
+  $$("#dlg-inhalt [data-wenn-weg]").forEach((el) => el.onclick = () => {
+    sammleDialog();
+    const [i, j] = el.dataset.wennWeg.split(":").map(Number);
+    AKTUELLER_RAUM.zeitplan[i].wenn.splice(j, 1);
+    zeichneDialog();
+  });
+  $$("#dlg-inhalt select[name$='_ausloeser']").forEach((el) => el.onchange = () => {
+    sammleDialog(); zeichneDialog();
+  });
+  const vorlage = $("#dlg-inhalt select[name=vorlage]");
+  if (vorlage) vorlage.onchange = () => {
+    if (!vorlage.value) return;
+    sammleDialog();
+    AKTUELLER_RAUM.zeitplan = VORLAGEN[vorlage.value].map((p) => ({...p}));
+    zeichneDialog();
+  };
+}
+
+const WERKTAGE = ["mon","tue","wed","thu","fri"];
+const ALLE = TAGE.map(([w]) => w);
+const punkt = (position, ausloeser="uhrzeit", start="", rest={}) => ({
+  ausloeser, start, versatz_min:0, frueh:"", spaet:"", position,
+  gilt:"immer", tage:ALLE, name:"", ...rest});
+const VORLAGEN = {
+  wohnraum: [punkt(100,"uhrzeit","06:30",{gilt:"schultag",tage:WERKTAGE}),
+             punkt(100,"uhrzeit","10:00",{gilt:"schulfrei"}),
+             punkt(0,"sonnenuntergang","",{spaet:"23:00"})],
+  kinderzimmer: [punkt(100,"uhrzeit","06:30",{gilt:"schultag",tage:WERKTAGE}),
+                 punkt(100,"uhrzeit","10:00",{gilt:"schulfrei"}),
+                 punkt(0,"sonnenuntergang","",{spaet:"20:30",gilt:"morgen_schultag"}),
+                 punkt(0,"sonnenuntergang","",{spaet:"22:00",gilt:"morgen_schulfrei"})],
+  schlafzimmer: [punkt(100,"uhrzeit","07:00",{gilt:"schultag",tage:WERKTAGE}),
+                 punkt(100,"uhrzeit","09:00",{gilt:"schulfrei"}),
+                 punkt(0,"sonnenuntergang","",{spaet:"22:30"})],
+  buero: [punkt(100,"sonnenaufgang","",{frueh:"08:30",tage:WERKTAGE}),
+          punkt(100,"sonnenaufgang","",{frueh:"10:00",tage:["sat","sun"]}),
+          punkt(0,"sonnenuntergang","",{spaet:"23:00"})],
+};
+
+function sammleDialog(){
+  const wurzel = $("#dlg-inhalt");
+  const r = AKTUELLER_RAUM;
+  const wert = (name) => { const el = wurzel.querySelector(`[name="${name}"]`);
+                           return el ? el.value : ""; };
+  const haken = (name) => { const el = wurzel.querySelector(`[name="${name}"]`);
+                            return el ? el.checked : false; };
+  const mehrfach = (name) => $$(`[name="${name}"]:checked`, wurzel).map((el) => el.value);
+
+  r.name = wert("name");
+  r.aktiv = haken("aktiv");
+  r.betriebsart = wert("betriebsart");
+  r.rollos = mehrfach("rollos");
+  r.fenster = mehrfach("fenster");
+  r.freigabe_entity = wert("freigabe_entity");
+  r.ausrichtung = wert("ausrichtung") === "" ? null : Number(wert("ausrichtung"));
+  r.oeffnungswinkel = Number(wert("oeffnungswinkel")) || 90;
+  r.beschattung = haken("beschattung");
+  r.beschattung_position = wert("beschattung_position") === "" ? null
+    : Number(wert("beschattung_position"));
+  r.raumtemp = wert("raumtemp");
+  r.raumtemp_ab = wert("raumtemp_ab") === "" ? null : Number(wert("raumtemp_ab"));
+  r.urlaub_simulation = haken("urlaub_simulation");
+  r.position_offen = Number(wert("position_offen"));
+  r.position_zu = Number(wert("position_zu"));
+
+  r.zeitplan = $$("#punktliste .punkt-zeile", wurzel).map((zeile) => {
+    const i = zeile.dataset.punkt;
+    const ausloeser = wert(`p${i}_ausloeser`);
+    const rohstart = wert(`p${i}_start`);
+    // Die Bedingungen stehen in eigenen Zeilen und müssen mit eingesammelt
+    // werden – sonst wäre jedes Speichern in der Oberfläche ein stiller
+    // Verlust: Der Auswahlhelfer der Terrassentür verschwände, und das Rollo
+    // führe fortan in jeder Stellung zu.
+    const wenn = $$(`.wennzeile [name^="p${i}_w"]`, zeile)
+      .filter((el) => el.name.endsWith("_entity"))
+      .map((el) => ({entity: el.value,
+                     wert: (wurzel.querySelector(
+                       `[name="${el.name.replace("_entity", "_wert")}"]`) || {}).value || ""}))
+      .filter((b) => b.entity);
+    return {
+      wenn,
+      ausloeser,
+      start: ausloeser === "uhrzeit" ? rohstart : "",
+      versatz_min: ausloeser === "uhrzeit" ? 0 : (Number(rohstart) || 0),
+      frueh: wert(`p${i}_frueh`), spaet: wert(`p${i}_spaet`),
+      position: Number(wert(`p${i}_position`)),
+      gilt: wert(`p${i}_gilt`),
+      tage: mehrfach(`p${i}_tage`), name: "",
+    };
+  });
+}
+
+async function raumSpeichern(){
+  sammleDialog();
+  const r = AKTUELLER_RAUM;
+  try {
+    if (r.id) await holeJSON(`api/raeume/${r.id}`, "PUT", r);
+    else await holeJSON("api/raeume", "POST", r);
+    $("#raum-dialog").close();
+    melden("gespeichert");
+    await aktualisieren();
+  } catch (err) {
+    $("#dlg-fehler").innerHTML = `<div class="fehler">${esc(err.message)}</div>`;
+    $("#dlg-inhalt").scrollTop = 0;
+  }
+}
+
+/* ───────────────────────────────────────────────────────── Einstellungen ─── */
+
+function zeichneEinstellungen(){
+  const e = (CONFIG && CONFIG.einstellungen) || {};
+  const k = ENTITAETEN || {};
+  const schalterListe = (k.schalter || []).map((s) => [s.entity_id, s.name]);
+  $("#einstellungen").innerHTML = `
+    <div class="abschnitt"><h3>Betrieb</h3>
+      <label class="haken"><input type="checkbox" name="automatik" ${e.automatik ? "checked" : ""}>
+        Automatik – ohne Haken fährt der Planer gar nichts</label>
+      <label class="haken"><input type="checkbox" name="trockenlauf" ${e.trockenlauf ? "checked" : ""}>
+        Trockenlauf – rechnen und protokollieren, aber nicht fahren</label>
+      <label class="haken"><input type="checkbox" name="manuell_respektieren"
+        ${e.manuell_respektieren ? "checked" : ""}>
+        Handbetrieb stehen lassen</label>
+      <div class="gitter g3" style="margin-top:var(--l3)">
+        <label class="feld"><span>Takt (Sekunden)</span>
+          <input type="number" name="takt_sekunden" value="${e.takt_sekunden}" min="30" max="3600" step="30"></label>
+        <label class="feld"><span>Handbetrieb gilt (Stunden)</span>
+          <input type="number" name="manuell_stunden" value="${e.manuell_stunden}"
+                 min="0" max="168" step="1"></label>
+      </div>
+    </div>
+
+    <div class="abschnitt"><h3>Woher der Planer weiß, welcher Tag ist</h3>
+      <div class="gitter g2">
+        <label class="feld"><span>Heute schulfrei</span>
+          ${auswahl("schulfrei_entity", schalterListe, e.schulfrei_entity, "keiner")}</label>
+        <label class="feld"><span>Morgen schulfrei</span>
+          ${auswahl("schulfrei_morgen_entity", schalterListe, e.schulfrei_morgen_entity, "keiner")}</label>
+        <label class="feld"><span>Urlaub</span>
+          ${auswahl("urlaub_entity", schalterListe, e.urlaub_entity, "keiner")}</label>
+        <label class="feld"><span>Außentemperatur</span>
+          ${auswahl("aussen_entity", (k.aussen || []).map((a) => [a.entity_id, a.name]),
+                    e.aussen_entity, "keine")}</label>
+      </div>
+    </div>
+
+    <div class="abschnitt"><h3>Rauchsperre</h3>
+      <label class="haken"><input type="checkbox" name="rauchsperre.aktiv"
+        ${e.rauchsperre?.aktiv ? "checked" : ""}>
+        Bei Rauch kein Rollo mehr anfassen</label>
+      <p class="hinweis">Ohne Melderauswahl gelten alle Melder der Geräteklasse „Rauch“.
+        Das muss an bleiben, solange eine Automation bei Rauch die Rollos hochfährt –
+        sonst macht der Planer den Fluchtweg wieder zu.</p>
+      <label class="feld" style="margin-top:var(--l3)"><span>Nachlauf nach der Entwarnung (Minuten)</span>
+        <input type="number" name="rauchsperre.nachlauf_min" value="${e.rauchsperre?.nachlauf_min}"
+               min="0" max="720" step="5" style="max-width:140px"></label>
+    </div>
+
+    <div class="abschnitt"><h3>Hitzeschutz</h3>
+      <label class="haken"><input type="checkbox" name="beschattung.aktiv"
+        ${e.beschattung?.aktiv ? "checked" : ""}>Hitzeschutz einschalten</label>
+      <div class="gitter g3">
+        <label class="feld"><span>ab Außentemperatur (°C)</span>
+          <input type="number" name="beschattung.ab_temperatur" step="0.5" min="10" max="40"
+                 value="${e.beschattung?.ab_temperatur}"></label>
+        <label class="feld"><span>Hysterese (K)</span>
+          <input type="number" name="beschattung.hysterese" step="0.5" min="0" max="10"
+                 value="${e.beschattung?.hysterese}"></label>
+        <label class="feld"><span>Sonne mindestens (° hoch)</span>
+          <input type="number" name="beschattung.min_elevation" step="1" min="0" max="60"
+                 value="${e.beschattung?.min_elevation}"></label>
+        <label class="feld"><span>Stellung beim Beschatten (%)</span>
+          <input type="number" name="beschattung.position" step="5" min="0" max="100"
+                 value="${e.beschattung?.position}"></label>
+      </div>
+      <label class="haken"><input type="checkbox" name="beschattung.nur_wenn_niemand_da"
+        ${e.beschattung?.nur_wenn_niemand_da ? "checked" : ""}>
+        nur, wenn niemand im Raum ist</label>
+    </div>
+
+    <div class="abschnitt"><h3>Urlaub</h3>
+      <label class="feld"><span>Was im Urlaub gilt</span>
+        ${auswahl("urlaub.modus", [["simulation","Anwesenheit simulieren"],
+                                   ["zu","alles geschlossen halten"],
+                                   ["plan","normaler Zeitplan"]], e.urlaub?.modus)}</label>
+      <div class="gitter g3">
+        <label class="feld"><span>Streuung (± Minuten)</span>
+          <input type="number" name="urlaub.streuung_min" min="0" max="120" step="5"
+                 value="${e.urlaub?.streuung_min}"></label>
+        <label class="feld"><span>nicht vor</span>
+          <input type="time" name="urlaub.nicht_vor" value="${esc(e.urlaub?.nicht_vor || "")}"></label>
+        <label class="feld"><span>nicht nach</span>
+          <input type="time" name="urlaub.nicht_nach" value="${esc(e.urlaub?.nicht_nach || "")}"></label>
+      </div>
+      <p class="hinweis">Der Versatz wird einmal am Tag gewürfelt und bleibt dann fest –
+        auch über einen Neustart hinweg.</p>
+    </div>
+
+    <div class="abschnitt"><h3>Wächter</h3>
+      <label class="haken"><input type="checkbox" name="wachhund.aktiv"
+        ${e.wachhund?.aktiv ? "checked" : ""}>Ausfälle melden</label>
+      <label class="haken"><input type="checkbox" name="wachhund.hindernis_melden"
+        ${e.wachhund?.hindernis_melden ? "checked" : ""}>
+        Hindernis- und Blockademeldungen der Antriebe auswerten</label>
+      <div class="gitter g2">
+        <label class="feld"><span>Schweigefrist (Stunden)</span>
+          <input type="number" name="wachhund.stumm_stunden" min="0.5" max="336" step="1"
+                 value="${e.wachhund?.stumm_stunden}"></label>
+        <label class="feld"><span>Meldeweg</span>
+          ${auswahl("wachhund.melden_an", (k.notify || []).map((n) => [n.entity_id, n.name]),
+                    (e.wachhund?.melden_an || [])[0], "keiner")}</label>
+      </div>
+    </div>`;
+}
+
+async function einstellungenSpeichern(){
+  const wurzel = $("#einstellungen");
+  const daten = {};
+  const setzen = (pfad, wert) => {
+    const teile = pfad.split(".");
+    let ziel = daten;
+    teile.slice(0, -1).forEach((t) => { ziel[t] = ziel[t] || {}; ziel = ziel[t]; });
+    ziel[teile.at(-1)] = wert;
+  };
+  $$("input,select", wurzel).forEach((el) => {
+    if (!el.name) return;
+    if (el.type === "checkbox") setzen(el.name, el.checked);
+    else if (el.type === "number") setzen(el.name, el.value === "" ? null : Number(el.value));
+    else setzen(el.name, el.value);
+  });
+  if (daten.wachhund) daten.wachhund.melden_an =
+    daten.wachhund.melden_an ? [daten.wachhund.melden_an] : [];
+  try {
+    await holeJSON("api/einstellungen", "PUT", daten);
+    melden("gespeichert");
+    await aktualisieren();
+  } catch (err) { melden(err.message, true); }
+}
+
+/* ───────────────────────────────────────────────────────────── Protokoll ─── */
+
+async function ladeProtokoll(){
+  const eintraege = await hole("api/logbuch");
+  $("#protokoll").innerHTML = eintraege.length ? eintraege.map((e) => `<tr>
+    <td class="zeit">${esc((e.zeit || "").replace("T", " ").slice(5, 16))}</td>
+    <td>${esc(e.raum)}</td>
+    <td class="${e.art ? "art-" + e.art : ""}">${esc(e.was)}</td>
+    <td>${esc(e.warum)}${e.entity_id ? `<div class="hinweis">${esc(e.entity_id)}</div>` : ""}</td>
+  </tr>`).join("") : `<tr><td colspan="4" class="leerhinweis">Noch nichts geschehen.</td></tr>`;
+}
+
+/* ──────────────────────────────────────────────────────────── Einrichtung ─── */
+
+let VORSCHLAG = null;
+
+async function ladeVorschlag(){
+  try { VORSCHLAG = await hole("api/uebernahme"); }
+  catch (err) { $("#vorschlag").innerHTML = `<div class="fehler">${esc(err.message)}</div>`; return; }
+  const alle = [...(VORSCHLAG.raeume || []), ...(VORSCHLAG.ohne_automation || [])];
+  const zaehler = $("#z-einrichtung");
+  zaehler.hidden = alle.length === 0;
+  zaehler.textContent = alle.length;
+
+  if (!alle.length) {
+    $("#vorschlag").innerHTML = `<div class="leerhinweis">Nichts zu übernehmen –
+      alle Rollos sind bereits einem Raum zugeordnet.</div>`;
+    return;
+  }
+  $("#vorschlag").innerHTML = alle.map((raum, i) => `
+    <div class="abschnitt">
+      <h3><label class="haken" style="margin:0">
+        <input type="checkbox" name="v" value="${i}" checked> ${esc(raum.name)}</label></h3>
+      <div class="hinweis" style="margin-bottom:var(--l2)">
+        ${raum.rollos.map(esc).join(", ")}
+        ${raum.freigabe_entity ? `<br>Freigabe: ${esc(raum.freigabe_entity)}` : ""}
+        ${raum.quellen?.length ? `<br>aus: ${raum.quellen.map(esc).join("; ")}` : ""}
+      </div>
+      ${raum.zeitplan.length ? `<table><tbody>${raum.zeitplan.map((p) => `<tr>
+        <td class="zeit">${p.ausloeser === "uhrzeit" ? esc(p.start) + " Uhr"
+          : esc(AUSLOESER.find(([w]) => w === p.ausloeser)?.[1] || p.ausloeser)
+            + (p.versatz_min ? ` ${p.versatz_min > 0 ? "+" : ""}${p.versatz_min} min` : "")
+            + (p.frueh ? `, ab ${esc(p.frueh)}` : "") + (p.spaet ? `, bis ${esc(p.spaet)}` : "")}</td>
+        <td>${stellungstext(p.position)}</td>
+        <td>${esc(GELTUNG.find(([w]) => w === p.gilt)?.[1] || p.gilt)}</td>
+        <td class="hinweis">${p.tage.length === 7 ? "täglich"
+          : p.tage.map((t) => TAGE.find(([w]) => w === t)?.[1]).join(" ")}</td>
+      </tr>`).join("")}</tbody></table>`
+        : `<div class="hinweis">Kein Schaltpunkt gefunden – Zeitplan bitte selbst anlegen.</div>`}
+      ${(raum.hinweise || []).map((h) => `<div class="hinweis art-warnung">${esc(h)}</div>`).join("")}
+    </div>`).join("") + `
+    <div style="display:flex; gap:var(--l2); flex-wrap:wrap; margin-top:var(--l4)">
+      <button id="btn-uebernehmen">Ausgewählte Räume anlegen</button>
+    </div>
+    ${VORSCHLAG.ungedeutet?.length ? `<div class="abschnitt" style="margin-top:var(--l5)">
+      <h3>Bleibt bei den Automationen</h3>
+      ${VORSCHLAG.ungedeutet.map((u) => `<div class="hinweis">
+        <b>${esc(u.alias)}</b> – ${esc(u.grund)}</div>`).join("")}
+      <p class="hinweis" style="margin-top:var(--l2)">Diese Automationen löst der Planer
+        nicht ab; sie sollen weiterlaufen.</p></div>` : ""}`;
+
+  const knopf = $("#btn-uebernehmen");
+  if (knopf) knopf.onclick = async () => {
+    const gewaehlt = $$("#vorschlag [name=v]:checked").map((el) => alle[Number(el.value)]);
+    try {
+      const ergebnis = await holeJSON("api/uebernahme", "POST", {raeume: gewaehlt});
+      melden(`${ergebnis.angelegt.length} Räume angelegt`);
+      if (ergebnis.fehler.length) melden(ergebnis.fehler[0].fehler, true);
+      await aktualisieren();
+      await ladeVorschlag();
+    } catch (err) { melden(err.message, true); }
+  };
+}
+
+async function ladeGesundheit(){
+  const g = await hole("api/gesundheit");
+  const z = g.zaehler;
+  $("#gesundheit").innerHTML = `
+    <div class="sonne-zeile" style="margin-bottom:var(--l3)">
+      <span><b>${z.raeume}</b> Räume</span><span><b>${z.rollos}</b> Rollos</span>
+      <span><b>${z.nicht_zugeordnet}</b> nicht zugeordnet</span>
+      <span class="${z.fehler ? "art-fehler" : ""}"><b>${z.fehler}</b> Fehler</span>
+      <span class="${z.warnungen ? "art-warnung" : ""}"><b>${z.warnungen}</b> Warnungen</span>
+    </div>
+    ${g.befunde.length ? g.befunde.map((b) => `<div class="befund">
+      <span class="art-${b.schwere === "fehler" ? "fehler" : b.schwere === "warnung" ? "warnung" : ""}"
+        style="flex:1">${esc(b.text)}</span>
+      ${b.raum ? `<span class="b-raum">${esc(b.raum)}</span>` : ""}
+    </div>`).join("") : `<div class="leerhinweis">Nichts zu beanstanden.</div>`}`;
+}
+
+/* ─────────────────────────────────────────────────────────────── Rahmen ─── */
+
+async function aktualisieren(){
+  try {
+    [CONFIG, BERICHT] = await Promise.all([hole("api/config"), hole("api/status")]);
+    $("#fassung").textContent = "v" + (CONFIG.version || "");
+    const gut = BERICHT.zeit && !BERICHT.fehler;
+    $("#punkt").classList.toggle("ok", Boolean(gut));
+    $("#kopfstatus").textContent = BERICHT.fehler || BERICHT.hinweis
+      || (BERICHT.rauch ? "Rauchsperre"
+          : !BERICHT.automatik ? "Automatik aus"
+          : BERICHT.trockenlauf ? "Trockenlauf"
+          : BERICHT.urlaub ? "Urlaub" : "läuft");
+    zeichneUebersicht();
+    zeichneRaeume();
+    zeichneEinstellungen();
+  } catch (err) {
+    $("#kopfstatus").textContent = err.message;
+    $("#punkt").classList.remove("ok");
+  }
+}
+
+$$("nav button").forEach((knopf) => knopf.onclick = () => {
+  $$("nav button").forEach((b) => b.classList.toggle("an", b === knopf));
+  $$("main section").forEach((s) =>
+    s.classList.toggle("an", s.id === "s-" + knopf.dataset.reiter));
+  if (knopf.dataset.reiter === "protokoll") ladeProtokoll();
+  if (knopf.dataset.reiter === "einrichtung") { ladeVorschlag(); ladeGesundheit(); }
+});
+
+$("#btn-takt").onclick = async () => {
+  $("#btn-takt").disabled = true;
+  try { BERICHT = await holeJSON("api/takt", "POST"); zeichneUebersicht(); melden("gerechnet"); }
+  catch (err) { melden(err.message, true); }
+  finally { $("#btn-takt").disabled = false; }
+};
+$("#btn-durchsetzen").onclick = async () => {
+  if (!confirm("Der Planer vergisst, was er zuletzt getan hat, und fährt alle Räume "
+             + "auf den Stand, der jetzt gilt. Fortfahren?")) return;
+  try { await holeJSON("api/durchsetzen", "POST"); melden("wird durchgesetzt");
+        setTimeout(aktualisieren, 1500); }
+  catch (err) { melden(err.message, true); }
+};
+$("#btn-raum-neu").onclick = () => raumDialog(null);
+$("#btn-raum-speichern").onclick = raumSpeichern;
+$("#btn-raum-loeschen").onclick = async () => {
+  if (!AKTUELLER_RAUM?.id) return;
+  if (!confirm(`„${AKTUELLER_RAUM.name}“ wirklich löschen?`)) return;
+  try {
+    await holeJSON(`api/raeume/${AKTUELLER_RAUM.id}`, "DELETE");
+    $("#raum-dialog").close(); melden("gelöscht"); await aktualisieren();
+  } catch (err) { melden(err.message, true); }
+};
+$("#btn-einst-speichern").onclick = einstellungenSpeichern;
+$("#btn-probe").onclick = async () => {
+  try { const r = await holeJSON("api/wachhund/probe", "POST");
+        melden(`gesendet an ${r.gesendet.join(", ") || "–"}`); }
+  catch (err) { melden(err.message, true); }
+};
+$("#btn-protokoll-leeren").onclick = async () => {
+  if (!confirm("Protokoll leeren?")) return;
+  await holeJSON("api/logbuch", "DELETE"); ladeProtokoll();
+};
+$("#btn-gesundheit").onclick = ladeGesundheit;
+
+(async function start(){
+  try { ENTITAETEN = await hole("api/entitaeten"); } catch { ENTITAETEN = {}; }
+  await aktualisieren();
+  setInterval(async () => {
+    try { BERICHT = await hole("api/status"); zeichneUebersicht(); } catch {}
+  }, 20000);
+})();
+</script>
+</body>
+</html>

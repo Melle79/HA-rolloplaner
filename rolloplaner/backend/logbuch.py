@@ -1,0 +1,95 @@
+"""Protokoll der Schaltvorgänge – was ist wann warum gefahren.
+
+Nur Ereignisse, keine Takte: Ein Eintrag entsteht, wenn tatsächlich ein Rollo
+gefahren ist. Damit bleibt das Protokoll lesbar und beantwortet die einzige
+Frage, die man ihm später stellt – warum steht dieses Rollo, wo es steht.
+"""
+from __future__ import annotations
+
+import json
+import os
+import threading
+from datetime import datetime
+
+DATA_DIR = os.environ.get("DATA_DIR", "./data")
+LOGBUCH_FILE = os.path.join(DATA_DIR, "logbuch.json")
+MAX_EINTRAEGE = 500
+
+_lock = threading.Lock()
+
+
+def _load() -> list[dict]:
+    if not os.path.exists(LOGBUCH_FILE):
+        return []
+    try:
+        with open(LOGBUCH_FILE, encoding="utf-8") as f:
+            daten = json.load(f)
+        return daten if isinstance(daten, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def _save(eintraege: list[dict]) -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    tmp = LOGBUCH_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(eintraege, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, LOGBUCH_FILE)
+
+
+# Woran man einem Eintrag ansieht, wie ernst er ist. Der Aufrufer kann die Art
+# ausdrücklich setzen; sonst wird sie aus dem Stichwort abgeleitet, damit auch
+# ältere Einträge im Protokoll richtig eingefärbt sind.
+_ARTEN = {
+    "fehler": ("störung", "fehlt", "verschwunden", "nicht erreichbar",
+               "hindernis", "blockiert"),
+    "warnung": ("fehlgeschlagen", "abgelehnt", "trockenlauf", "von hand",
+                "fenster offen", "rauch"),
+    "gut": ("wieder da", "wieder in ordnung"),
+}
+
+
+def _art_raten(was: str, warum: str) -> str | None:
+    text = f"{was} {warum}".lower()
+    for art, worte in _ARTEN.items():
+        if any(wort in text for wort in worte):
+            return art
+    return None
+
+
+def eintragen(raum: str, was: str, warum: str, entity_id: str = "",
+              art: str | None = None) -> None:
+    with _lock:
+        eintraege = _load()
+        eintraege.append({
+            "zeit": datetime.now().isoformat(timespec="seconds"),
+            "raum": raum,
+            "was": was,
+            "warum": warum,
+            "entity_id": entity_id,
+            "art": art or _art_raten(was, warum),
+        })
+        _save(eintraege[-MAX_EINTRAEGE:])
+
+
+def lesen(grenze: int = 200) -> list[dict]:
+    """Die jüngsten Einträge, neueste zuerst.
+
+    Einträgen ohne vermerkte Art wird sie hier zugeordnet – so sind auch die
+    Einträge von vor dieser Fassung im Protokoll richtig eingefärbt.
+    """
+    with _lock:
+        eintraege = _load()
+    out = []
+    for eintrag in reversed(eintraege[-grenze:]):
+        if not eintrag.get("art"):
+            eintrag = {**eintrag,
+                       "art": _art_raten(eintrag.get("was", ""),
+                                         eintrag.get("warum", ""))}
+        out.append(eintrag)
+    return out
+
+
+def leeren() -> None:
+    with _lock:
+        _save([])
