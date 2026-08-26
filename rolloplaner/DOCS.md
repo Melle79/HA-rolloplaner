@@ -172,10 +172,17 @@ eines, das zweimal am Tag fährt, meldet sich auch nur zweimal am Tag.
 
 ## Die Karte
 
-Je Raum eine Kachel: Raumname, die Stellung als Zahl – und ein **simuliertes
-Fensterrollo**, das zeigt, wie weit der Panzer heruntersteht. Ein Balken sagt
+Je Raum eine Kachel: Raumname, die Stellung als Zahl – und ein **simulierter
+Rollladen**, der zeigt, wie weit der Panzer heruntersteht. Ein Balken sagt
 „65 %“, aber nicht, ob das Rollo dabei oben oder unten ist; das Bild sagt es
 ohne Umweg, und beim Fahren läuft es sichtbar mit.
+
+Vor einer **Tür** sieht der Rollladen anders aus als vor einem **Fenster**: Er
+geht bis zum Boden, während das Fenster eine Brüstung darunter hat. Welches
+Bild ein Raum bekommt, entscheidet der Planer nach den Namen seiner Rollos –
+„Rollo Balkontür Luna“ ist eine Tür, „Rollo Küche“ ein Fenster. Ein Raum gilt
+nur dann als Tür, wenn *alle* seine Rollos welche sind. Überstimmen lässt sich
+das im Raum-Dialog unter *Stellungen → Anzeige zeichnet*.
 
 Das Add-on bringt seine Lovelace-Karte selbst mit; eine getrennte Installation
 über HACS ist nicht nötig. Beim Start wird sie nach `www/` kopiert und als

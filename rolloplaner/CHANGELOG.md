@@ -1,5 +1,23 @@
 # Änderungen
 
+## 1.3.0 – 26.08.2026
+
+**Keine Fensterkreuze mehr.** Die Sprossen waren bei 40 Pixeln kein Detail,
+sondern Unruhe.
+
+**Türen sehen jetzt aus wie Türen.** Ein Rollladen vor einer Balkontür geht bis
+zum Boden, einer vor einem Fenster hat eine Brüstung darunter – genau das
+zeigen die Bilder. Beide stecken in einer Box gleicher Höhe, damit in einer
+Kachelreihe nichts springt; die Tür hat außerdem einen Griff und eine Schwelle.
+Nur schmaler zu zeichnen hätte nicht gereicht, das sähe aus wie ein kleineres
+Fenster.
+
+Welches Bild ein Raum bekommt, entscheidet die Vorgabe **automatisch nach den
+Namen der Rollos** – „Rollo Balkontür Luna“ ist eine Tür, „Rollo Küche“ ein
+Fenster. Ein Raum gilt nur dann als Tür, wenn *alle* seine Rollos welche sind:
+Luna hat ein Fenster und eine Balkontür, und ein Bild für zwei verschiedene
+Dinge zeigt besser den Regelfall. Im Raum-Dialog lässt sich das überstimmen.
+
 ## 1.2.0 – 26.08.2026
 
 **Statt des Fortschrittsbalkens ein simuliertes Fensterrollo.** Ein Balken sagt

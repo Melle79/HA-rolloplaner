@@ -172,6 +172,35 @@ def _fenster_offen(raum: dict, index: dict) -> list[str]:
     return offen
 
 
+# Woran ein Rollo als Tür zu erkennen ist. Ein Rollladen vor einer Balkontür
+# geht bis zum Boden; das sieht anders aus als eines vor einem Fenster mit
+# Brüstung, und in der Anzeige soll man es auch so sehen.
+TUER_WORTE = ("tür", "tuer", "door", "balkon", "terrasse")
+
+
+def _bildart(raum: dict, index: dict) -> str:
+    """Zeichnet die Anzeige für diesen Raum ein Fenster oder eine Tür?
+
+    Bei „auto“ zählt der Name jedes Rollos. Ein Raum gilt nur dann als Tür,
+    wenn **alle** seine Rollos welche sind: Luna hat ein Fenster und eine
+    Balkontür, und ein Bild für zwei verschiedene Dinge zeigt besser den
+    Regelfall.
+    """
+    gewaehlt = raum.get("bildart") or "auto"
+    if gewaehlt in ("fenster", "tuer"):
+        return gewaehlt
+
+    namen = []
+    for eid in raum.get("rollos") or []:
+        zustand = index.get(eid)
+        name = ((zustand.get("attributes") or {}).get("friendly_name")
+                if zustand else None) or eid
+        namen.append(name.lower())
+    if not namen:
+        return "fenster"
+    return "tuer" if all(any(w in n for w in TUER_WORTE) for n in namen) else "fenster"
+
+
 def _bedienbare_helfer(raum: dict, index: dict) -> list[dict]:
     """Die Entitäten, an denen die Schaltpunkte dieses Raumes hängen.
 
@@ -286,6 +315,7 @@ def _raum_rechnen(raum: dict, einstellungen: dict, index: dict, state: dict,
         # nicht ausgerechnet dann verschwinden, wenn ein Raum gesperrt ist –
         # der Schalter, mit dem man ihn wieder freigibt, steht ja hier.
         "helfer": _bedienbare_helfer(raum, index),
+        "bildart": _bildart(raum, index),
     }
 
     # 1. aus ------------------------------------------------------------------

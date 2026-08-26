@@ -47,6 +47,10 @@ BETRIEBSARTEN = ["plan", "nur_schliessen", "beobachten"]
 
 ZUSTAENDE = ["an", "aus"]
 
+# Was die Anzeige zeichnet. „auto“ entscheidet nach den Namen der Rollos –
+# ein „Rollo Balkontür Luna“ ist eine Tür, ein „Rollo Küche“ ein Fenster.
+BILDARTEN = ["auto", "fenster", "tuer"]
+
 # Himmelsrichtungen für den Hitzeschutz, in Grad wie der Azimut der Sonne:
 # 0° Nord, 90° Ost, 180° Süd, 270° West.
 HIMMELSRICHTUNGEN = {
@@ -142,6 +146,7 @@ STANDARD_RAUM = {
     "urlaub_simulation": True,
     "position_offen": 100,
     "position_zu": 0,
+    "bildart": "auto",
     "zeitplan": [],
 }
 
@@ -343,6 +348,10 @@ def validate_raum(raum: dict, vorhandene_id: str | None = None) -> dict:
     beschattung_position = (None if beschattung_position in (None, "", "null")
                             else _position(beschattung_position, "Beschattungsstellung"))
 
+    bildart = str(raum.get("bildart") or "auto").strip()
+    if bildart not in BILDARTEN:
+        raise ValidationError(f"Unbekannte Darstellung {bildart!r}")
+
     offen = _position(raum.get("position_offen", 100), "Stellung offen")
     zu = _position(raum.get("position_zu", 0), "Stellung zu")
     if offen <= zu:
@@ -370,6 +379,7 @@ def validate_raum(raum: dict, vorhandene_id: str | None = None) -> dict:
         "urlaub_simulation": bool(raum.get("urlaub_simulation", True)),
         "position_offen": offen,
         "position_zu": zu,
+        "bildart": bildart,
         "zeitplan": validate_zeitplan(raum.get("zeitplan") or []),
     }
 

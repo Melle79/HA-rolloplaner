@@ -19,7 +19,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "1.2.0";
+const CARD_VERSION = "1.3.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -46,20 +46,17 @@ const ZUSTAND_TEXT = {
   gesperrt: "gesperrt", ohne_plan: "kein Plan", nur_schliessen: "nur schließen",
 };
 
-/* Das simulierte Fensterrollo. `--zu` geht von 0 % (ganz offen) bis 100 %
-   (ganz geschlossen); der Panzer hängt von oben herunter, darunter kommt das
-   Fenster zum Vorschein.
-
-   Die Farben sind hier bewusst **fest** und folgen nicht dem Theme: Das ist
-   keine Bedienfläche, sondern ein Bild von einem Gegenstand. Ein Rollladen ist
-   hellgrau, und was dahinter liegt, ist Himmel – in einem hellen Theme genauso
-   wie in einem dunklen. */
-function rollobild(position) {
+/* Der Rollladen vor einem Fenster oder einer Tür – siehe die Erklärung im
+   Stilblock weiter unten. */
+function rollobild(position, art) {
   const p = Number(position);
   const zu = Number.isNaN(p) ? 100 : Math.max(0, Math.min(100, 100 - p));
-  return `<div class="rollo" style="--zu:${zu}%">
-    <div class="sprossen"></div><div class="panzer"></div><div class="kasten"></div>
-  </div>`;
+  const tuer = art === "tuer";
+  return `<div class="bild"><div class="rollo ${tuer ? "tuer" : "fenster"}"
+    style="--zu:${zu}%">
+    ${tuer ? '<div class="schwelle"></div><div class="griff"></div>' : ""}
+    <div class="panzer"></div><div class="kasten"></div>
+  </div></div>`;
 }
 
 function stellungstext(p) {
@@ -276,7 +273,7 @@ class RolloplanerCard extends HTMLElement {
 
     return `<div class="raum ${an ? "" : "ruht"}">
       <div class="z1">
-        ${rollobild(r.sensor.state)}
+        ${rollobild(r.sensor.state, attrs.bildart)}
         <div class="z1-text">
           <div class="namenzeile">
             <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>${schild}
@@ -413,19 +410,28 @@ class RolloplanerCard extends HTMLElement {
       .s-rauch{background:rgba(227,109,109,.3)}
       .s-fenster,.s-manuell{background:rgba(224,164,74,.3)}
 
-      /* ── Das simulierte Fensterrollo ── */
-      .rollo{position:relative; width:44px; aspect-ratio:4/3.4; flex:none;
-        border-radius:3px; overflow:hidden; border:1px solid rgba(0,0,0,.35);
+      /* ── Rollladen vor Fenster oder Tür ──
+         Die Eigenschaft --zu geht von 0 % (ganz offen) bis 100 % (ganz
+         geschlossen); der
+         Panzer hängt von oben herunter, darunter kommt die Öffnung zum
+         Vorschein. Beide Bilder stecken in einer Box gleicher Höhe, damit in
+         einer Kachelreihe nichts springt – der Unterschied steckt darin, wie
+         sie die Box füllen: Eine Tür geht bis zum Boden, ein Fenster hat eine
+         Brüstung darunter. Schmaler allein sähe nur aus wie ein kleineres
+         Fenster.
+
+         Die Farben folgen bewusst nicht dem Farbschema: Das ist kein
+         Bedienelement, sondern das Bild eines Gegenstands. Ein Rollladen ist
+         hellgrau, und was dahinterliegt, ist Himmel. */
+      .bild{height:40px; display:flex; align-items:flex-start; flex:none}
+      .rollo{position:relative; border-radius:2px; overflow:hidden;
+        border:1px solid rgba(0,0,0,.45);
         background:linear-gradient(160deg,#7fb4d8,#4a7fa5)}
-      .rollo .sprossen{position:absolute; inset:0; background:
-        linear-gradient(to right, transparent calc(50% - .5px),
-          rgba(255,255,255,.35) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
-        linear-gradient(to bottom, transparent calc(50% - .5px),
-          rgba(255,255,255,.35) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px))}
+      .rollo.fenster{height:76%; width:calc(40px*1.16); margin-top:6%}
+      .rollo.tuer{height:100%; width:calc(40px*.62)}
       .rollo .panzer{position:absolute; left:0; right:0; top:0; height:var(--zu,0%);
         transition:height .6s ease; box-shadow:0 1px 3px rgba(0,0,0,.5);
-        background:repeating-linear-gradient(to bottom,
-          #cfd6de 0 3px, #9aa5b1 3px 4px)}
+        background:repeating-linear-gradient(to bottom,#cfd6de 0 3px,#9aa5b1 3px 4px)}
       /* Die Endleiste – ohne sie sieht der Panzer aus wie eine Schraffur */
       .rollo .panzer::after{content:""; position:absolute; left:0; right:0; bottom:0;
         height:2px; background:#7d8894}
@@ -433,6 +439,11 @@ class RolloplanerCard extends HTMLElement {
          Rollo sichtbar, sonst fehlte dem Bild oben der Abschluss. */
       .rollo .kasten{position:absolute; left:0; right:0; top:0; height:4px;
         background:linear-gradient(to bottom,#b8c1cb,#8e99a5)}
+      .rollo .griff{position:absolute; right:2px; top:50%; width:2.5px; height:22%;
+        border-radius:1.5px; background:rgba(25,35,45,.85);
+        box-shadow:0 0 0 .5px rgba(255,255,255,.25)}
+      .rollo .schwelle{position:absolute; left:0; right:0; bottom:0; height:2px;
+        background:rgba(25,35,45,.5)}
 
       .knoepfe{display:flex; gap:1px; flex:none}
       .tipp{border:none; background:none; cursor:pointer; padding:3px;

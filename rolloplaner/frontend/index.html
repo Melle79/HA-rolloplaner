@@ -119,26 +119,41 @@
   .raum-fuss{display:flex; align-items:center; gap:var(--l2); flex-wrap:wrap;
     margin-top:var(--l3); padding-top:var(--l3); border-top:1px solid var(--linie);
     font-size:.78rem; color:var(--grau)}
-  /* ═══ Das simulierte Fensterrollo ═══
-     `--zu` geht von 0 % (ganz offen) bis 100 % (ganz geschlossen); der Panzer
-     hängt von oben herunter, darunter kommt das Fenster zum Vorschein. Die
-     Farben folgen bewusst nicht dem Farbschema: Das ist kein Bedienelement,
-     sondern das Bild eines Gegenstands. */
-  .rollo{position:relative; width:52px; aspect-ratio:4/3.4; flex:none;
-    border-radius:3px; overflow:hidden; border:1px solid rgba(0,0,0,.4);
+  /* ═══ Rollladen vor Fenster oder Tür ═══ */
+  /* ── Rollladen vor Fenster oder Tür ──
+     `--zu` geht von 0 % (ganz offen) bis 100 % (ganz geschlossen); der
+     Panzer hängt von oben herunter, darunter kommt die Öffnung zum
+     Vorschein. Beide Bilder stecken in einer Box gleicher Höhe, damit in
+     einer Kachelreihe nichts springt – der Unterschied steckt darin, wie
+     sie die Box füllen: Eine Tür geht bis zum Boden, ein Fenster hat eine
+     Brüstung darunter. Schmaler allein sähe nur aus wie ein kleineres
+     Fenster.
+
+     Die Farben folgen bewusst nicht dem Farbschema: Das ist kein
+     Bedienelement, sondern das Bild eines Gegenstands. Ein Rollladen ist
+     hellgrau, und was dahinterliegt, ist Himmel. */
+  .bild{height:46px; display:flex; align-items:flex-start; flex:none}
+  .rollo{position:relative; border-radius:2px; overflow:hidden;
+    border:1px solid rgba(0,0,0,.45);
     background:linear-gradient(160deg,#7fb4d8,#4a7fa5)}
-  .rollo .sprossen{position:absolute; inset:0; background:
-    linear-gradient(to right, transparent calc(50% - .5px),
-      rgba(255,255,255,.35) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
-    linear-gradient(to bottom, transparent calc(50% - .5px),
-      rgba(255,255,255,.35) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px))}
+  .rollo.fenster{height:76%; width:calc(46px*1.16); margin-top:6%}
+  .rollo.tuer{height:100%; width:calc(46px*.62)}
   .rollo .panzer{position:absolute; left:0; right:0; top:0; height:var(--zu,0%);
     transition:height .6s ease; box-shadow:0 1px 3px rgba(0,0,0,.5);
     background:repeating-linear-gradient(to bottom,#cfd6de 0 3px,#9aa5b1 3px 4px)}
+  /* Die Endleiste – ohne sie sieht der Panzer aus wie eine Schraffur */
   .rollo .panzer::after{content:""; position:absolute; left:0; right:0; bottom:0;
     height:2px; background:#7d8894}
+  /* Der Kasten, in dem der Panzer aufgerollt liegt: auch bei ganz offenem
+     Rollo sichtbar, sonst fehlte dem Bild oben der Abschluss. */
   .rollo .kasten{position:absolute; left:0; right:0; top:0; height:4px;
     background:linear-gradient(to bottom,#b8c1cb,#8e99a5)}
+  .rollo .griff{position:absolute; right:2px; top:50%; width:2.5px; height:22%;
+    border-radius:1.5px; background:rgba(25,35,45,.85);
+    box-shadow:0 0 0 .5px rgba(255,255,255,.25)}
+  .rollo .schwelle{position:absolute; left:0; right:0; bottom:0; height:2px;
+    background:rgba(25,35,45,.5)}
+
   .rollo-zeile{display:flex; align-items:baseline; gap:var(--l2); font-size:.8rem;
     padding:2px 0}
   .rollo-zeile .r-name{flex:1; min-width:0; white-space:nowrap; overflow:hidden;
@@ -423,6 +438,19 @@ function zeichneUebersicht(){
     el.onclick = () => handbetriebAufheben(el.dataset.hand));
 }
 
+/* Der Rollladen vor einem Fenster oder einer Tür – dieselbe Grafik wie in der
+   Lovelace-Karte, damit Add-on und Dashboard nicht verschieden aussehen. */
+function rollobild(position, art){
+  const p = Number(position);
+  const zu = Number.isNaN(p) ? 100 : Math.max(0, Math.min(100, 100 - p));
+  const tuer = art === "tuer";
+  return `<div class="bild"><div class="rollo ${tuer ? "tuer" : "fenster"}"
+    style="--zu:${zu}%">
+    ${tuer ? '<div class="schwelle"></div><div class="griff"></div>' : ""}
+    <div class="panzer"></div><div class="kasten"></div>
+  </div></div>`;
+}
+
 function karte(raum){
   const zustand = raum.zustand || "plan";
   const ziel = raum.ziel;
@@ -434,12 +462,9 @@ function karte(raum){
   const naechster = raum.naechste_uhrzeit
     ? `dann ${stellungstext(raum.naechste_stellung)} um ${esc(raum.naechste_uhrzeit)} Uhr` : "";
   const hand = (raum.rollos || []).some((r) => (r.hinweis || "").includes("Hand"));
-  const zu = 100 - Math.max(0, Math.min(100, ziel ?? 0));
   return `<article class="raum ${zustand === "aus" ? "aus" : ""}">
     <div class="raum-kopf">
-      <div class="rollo" style="--zu:${zu}%">
-        <div class="sprossen"></div><div class="panzer"></div><div class="kasten"></div>
-      </div>
+      ${rollobild(ziel, raum.bildart)}
       <h3>${esc(raum.name)}</h3>
       <div class="rechts">
         <span class="raum-ziel">${ziel === null || ziel === undefined ? "–" : ziel}<small>%</small></span>
@@ -588,7 +613,7 @@ function raumDialog(raum){
     fenster: [], praesenz: [], personen: [], freigabe_entity: "",
     ausrichtung: null, oeffnungswinkel: 90, beschattung: false,
     beschattung_position: null, raumtemp: "", raumtemp_ab: null,
-    urlaub_simulation: true, position_offen: 100, position_zu: 0,
+    urlaub_simulation: true, position_offen: 100, position_zu: 0, bildart: "auto",
   };
   $("#dlg-titel").textContent = neu ? "Raum anlegen" : AKTUELLER_RAUM.name;
   $("#btn-raum-loeschen").hidden = neu;
@@ -676,6 +701,13 @@ function zeichneDialog(){
     </div>
 
     <div class="abschnitt"><h3>Stellungen</h3>
+      <div class="gitter g3">
+        <label class="feld"><span>Anzeige zeichnet</span>
+          ${auswahl("bildart", [["auto","automatisch nach den Namen"],
+                                ["fenster","Fenster"],["tuer","Tür"]], r.bildart)}
+          <span class="hinweis">Ein Rollo vor einer Balkontür geht bis zum Boden –
+            das sieht anders aus als eines vor einem Fenster mit Brüstung.</span></label>
+      </div>
       <div class="gitter g2">
         <label class="feld"><span>„offen“ heißt</span>
           <input type="number" name="position_offen" value="${r.position_offen}"
@@ -768,6 +800,7 @@ function sammleDialog(){
   r.urlaub_simulation = haken("urlaub_simulation");
   r.position_offen = Number(wert("position_offen"));
   r.position_zu = Number(wert("position_zu"));
+  r.bildart = wert("bildart") || "auto";
 
   r.zeitplan = $$("#punktliste .punkt-zeile", wurzel).map((zeile) => {
     const i = zeile.dataset.punkt;

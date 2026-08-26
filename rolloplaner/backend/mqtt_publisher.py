@@ -343,6 +343,8 @@ class Publisher:
                 # Die Helfer, an denen die Schaltpunkte hängen – die Karte
                 # macht daraus Schalter und Auswahllisten.
                 "helfer": raum.get("helfer") or [],
+                # „fenster“ oder „tuer“ – die Karte zeichnet danach.
+                "bildart": raum.get("bildart") or "fenster",
                 "naechste_uhrzeit": raum.get("naechste_uhrzeit"),
                 "naechste_stellung": raum.get("naechste_stellung"),
                 "naechster_punkt": raum.get("naechster_punkt"),
