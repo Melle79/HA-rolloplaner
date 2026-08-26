@@ -639,10 +639,17 @@ class RolloplanerCard extends HTMLElement {
         /* Der Platz gehört dem Text: Nur seine Spalte wächst, alles Übrige
            ist so breit wie sein Inhalt. Damit rückt die rechte Seite als Block
            zusammen, statt sich über die halbe Karte zu verteilen. */
-        .raum{display:grid; align-items:center; gap:6px 16px;
-          grid-template-columns:auto minmax(200px, 1fr) auto auto auto auto;
+        /* Jede Spalte muss schrumpfen können. Die Breitenangabe „auto“ tut
+           das nicht: Eine Spalte mit langem Inhalt – etwa die Auswahl der
+           Terrassentür – macht das Raster dann breiter als die Karte, und
+           rechts fällt die Stellung über den Rand hinaus. Mit minmax(0, …)
+           darf sie schrumpfen, und die Zelle schneidet ab, was nicht passt. */
+        .raum{display:grid; align-items:center; gap:6px 18px;
+          grid-template-columns:auto minmax(0, 2fr) minmax(0, 1.1fr)
+                                minmax(150px, auto) auto auto;
           border:none; border-bottom:1px solid var(--divider-color);
           border-radius:0; padding:7px 6px}
+        .raum > *{min-width:0}
         .raum:last-child{border-bottom:none}
         .z1{display:contents}
         /* Jedes Feld nennt Spalte **und** Zeile. Ohne die Zeile setzt das
@@ -656,14 +663,15 @@ class RolloplanerCard extends HTMLElement {
            die halb so hoch ist, lässt sich als Liste überfliegen. */
         .grund{-webkit-line-clamp:1; margin-top:0; flex:1 1 auto}
         .chipzeile{grid-column:3; grid-row:1; margin-top:0; min-width:0;
-          flex-wrap:nowrap}
+          flex-wrap:nowrap; overflow:hidden; justify-content:flex-start}
         /* Die Fußzeile wird aufgelöst: Im Kachelmodus gehören Zeit und
            Knöpfe zusammen in eine Zeile, hier in zwei Spalten. */
         .z3{display:contents}
         .dann{grid-column:4; grid-row:1; text-align:right; white-space:nowrap}
         .knoepfe{grid-column:5; grid-row:1}
         .z1-wert{grid-column:6; grid-row:1; flex-direction:row;
-          align-items:baseline; gap:5px; justify-content:flex-end; min-width:92px}
+          align-items:baseline; gap:5px; justify-content:flex-end;
+          min-width:86px; white-space:nowrap}
         .wert{font-size:1.2rem}
         .raumtitel{padding-top:14px}
       }

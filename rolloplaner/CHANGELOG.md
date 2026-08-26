@@ -1,5 +1,17 @@
 # Änderungen
 
+## 2.1.2 – 26.08.2026
+
+**Die Stellung fiel rechts aus der Karte heraus.** Die Spalten der
+Zeilendarstellung waren mit der Breitenangabe „auto“ gesetzt – und die
+schrumpft nicht. Eine Spalte mit langem Inhalt, etwa die Auswahl der
+Terrassentür, machte das Raster damit breiter als die Karte selbst. Jetzt darf
+jede Spalte schrumpfen, und was nicht passt, wird abgeschnitten statt
+überzulaufen.
+
+Die Spalten sind außerdem gleichmäßiger verteilt: Vorher nahm der Text allen
+freien Platz und drängte alles Übrige an den rechten Rand.
+
 ## 2.1.1 – 26.08.2026
 
 **Rollos ohne Zeitplan standen in Home Assistant als „nicht verfügbar“ da.**
