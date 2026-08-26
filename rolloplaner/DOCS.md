@@ -189,9 +189,16 @@ show_funktionen: true     # die Schalter oben
 show_raeume: true
 show_naechster: true
 show_stoerungen: true
+show_helfer: true         # die Helfer, an denen die Schaltpunkte hängen
 allow_fahren: true        # Auf/Zu je Raum
 raeume: [Küche, Wohnzimmer]   # ohne Angabe: alle
 ```
+
+**Die Helfer je Raum**: Hängt ein Schaltpunkt an einem `input_boolean` oder
+einem `input_select`, zeigt die Karte ihn beim Raum an und lässt ihn dort
+bedienen – als Chip mit Punkt für an/aus, als Auswahlliste bei mehreren
+Stellungen. So lässt sich „die Terrassentür heute mal offen lassen“ dort
+erledigen, wo man ohnehin hinsieht.
 
 Ist die Karte bereits aus einer anderen Quelle eingebunden (etwa HACS), legt
 das Add-on **nichts** an und schreibt nur einen Hinweis ins Protokoll: Zwei

@@ -1,5 +1,29 @@
 # Änderungen
 
+## 1.1.0 – 26.08.2026
+
+Nach dem ersten Blick auf die Karte im echten Dashboard.
+
+**Die Helfer sind jetzt in der Karte bedienbar.** Wo ein Schaltpunkt an einem
+`input_boolean` oder `input_select` hängt, erscheint er beim Raum — als Chip
+mit Punkt für an/aus, als Auswahlliste bei mehreren Stellungen. Damit lässt
+sich die Terrassentür („normal / 24 Uhr / aus“) dort umstellen, wo man ohnehin
+hinsieht, statt die Karte zu verlassen und den Helfer anderswo zu suchen.
+
+**Das Aussehen:**
+
+* Die Räume hießen **„Rolloplaner Rollo Büro“** – Home Assistant stellt den
+  Gerätenamen voran, und die Karte strich nur „Rollo “ weg.
+* Die Begründung enthielt die **Bedingungen als Entity-IDs**
+  („… (helfer_rollo_eg_schliessen = on)“). Auf einer Kachel liest sich das wie
+  eine Fehlermeldung; sie stehen jetzt nur noch im Raum-Dialog.
+* Das Schild **„Zeitplan“** erschien an jedem Raum und verdeckte damit genau
+  die Zeile, auf der wirklich „Hitzeschutz“ oder „Handbetrieb“ steht.
+* **Keine eigenen Flächen mehr.** Die Raumzeilen hatten einen eigenen
+  Hintergrund – in einem hellen Theme ein dunkler Fremdkörper. Jetzt tun es
+  Trennlinien, die die Farbe des Themes annehmen. Der Fortschrittsbalken ist
+  weg; er sah bei „zu“ aus wie eine zweite Trennlinie.
+
 ## 1.0.0 – 26.08.2026
 
 Erste Fassung.

@@ -214,8 +214,14 @@ def naechster_wechsel(zeitplan: list[dict], jetzt: datetime, kalender: Schulkale
     return None
 
 
-def beschreibung(eintrag: dict) -> str:
-    """Ein Schaltpunkt in einem Satz – für Protokoll und Karte."""
+def beschreibung(eintrag: dict, mit_bedingungen: bool = False) -> str:
+    """Ein Schaltpunkt in einem Satz – für Protokoll und Karte.
+
+    Die Bedingungen bleiben draußen, sofern nicht ausdrücklich verlangt: Auf
+    einer Dashboard-Kachel liest sich „zu um Sonnenuntergang, spätestens 23:00
+    (helfer_rollo_eg_schliessen = on)“ wie eine Fehlermeldung. Wer wissen will,
+    woran ein Punkt hängt, sieht im Raum-Dialog nach, wo es hingehört.
+    """
     if eintrag.get("name"):
         return eintrag["name"]
     art = eintrag.get("ausloeser") or "uhrzeit"
@@ -243,8 +249,10 @@ def beschreibung(eintrag: dict) -> str:
                "morgen_schultag": " wenn morgen Schule ist",
                "morgen_schulfrei": " wenn morgen schulfrei ist"}
     text = f"{was} um {wann}" + geltung.get(eintrag.get("gilt", "immer"), "")
-    for bedingung in eintrag.get("wenn") or []:
-        text += f" ({bedingung.get('entity', '').split('.')[-1]} = {bedingung.get('wert')})"
+    if mit_bedingungen:
+        for bedingung in eintrag.get("wenn") or []:
+            text += (f" ({bedingung.get('entity', '').split('.')[-1]}"
+                     f" = {bedingung.get('wert')})")
     return text
 
 

@@ -340,6 +340,9 @@ class Publisher:
                 "begruendung": raum.get("begruendung"),
                 "beschattet": raum.get("beschattet", False),
                 "fenster_offen": raum.get("fenster_offen") or [],
+                # Die Helfer, an denen die Schaltpunkte hängen – die Karte
+                # macht daraus Schalter und Auswahllisten.
+                "helfer": raum.get("helfer") or [],
                 "naechste_uhrzeit": raum.get("naechste_uhrzeit"),
                 "naechste_stellung": raum.get("naechste_stellung"),
                 "naechster_punkt": raum.get("naechster_punkt"),

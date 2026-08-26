@@ -172,6 +172,38 @@ def _fenster_offen(raum: dict, index: dict) -> list[str]:
     return offen
 
 
+def _bedienbare_helfer(raum: dict, index: dict) -> list[dict]:
+    """Die Entitäten, an denen die Schaltpunkte dieses Raumes hängen.
+
+    Damit kann die Dashboard-Karte sie gleich mitbedienen. Sonst müsste man
+    für „die Terrassentür heute mal nicht zufahren“ die Karte verlassen und den
+    Auswahlhelfer anderswo suchen – und genau das war am alten Aufbau lästig.
+
+    Gesammelt wird in der Reihenfolge des Auftretens, damit die Karte nicht bei
+    jedem Takt anders sortiert.
+    """
+    gesehen: list[str] = []
+    for eid in [raum.get("freigabe_entity")] + [
+            b.get("entity") for p in (raum.get("zeitplan") or [])
+            for b in (p.get("wenn") or [])]:
+        if eid and eid not in gesehen:
+            gesehen.append(eid)
+
+    out = []
+    for eid in gesehen:
+        zustand = index.get(eid)
+        if zustand is None:
+            continue
+        attrs = zustand.get("attributes") or {}
+        out.append({
+            "entity_id": eid,
+            "name": attrs.get("friendly_name") or eid,
+            "zustand": zustand.get("state"),
+            "optionen": list(attrs.get("options") or []),
+        })
+    return out
+
+
 def _jemand_da(raum: dict, index: dict) -> bool | None:
     melder = (raum.get("praesenz") or []) + (raum.get("personen") or [])
     if not melder:
@@ -250,6 +282,10 @@ def _raum_rechnen(raum: dict, einstellungen: dict, index: dict, state: dict,
     ergebnis = {
         "id": raum["id"], "name": raum["name"], "zustand": "plan",
         "begruendung": "", "ziel": None, "rollos": [], "schaltet": False,
+        # Auch für Räume, die gleich aussteigen: Die Auswahl in der Karte darf
+        # nicht ausgerechnet dann verschwinden, wenn ein Raum gesperrt ist –
+        # der Schalter, mit dem man ihn wieder freigibt, steht ja hier.
+        "helfer": _bedienbare_helfer(raum, index),
     }
 
     # 1. aus ------------------------------------------------------------------
@@ -338,6 +374,7 @@ def _raum_rechnen(raum: dict, einstellungen: dict, index: dict, state: dict,
     # 6. Fenster --------------------------------------------------------------
     offen = _fenster_offen(raum, index)
     ergebnis["fenster_offen"] = offen
+    ergebnis["helfer"] = _bedienbare_helfer(raum, index)
 
     ergebnis["begruendung"] = beschreibung
     ergebnis["ziel"] = ziel
