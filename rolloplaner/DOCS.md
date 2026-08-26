@@ -172,6 +172,11 @@ eines, das zweimal am Tag fährt, meldet sich auch nur zweimal am Tag.
 
 ## Die Karte
 
+Je Raum eine Kachel: Raumname, die Stellung als Zahl – und ein **simuliertes
+Fensterrollo**, das zeigt, wie weit der Panzer heruntersteht. Ein Balken sagt
+„65 %“, aber nicht, ob das Rollo dabei oben oder unten ist; das Bild sagt es
+ohne Umweg, und beim Fahren läuft es sichtbar mit.
+
 Das Add-on bringt seine Lovelace-Karte selbst mit; eine getrennte Installation
 über HACS ist nicht nötig. Beim Start wird sie nach `www/` kopiert und als
 Ressource registriert.

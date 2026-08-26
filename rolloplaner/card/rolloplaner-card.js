@@ -19,7 +19,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "1.1.0";
+const CARD_VERSION = "1.2.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -45,6 +45,22 @@ const ZUSTAND_TEXT = {
   fenster: "Fenster offen", manuell: "Handbetrieb", aus: "aus",
   gesperrt: "gesperrt", ohne_plan: "kein Plan", nur_schliessen: "nur schließen",
 };
+
+/* Das simulierte Fensterrollo. `--zu` geht von 0 % (ganz offen) bis 100 %
+   (ganz geschlossen); der Panzer hängt von oben herunter, darunter kommt das
+   Fenster zum Vorschein.
+
+   Die Farben sind hier bewusst **fest** und folgen nicht dem Theme: Das ist
+   keine Bedienfläche, sondern ein Bild von einem Gegenstand. Ein Rollladen ist
+   hellgrau, und was dahinter liegt, ist Himmel – in einem hellen Theme genauso
+   wie in einem dunklen. */
+function rollobild(position) {
+  const p = Number(position);
+  const zu = Number.isNaN(p) ? 100 : Math.max(0, Math.min(100, 100 - p));
+  return `<div class="rollo" style="--zu:${zu}%">
+    <div class="sprossen"></div><div class="panzer"></div><div class="kasten"></div>
+  </div>`;
+}
 
 function stellungstext(p) {
   if (p === null || p === undefined || p === "unknown" || p === "") return "–";
@@ -242,7 +258,7 @@ class RolloplanerCard extends HTMLElement {
       ? `<span class="schild s-${zustand}">${ZUSTAND_TEXT[zustand]}</span>` : "";
 
     const dann = attrs.naechste_uhrzeit
-      ? `<span class="dann">${stellungstext(attrs.naechste_stellung)} um ${this._esc(attrs.naechste_uhrzeit)}</span>`
+      ? `dann ${stellungstext(attrs.naechste_stellung)} um ${this._esc(attrs.naechste_uhrzeit)} Uhr`
       : "";
 
     const knoepfe = c.allow_fahren && attrs.raum_id ? `
@@ -255,18 +271,28 @@ class RolloplanerCard extends HTMLElement {
         title="Automatik für ${this._esc(r.name)}">
         <ha-icon icon="mdi:${an ? "robot" : "robot-off"}"></ha-icon></button>` : "";
 
+    const zahl = Number(r.sensor.state);
+    const wert = Number.isNaN(zahl) ? "–" : zahl;
+
     return `<div class="raum ${an ? "" : "ruht"}">
       <div class="z1">
-        <span class="name">${this._esc(r.name)}</span>
-        ${schild}
-        <span class="wert">${stellungstext(r.sensor.state)}</span>
-        <span class="knoepfe">${knoepfe}${kippe}</span>
-      </div>
-      <div class="z2">
-        <span class="grund">${this._esc(attrs.begruendung || "")}</span>
-        ${dann}
+        ${rollobild(r.sensor.state)}
+        <div class="z1-text">
+          <div class="namenzeile">
+            <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>${schild}
+          </div>
+          <div class="grund">${this._esc(attrs.begruendung || "")}</div>
+        </div>
+        <div class="z1-wert">
+          <span class="wert">${wert}<small>${Number.isNaN(zahl) ? "" : "%"}</small></span>
+          <span class="lage">${stellungstext(r.sensor.state)}</span>
+        </div>
       </div>
       ${c.show_helfer ? this._helfer(attrs.helfer || []) : ""}
+      <div class="z3">
+        <span class="dann">${dann}</span>
+        <span class="knoepfe">${knoepfe}${kippe}</span>
+      </div>
     </div>`;
   }
 
@@ -357,25 +383,56 @@ class RolloplanerCard extends HTMLElement {
         font-size:.8rem; color:var(--secondary-text-color)}
       .naechster ha-icon{--mdc-icon-size:15px; flex:none}
 
-      /* Kein eigener Zeilenhintergrund: In einem hellen Theme wäre er ein
-         dunkler Fremdkörper, in einem dunklen ein Loch. Trennlinien nehmen die
-         Farbe des Themes an und sehen überall richtig aus. */
-      .raeume{border-top:1px solid var(--divider-color)}
-      .raum{padding:9px 16px 10px; border-bottom:1px solid var(--divider-color)}
-      .raum:last-child{border-bottom:none}
-      .raum.ruht{opacity:.45}
+      /* Kacheln, die sich der Breite anpassen: In einer schmalen
+         Dashboard-Spalte steht eine je Zeile, in einer breiten mehrere. */
+      .raeume{display:grid; gap:8px; padding:0 12px 12px;
+        grid-template-columns:repeat(auto-fill, minmax(230px, 1fr))}
+      .raum{border:1px solid var(--divider-color); border-radius:10px;
+        padding:10px 11px 8px}
+      .raum.ruht{opacity:.5}
 
-      .z1{display:flex; align-items:center; gap:8px}
-      .name{font-size:.95rem; font-weight:500; color:var(--primary-text-color);
-        flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
-        white-space:nowrap}
-      .wert{font-size:.9rem; color:var(--primary-text-color); white-space:nowrap;
-        font-variant-numeric:tabular-nums}
-      .schild{font-size:.68rem; font-weight:600; padding:1px 7px; border-radius:18px;
+      .z1{display:flex; align-items:flex-start; gap:10px}
+      .z1-text{flex:1 1 auto; min-width:0}
+      .namenzeile{display:flex; align-items:baseline; gap:6px; min-width:0;
+        flex-wrap:wrap}
+      /* Umbrechen statt abschneiden: „Wohnzimmer – Terrassentür“ ist der
+         Raumname, an dem man die Kachel erkennt – „Wohnzimmer – …“ ist keiner. */
+      .name{font-size:1rem; font-weight:500; color:var(--primary-text-color);
+        min-width:0; overflow-wrap:anywhere; line-height:1.25}
+      .grund{font-size:.76rem; color:var(--secondary-text-color); margin-top:2px;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+        overflow:hidden}
+      .z1-wert{display:flex; flex-direction:column; align-items:flex-end; flex:none}
+      .wert{font-size:1.5rem; font-weight:300; line-height:1.1;
+        color:var(--primary-text-color); font-variant-numeric:tabular-nums}
+      .wert small{font-size:.62em; color:var(--secondary-text-color); margin-left:1px}
+      .lage{font-size:.7rem; color:var(--secondary-text-color)}
+      .schild{font-size:.66rem; font-weight:600; padding:1px 7px; border-radius:18px;
         white-space:nowrap; letter-spacing:.02em; flex:none;
         background:rgba(127,127,127,.22); color:var(--primary-text-color)}
       .s-rauch{background:rgba(227,109,109,.3)}
       .s-fenster,.s-manuell{background:rgba(224,164,74,.3)}
+
+      /* ── Das simulierte Fensterrollo ── */
+      .rollo{position:relative; width:44px; aspect-ratio:4/3.4; flex:none;
+        border-radius:3px; overflow:hidden; border:1px solid rgba(0,0,0,.35);
+        background:linear-gradient(160deg,#7fb4d8,#4a7fa5)}
+      .rollo .sprossen{position:absolute; inset:0; background:
+        linear-gradient(to right, transparent calc(50% - .5px),
+          rgba(255,255,255,.35) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)),
+        linear-gradient(to bottom, transparent calc(50% - .5px),
+          rgba(255,255,255,.35) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px))}
+      .rollo .panzer{position:absolute; left:0; right:0; top:0; height:var(--zu,0%);
+        transition:height .6s ease; box-shadow:0 1px 3px rgba(0,0,0,.5);
+        background:repeating-linear-gradient(to bottom,
+          #cfd6de 0 3px, #9aa5b1 3px 4px)}
+      /* Die Endleiste – ohne sie sieht der Panzer aus wie eine Schraffur */
+      .rollo .panzer::after{content:""; position:absolute; left:0; right:0; bottom:0;
+        height:2px; background:#7d8894}
+      /* Der Kasten, in dem der Panzer aufgerollt liegt: auch bei ganz offenem
+         Rollo sichtbar, sonst fehlte dem Bild oben der Abschluss. */
+      .rollo .kasten{position:absolute; left:0; right:0; top:0; height:4px;
+        background:linear-gradient(to bottom,#b8c1cb,#8e99a5)}
 
       .knoepfe{display:flex; gap:1px; flex:none}
       .tipp{border:none; background:none; cursor:pointer; padding:3px;
@@ -384,13 +441,13 @@ class RolloplanerCard extends HTMLElement {
       .tipp.an{color:var(--primary-color)}
       .tipp ha-icon{--mdc-icon-size:18px; display:block}
 
-      .z2{display:flex; align-items:baseline; gap:10px; margin-top:1px;
-        font-size:.78rem; color:var(--secondary-text-color)}
-      .grund{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
+      .z3{display:flex; align-items:center; gap:8px; margin-top:7px;
+        padding-top:6px; border-top:1px solid var(--divider-color);
+        font-size:.75rem; color:var(--secondary-text-color)}
+      .dann{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
         white-space:nowrap}
-      .dann{white-space:nowrap; flex:none}
 
-      .helferzeile{display:flex; gap:6px; flex-wrap:wrap; margin-top:7px;
+      .helferzeile{display:flex; gap:5px; flex-wrap:wrap; margin-top:8px;
         align-items:center}
       .helfer{font-size:.74rem; color:var(--secondary-text-color)}
       .helfer.knopf{display:inline-flex; align-items:center; gap:5px;

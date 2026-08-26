@@ -1,5 +1,22 @@
 # Änderungen
 
+## 1.2.0 – 26.08.2026
+
+**Statt des Fortschrittsbalkens ein simuliertes Fensterrollo.** Ein Balken sagt
+„65 %“ – aber nicht, ob das Rollo dabei oben oder unten ist. Das Bild zeigt es:
+Der Panzer hängt von oben herunter, darunter kommt das Fenster zum Vorschein,
+und beim Fahren läuft er sichtbar mit. Die Farben folgen bewusst nicht dem
+Farbschema – das ist kein Bedienelement, sondern das Bild eines Gegenstands.
+
+**Die Karte ist jetzt im Kacheldesign** der Add-on-Oberfläche: Raumname und
+großer Prozentwert nebeneinander, darunter Begründung, Helfer und der nächste
+Wechsel. Die Kacheln richten sich nach der Breite – in einer schmalen
+Dashboard-Spalte steht eine je Zeile, in einer breiten mehrere.
+
+Lange Raumnamen brechen um, statt abgeschnitten zu werden:
+„Wohnzimmer – Terrassentür“ ist der Name, an dem man die Kachel erkennt,
+„Wohnzimmer – …“ ist keiner.
+
 ## 1.1.0 – 26.08.2026
 
 Nach dem ersten Blick auf die Karte im echten Dashboard.
