@@ -1,5 +1,29 @@
 # Änderungen
 
+## 1.4.0 – 26.08.2026
+
+**Die Prozentangaben lassen sich umdrehen.** Home Assistant zählt 100 % =
+offen, Amazon Echo andersherum – wer beides bedient, verrechnet sich sonst
+ständig. Der Schalter steht unter *Einstellungen → Betrieb*.
+
+Umgedreht wird nur, was **angezeigt und eingegeben** wird. Gespeichert bleibt
+alles in der Zählweise von Home Assistant; sonst stünde nach jedem Umschalten
+jeder Zeitplan auf dem Kopf. „auf“ und „zu“ bleiben ebenfalls, wie sie sind –
+die Wörter hängen nicht an der Zählweise, nur die Zahl dazwischen. Und das
+Rollobild folgt der Physik: Wie weit der Panzer heruntersteht, ist eine
+Tatsache und keine Frage der Beschriftung.
+
+Der Wert der Raum-Sensoren dreht sich mit, damit die Karte nicht etwas anderes
+zeigt als die Entität dahinter. Das Attribut `stellung_ha` behält die Zählweise
+von Home Assistant – für Automationen, die eine verlässliche Größe brauchen.
+
+**Die Helfer-Chips sagen jetzt, was sie freigeben.** Vorher stand dort der Name
+des Helfers – „Öffnen Nele“, „Obergeschoss schließen“ – und niemand konnte
+sehen, wozu die Knöpfe in der Kachel gehören. Jetzt steht davor „gibt frei“ und
+auf dem Chip die Wirkung: *öffnen*, *schließen*, *auf und zu* oder *den ganzen
+Raum*. Abgeleitet wird sie aus den Schaltpunkten, an denen der Helfer hängt.
+Der volle Name steht im Tooltip.
+
 ## 1.3.2 – 26.08.2026
 
 **Die Zarge läuft nur noch an drei Seiten**, unten ist sie offen. Genau daran

@@ -211,24 +211,51 @@ def _bedienbare_helfer(raum: dict, index: dict) -> list[dict]:
     Gesammelt wird in der Reihenfolge des Auftretens, damit die Karte nicht bei
     jedem Takt anders sortiert.
     """
-    gesehen: list[str] = []
-    for eid in [raum.get("freigabe_entity")] + [
-            b.get("entity") for p in (raum.get("zeitplan") or [])
-            for b in (p.get("wenn") or [])]:
-        if eid and eid not in gesehen:
-            gesehen.append(eid)
+    # Zu jedem Helfer merken, welche Stellungen an ihm hängen. Daraus wird die
+    # Beschriftung: „Öffnen Nele“ sagt nur, wie der Helfer heißt – „öffnen“
+    # sagt, was passiert, wenn man ihn ausschaltet. Auf einer Kachel zählt das
+    # Zweite.
+    stellungen: dict[str, set] = {}
+    reihenfolge: list[str] = []
+
+    freigabe = raum.get("freigabe_entity")
+    if freigabe:
+        reihenfolge.append(freigabe)
+        stellungen[freigabe] = {"raum"}
+
+    for punkt in raum.get("zeitplan") or []:
+        position = int(punkt.get("position", 100))
+        art = "auf" if position >= 100 else "zu" if position <= 0 else "teil"
+        for bedingung in punkt.get("wenn") or []:
+            eid = bedingung.get("entity")
+            if not eid:
+                continue
+            if eid not in stellungen:
+                stellungen[eid] = set()
+                reihenfolge.append(eid)
+            stellungen[eid].add(art)
 
     out = []
-    for eid in gesehen:
+    for eid in reihenfolge:
         zustand = index.get(eid)
         if zustand is None:
             continue
         attrs = zustand.get("attributes") or {}
+        arten = stellungen.get(eid) or set()
+        if "raum" in arten:
+            wirkung = "raum"
+        elif arten == {"auf"}:
+            wirkung = "oeffnen"
+        elif arten == {"zu"}:
+            wirkung = "schliessen"
+        else:
+            wirkung = "beides"
         out.append({
             "entity_id": eid,
             "name": attrs.get("friendly_name") or eid,
             "zustand": zustand.get("state"),
             "optionen": list(attrs.get("options") or []),
+            "wirkung": wirkung,
         })
     return out
 
@@ -352,19 +379,21 @@ def _raum_rechnen(raum: dict, einstellungen: dict, index: dict, state: dict,
     naechster = zeitplanmodul.naechster_wechsel(
         raum.get("zeitplan") or [], jetzt, kalender, sonnenstand, anpassen, zustaende)
 
+    invertiert = bool(einstellungen.get("prozent_invertiert"))
     ziel = None
     punkt_zeit = None
     beschreibung = ""
     if treffer:
         punkt_zeit, punkt = treffer
         ziel = int(punkt["position"])
-        beschreibung = zeitplanmodul.beschreibung(punkt)
+        beschreibung = zeitplanmodul.beschreibung(punkt, invertiert=invertiert)
 
     if naechster:
         ergebnis["naechster_zeitpunkt"] = _iso(naechster[0])
         ergebnis["naechste_uhrzeit"] = naechster[0].strftime("%H:%M")
         ergebnis["naechste_stellung"] = int(naechster[1]["position"])
-        ergebnis["naechster_punkt"] = zeitplanmodul.beschreibung(naechster[1])
+        ergebnis["naechster_punkt"] = zeitplanmodul.beschreibung(
+            naechster[1], invertiert=invertiert)
 
     # 4. Urlaub ---------------------------------------------------------------
     # Die Simulation steckt schon in `anpassen` und damit in `punkt_zeit`;
@@ -568,7 +597,9 @@ def _rollos_stellen(raum: dict, ergebnis: dict, einstellungen: dict, index: dict
 
     if gefahren:
         ergebnis["schaltet"] = True
-        was = "auf" if ziel >= 100 else ("zu" if ziel <= 0 else f"{ziel} %")
+        invertiert = bool(einstellungen.get("prozent_invertiert"))
+        was = ("auf" if ziel >= 100 else "zu" if ziel <= 0
+               else f"{100 - ziel if invertiert else ziel} %")
         protokoll(raum["name"], was,
                   ergebnis["begruendung"] + (" (Trockenlauf)" if trockenlauf else ""),
                   ", ".join(gefahren),
@@ -691,6 +722,7 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
             _LOGGER.exception("Wächter fehlgeschlagen")
 
     bericht.update({
+        "prozent_invertiert": bool(einstellungen.get("prozent_invertiert")),
         "automatik": lage["automatik"],
         "trockenlauf": bool(einstellungen.get("trockenlauf")),
         "urlaub": urlaub,

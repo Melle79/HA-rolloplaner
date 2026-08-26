@@ -251,6 +251,11 @@ class Publisher:
             return
         raeume = bericht.get("raeume") or []
         einstellungen = (config or {}).get("einstellungen") or {}
+        # Ist die Zählweise umgedreht, gilt das auch für den Sensorwert – sonst
+        # zeigte die Karte etwas anderes als die Entität dahinter. Der Wert in
+        # der Zählweise von Home Assistant kommt als Attribut mit, damit
+        # Automationen eine verlässliche Größe haben.
+        invertiert = bool(einstellungen.get("prozent_invertiert"))
 
         if bericht.get("rauch"):
             status = "Rauchsperre"
@@ -275,6 +280,7 @@ class Publisher:
             "schulfrei": bericht.get("schulfrei"),
             "schulfrei_morgen": bericht.get("schulfrei_morgen"),
             "aussentemperatur": bericht.get("aussen"),
+            "prozent_invertiert": invertiert,
             "sonnenaufgang": sonne.get("aufgang"),
             "sonnenuntergang": sonne.get("untergang"),
             "sonnenhoehe": sonne.get("elevation"),
@@ -303,7 +309,8 @@ class Publisher:
             erster = naechste[0]
             stellung = erster.get("naechste_stellung")
             was = ("auf" if stellung is not None and stellung >= 100
-                   else "zu" if stellung == 0 else f"{stellung} %")
+                   else "zu" if stellung == 0
+                   else f"{100 - stellung if invertiert else stellung} %")
             self._zustand("naechster_wechsel",
                           f"{erster['name']} {was} um {erster.get('naechste_uhrzeit')} Uhr",
                           {"raum": erster["name"], "uhrzeit": erster.get("naechste_uhrzeit"),
@@ -331,7 +338,11 @@ class Publisher:
         for raum in raeume:
             key = f"raum_{_slug(raum['name'])}"
             ziel = raum.get("ziel")
-            self._zustand(key, str(int(ziel)) if ziel is not None else "unknown", {
+            angezeigt = (None if ziel is None
+                         else (100 - int(ziel) if invertiert else int(ziel)))
+            self._zustand(key, str(angezeigt) if angezeigt is not None else "unknown", {
+                "stellung_ha": ziel,
+                "prozent_invertiert": invertiert,
                 # Die ID gehört mit in die Attribute: Die Karte spricht Räume
                 # darüber an, nicht über den Namen – ein umbenannter Raum
                 # behält seine ID.
@@ -346,11 +357,15 @@ class Publisher:
                 # „fenster“ oder „tuer“ – die Karte zeichnet danach.
                 "bildart": raum.get("bildart") or "fenster",
                 "naechste_uhrzeit": raum.get("naechste_uhrzeit"),
-                "naechste_stellung": raum.get("naechste_stellung"),
+                "naechste_stellung": (
+                    None if raum.get("naechste_stellung") is None
+                    else (100 - int(raum["naechste_stellung"]) if invertiert
+                          else int(raum["naechste_stellung"]))),
                 "naechster_punkt": raum.get("naechster_punkt"),
                 "rollos": [r["entity_id"] for r in raum.get("rollos", [])],
                 "stellungen": {r["entity_id"]: r.get("ist")
                                for r in raum.get("rollos", [])},
+                "naechste_stellung_ha": raum.get("naechste_stellung"),
             })
             self._zustand(f"{key}_an", "ON" if raum.get("zustand") != "aus" else "OFF", {})
 

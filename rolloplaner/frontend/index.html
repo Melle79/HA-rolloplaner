@@ -402,11 +402,26 @@ function uhrzeit(iso){
   const d = new Date(iso);
   return isNaN(d) ? "–" : d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
 }
+/* Home Assistant zählt 100 % = offen, Amazon Echo andersherum. Ist die
+   Zählweise umgedreht, dreht sich **alles**, was der Benutzer sieht und
+   eingibt – gespeichert wird aber immer in der Zählweise von Home Assistant.
+   Sonst stünde nach jedem Umschalten jeder Zeitplan auf dem Kopf.
+
+   `zeige` rechnet vom gespeicherten Wert in den angezeigten, `lies` zurück.
+   Beide sind ihre eigene Umkehrung – ein Vertauschen fällt deshalb nicht auf,
+   und darum steht die Rechnung an genau einer Stelle. */
+const invertiert = () => Boolean(CONFIG && CONFIG.einstellungen
+                                 && CONFIG.einstellungen.prozent_invertiert);
+const zeige = (wert) => (wert === null || wert === undefined || !invertiert())
+  ? wert : 100 - Number(wert);
+const lies = zeige;
+
 function stellungstext(p){
   if (p === null || p === undefined) return "–";
+  // „offen“ und „zu“ hängen nicht an der Zählweise – nur die Zahl dazwischen.
   if (p >= 100) return "offen";
   if (p <= 0) return "zu";
-  return p + " %";
+  return zeige(p) + " %";
 }
 
 /* ─────────────────────────────────────────────────────────── Übersicht ─── */
@@ -464,7 +479,7 @@ function karte(raum){
   const ziel = raum.ziel;
   const rollos = (raum.rollos || []).map((r) => `
     <div class="rollo-zeile"><span class="r-name">${esc(r.name)}</span>
-      <span class="r-wert">${r.ist === null || r.ist === undefined ? "?" : r.ist + " %"}</span>
+      <span class="r-wert">${r.ist === null || r.ist === undefined ? "?" : zeige(r.ist) + " %"}</span>
       ${r.hinweis ? `<span class="r-wert" style="color:var(--grau)">${esc(r.hinweis)}</span>` : ""}
     </div>`).join("");
   const naechster = raum.naechste_uhrzeit
@@ -475,7 +490,7 @@ function karte(raum){
       ${rollobild(ziel, raum.bildart)}
       <h3>${esc(raum.name)}</h3>
       <div class="rechts">
-        <span class="raum-ziel">${ziel === null || ziel === undefined ? "–" : ziel}<small>%</small></span>
+        <span class="raum-ziel">${ziel === null || ziel === undefined ? "–" : zeige(ziel)}<small>%</small></span>
         <span class="lage">${stellungstext(ziel)}</span>
       </div>
     </div>
@@ -587,7 +602,7 @@ function punktZeile(punkt, index){
              title="spätestens" placeholder="spätestens" ${sonnenauslöser ? "" : "disabled"}>
     </div>
     <div style="display:flex; gap:4px; align-items:center">
-      <input type="number" name="p${index}_position" value="${punkt.position}" min="0" max="100"
+      <input type="number" name="p${index}_position" value="${zeige(punkt.position)}" min="0" max="100"
              step="5" title="Stellung in Prozent" style="max-width:74px">
       ${auswahl(`p${index}_gilt`, GELTUNG, punkt.gilt)}
     </div>
@@ -681,7 +696,8 @@ function zeichneDialog(){
                  min="10" max="180" step="10"></label>
         <label class="feld"><span>Stellung (leer = Vorgabe)</span>
           <input type="number" name="beschattung_position" min="0" max="100" step="5"
-                 value="${r.beschattung_position ?? ""}"></label>
+                 value="${r.beschattung_position === null || r.beschattung_position === undefined
+                          ? "" : zeige(r.beschattung_position)}"></label>
       </div>
       <label class="haken"><input type="checkbox" name="beschattung" ${r.beschattung ? "checked" : ""}>
         Hitzeschutz für diesen Raum</label>
@@ -718,10 +734,10 @@ function zeichneDialog(){
       </div>
       <div class="gitter g2">
         <label class="feld"><span>„offen“ heißt</span>
-          <input type="number" name="position_offen" value="${r.position_offen}"
+          <input type="number" name="position_offen" value="${zeige(r.position_offen)}"
                  min="0" max="100" step="5"></label>
         <label class="feld"><span>„zu“ heißt</span>
-          <input type="number" name="position_zu" value="${r.position_zu}"
+          <input type="number" name="position_zu" value="${zeige(r.position_zu)}"
                  min="0" max="100" step="5"></label>
       </div>
     </div>`;
@@ -802,12 +818,12 @@ function sammleDialog(){
   r.oeffnungswinkel = Number(wert("oeffnungswinkel")) || 90;
   r.beschattung = haken("beschattung");
   r.beschattung_position = wert("beschattung_position") === "" ? null
-    : Number(wert("beschattung_position"));
+    : lies(Number(wert("beschattung_position")));
   r.raumtemp = wert("raumtemp");
   r.raumtemp_ab = wert("raumtemp_ab") === "" ? null : Number(wert("raumtemp_ab"));
   r.urlaub_simulation = haken("urlaub_simulation");
-  r.position_offen = Number(wert("position_offen"));
-  r.position_zu = Number(wert("position_zu"));
+  r.position_offen = lies(Number(wert("position_offen")));
+  r.position_zu = lies(Number(wert("position_zu")));
   r.bildart = wert("bildart") || "auto";
 
   r.zeitplan = $$("#punktliste .punkt-zeile", wurzel).map((zeile) => {
@@ -830,7 +846,7 @@ function sammleDialog(){
       start: ausloeser === "uhrzeit" ? rohstart : "",
       versatz_min: ausloeser === "uhrzeit" ? 0 : (Number(rohstart) || 0),
       frueh: wert(`p${i}_frueh`), spaet: wert(`p${i}_spaet`),
-      position: Number(wert(`p${i}_position`)),
+      position: lies(Number(wert(`p${i}_position`))),
       gilt: wert(`p${i}_gilt`),
       tage: mehrfach(`p${i}_tage`), name: "",
     };
@@ -867,6 +883,15 @@ function zeichneEinstellungen(){
       <label class="haken"><input type="checkbox" name="manuell_respektieren"
         ${e.manuell_respektieren ? "checked" : ""}>
         Handbetrieb stehen lassen</label>
+      <label class="haken"><input type="checkbox" name="prozent_invertiert"
+        ${e.prozent_invertiert ? "checked" : ""}>
+        Prozentangaben umdrehen: 0 % = offen, 100 % = geschlossen</label>
+      <p class="hinweis">Home Assistant zählt andersherum (100 % = offen), Amazon
+        Echo so wie hier. Umgedreht wird nur, was angezeigt und eingegeben wird –
+        gespeichert bleibt alles in der Zählweise von Home Assistant, damit ein
+        Umschalten keinen Zeitplan verdreht. Der Wert der Raum-Sensoren dreht
+        sich mit; ihr Attribut <code>stellung_ha</code> behält die Zählweise von
+        Home Assistant.</p>
       <div class="gitter g3" style="margin-top:var(--l3)">
         <label class="feld"><span>Takt (Sekunden)</span>
           <input type="number" name="takt_sekunden" value="${e.takt_sekunden}" min="30" max="3600" step="30"></label>
@@ -917,7 +942,7 @@ function zeichneEinstellungen(){
                  value="${e.beschattung?.min_elevation}"></label>
         <label class="feld"><span>Stellung beim Beschatten (%)</span>
           <input type="number" name="beschattung.position" step="5" min="0" max="100"
-                 value="${e.beschattung?.position}"></label>
+                 value="${zeige(e.beschattung?.position)}"></label>
       </div>
       <label class="haken"><input type="checkbox" name="beschattung.nur_wenn_niemand_da"
         ${e.beschattung?.nur_wenn_niemand_da ? "checked" : ""}>
@@ -976,6 +1001,15 @@ async function einstellungenSpeichern(){
   });
   if (daten.wachhund) daten.wachhund.melden_an =
     daten.wachhund.melden_an ? [daten.wachhund.melden_an] : [];
+  // Die Beschattungsstellung wurde in der angezeigten Zählweise eingegeben.
+  // Achtung: Wird der Schalter im selben Zug umgelegt, gilt für die Eingabe
+  // noch die alte Zählweise – deshalb hier `invertiert()` und nicht der neue
+  // Wert aus dem Formular.
+  if (daten.beschattung && daten.beschattung.position !== null
+      && daten.beschattung.position !== undefined) {
+    daten.beschattung.position = invertiert()
+      ? 100 - daten.beschattung.position : daten.beschattung.position;
+  }
   try {
     await holeJSON("api/einstellungen", "PUT", daten);
     melden("gespeichert");

@@ -65,6 +65,13 @@ class ValidationError(ValueError):
     """Ungültige Eingabedaten."""
 
 
+def anzeige_prozent(wert, invertiert: bool):
+    """Einen intern gespeicherten Wert so umrechnen, wie er angezeigt wird."""
+    if wert is None or not invertiert:
+        return wert
+    return 100 - int(wert)
+
+
 # --------------------------------------------------------------- Vorgaben ----
 
 STANDARD_EINSTELLUNGEN = {
@@ -81,6 +88,12 @@ STANDARD_EINSTELLUNGEN = {
     # Plan wieder – sonst müsste man daran denken, den Handbetrieb zu beenden.
     "manuell_stunden": 12.0,
     "ignorierte_vorschlaege": [],
+    # Home Assistant zählt 100 % = offen. Amazon Echo zählt andersherum, und
+    # wer beides bedient, verrechnet sich sonst ständig. Diese Einstellung
+    # dreht **nur die Anzeige und die Eingabe** um; gespeichert wird immer in
+    # der Zählweise von Home Assistant. Sonst stünde nach jedem Umschalten
+    # jeder Zeitplan auf dem Kopf.
+    "prozent_invertiert": False,
 
     # Der Not-Aus. Solange ein Melder anschlägt, fasst der Planer **kein**
     # Rollo mehr an. Ohne das führe er einer Notöffnung beim nächsten Takt
@@ -390,6 +403,7 @@ def validate_einstellungen(roh: dict) -> dict:
     e["automatik"] = bool(e["automatik"])
     e["trockenlauf"] = bool(e["trockenlauf"])
     e["manuell_respektieren"] = bool(e["manuell_respektieren"])
+    e["prozent_invertiert"] = bool(e["prozent_invertiert"])
     e["manuell_stunden"] = _zahl(e["manuell_stunden"], "Handbetrieb", 0.0, 168.0)
     e["takt_sekunden"] = int(_zahl(e["takt_sekunden"], "Takt", 30, 3600))
     for schluessel in ("schulfrei_entity", "schulfrei_morgen_entity", "urlaub_entity",

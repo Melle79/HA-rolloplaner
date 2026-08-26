@@ -19,7 +19,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "1.3.2";
+const CARD_VERSION = "1.4.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -40,6 +40,15 @@ const FUNKTIONEN = [
   ["switch.rolloplaner_urlaubssimulation", "Urlaub", "mdi:shield-home"],
 ];
 
+/* Was ein Helfer freigibt – abgeleitet aus den Schaltpunkten, an denen er
+   hängt. „raum“ ist der Freigabeschalter des ganzen Raumes. */
+const WIRKUNG = {
+  oeffnen: "öffnen",
+  schliessen: "schließen",
+  beides: "auf und zu",
+  raum: "den ganzen Raum",
+};
+
 const ZUSTAND_TEXT = {
   beschattung: "Hitzeschutz", urlaub: "Urlaub", rauch: "Rauchsperre",
   fenster: "Fenster offen", manuell: "Handbetrieb", aus: "aus",
@@ -49,6 +58,8 @@ const ZUSTAND_TEXT = {
 /* Der Rollladen vor einem Fenster oder einer Tür – siehe die Erklärung im
    Stilblock weiter unten. */
 function rollobild(position, art) {
+  // Gezeichnet wird nach der Zählweise von Home Assistant: Wie weit der Panzer
+  // heruntersteht, ist eine Tatsache und keine Frage der Beschriftung.
   const p = Number(position);
   const zu = Number.isNaN(p) ? 100 : Math.max(0, Math.min(100, 100 - p));
   const tuer = art === "tuer";
@@ -59,12 +70,18 @@ function rollobild(position, art) {
   </div></div>`;
 }
 
-function stellungstext(p) {
+/* Die Karte bekommt die Zahlen schon in der Zählweise geliefert, die das
+   Add-on eingestellt hat – umrechnen muss sie also nichts. Nur „offen“ und
+   „zu“ muss sie richtig herum benennen, und dafür braucht sie die Zählweise:
+   Bei umgedrehter Zählung heißt 0 % offen und 100 % geschlossen. */
+function stellungstext(p, invertiert) {
   if (p === null || p === undefined || p === "unknown" || p === "") return "–";
   const n = Number(p);
   if (Number.isNaN(n)) return "–";
-  if (n >= 100) return "offen";
-  if (n <= 0) return "zu";
+  const offen = invertiert ? n <= 0 : n >= 100;
+  const zu = invertiert ? n >= 100 : n <= 0;
+  if (offen) return "offen";
+  if (zu) return "zu";
   return `${n} %`;
 }
 
@@ -88,6 +105,7 @@ class RolloplanerCard extends HTMLElement {
       status && status.state,
       FUNKTIONEN.map(([e]) => hass.states[e] && hass.states[e].state),
       raeume.map((r) => [r.sensor.state, r.sensor.attributes.zustand,
+                         r.sensor.attributes.prozent_invertiert,
                          r.sensor.attributes.begruendung,
                          r.sensor.attributes.naechste_uhrzeit,
                          (r.sensor.attributes.helfer || []).map(
@@ -254,8 +272,9 @@ class RolloplanerCard extends HTMLElement {
     const schild = ZUSTAND_TEXT[zustand]
       ? `<span class="schild s-${zustand}">${ZUSTAND_TEXT[zustand]}</span>` : "";
 
+    const inv = Boolean(attrs.prozent_invertiert);
     const dann = attrs.naechste_uhrzeit
-      ? `dann ${stellungstext(attrs.naechste_stellung)} um ${this._esc(attrs.naechste_uhrzeit)} Uhr`
+      ? `dann ${stellungstext(attrs.naechste_stellung, inv)} um ${this._esc(attrs.naechste_uhrzeit)} Uhr`
       : "";
 
     const knoepfe = c.allow_fahren && attrs.raum_id ? `
@@ -273,7 +292,8 @@ class RolloplanerCard extends HTMLElement {
 
     return `<div class="raum ${an ? "" : "ruht"}">
       <div class="z1">
-        ${rollobild(r.sensor.state, attrs.bildart)}
+        ${rollobild(attrs.stellung_ha === null || attrs.stellung_ha === undefined
+                    ? r.sensor.state : attrs.stellung_ha, attrs.bildart)}
         <div class="z1-text">
           <div class="namenzeile">
             <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>${schild}
@@ -282,7 +302,7 @@ class RolloplanerCard extends HTMLElement {
         </div>
         <div class="z1-wert">
           <span class="wert">${wert}<small>${Number.isNaN(zahl) ? "" : "%"}</small></span>
-          <span class="lage">${stellungstext(r.sensor.state)}</span>
+          <span class="lage">${stellungstext(r.sensor.state, inv)}</span>
         </div>
       </div>
       ${c.show_helfer ? this._helfer(attrs.helfer || []) : ""}
@@ -298,25 +318,33 @@ class RolloplanerCard extends HTMLElement {
     const teile = helfer.map((h) => {
       const zustand = this._hass.states[h.entity_id];
       if (!zustand) return "";
-      const kurz = this._kurzname(h.name);
+      // Der volle Name steht im Tooltip; auf dem Chip steht, was der Schalter
+      // freigibt. „Öffnen Nele“ sagt nur, wie der Helfer heißt – „öffnen“
+      // sagt, was ausfällt, wenn man ihn ausschaltet.
+      const titel = `${h.name} (${h.entity_id})`;
       if (h.optionen && h.optionen.length) {
-        return `<label class="helfer"><span>${this._esc(kurz)}</span>
+        return `<label class="helfer" title="${this._esc(titel)}">
+          <span>${this._esc(this._kurzname(h.name))}</span>
           <select data-auswahl="${h.entity_id}">${h.optionen.map((o) =>
             `<option value="${this._esc(o)}"${o === zustand.state ? " selected" : ""}>${this._esc(o)}</option>`
           ).join("")}</select></label>`;
       }
       const an = zustand.state === "on";
+      const text = WIRKUNG[h.wirkung] || this._kurzname(h.name);
       return `<button class="helfer knopf ${an ? "an" : ""}"
         data-schalter="${h.entity_id}" data-an="${an ? "0" : "1"}"
-        >${this._esc(kurz)}</button>`;
+        title="${this._esc(titel)}">${this._esc(text)}</button>`;
     }).join("");
-    return teile ? `<div class="helferzeile">${teile}</div>` : "";
+    if (!teile) return "";
+    // Ohne die Beschriftung davor steht dort eine Reihe Knöpfe, von denen
+    // niemand weiß, wozu sie gehören.
+    return `<div class="helferzeile"><span class="helfer-titel">gibt frei</span>${teile}</div>`;
   }
 
   _kurzname(name) {
-    // „Helfer - Rollo EG schließen“ → „EG schließen“. Diese Vorsilben stehen in
-    // jedem der Helfer und sagen auf einer Karte, die ohnehin „Rollos“ heißt,
-    // gar nichts.
+    // „Helfer Rollo Terrassentür schliessen“ → „Terrassentür schliessen“.
+    // Diese Vorsilben stehen in jedem der Helfer und sagen auf einer Karte,
+    // die ohnehin „Rollos“ heißt, gar nichts.
     return String(name || "")
       .replace(/^Helfer\s*-?\s*/i, "")
       .replace(/^Rollosteuerung\s*-?\s*/i, "")
@@ -468,6 +496,8 @@ class RolloplanerCard extends HTMLElement {
       .helferzeile{display:flex; gap:5px; flex-wrap:wrap; margin-top:8px;
         align-items:center}
       .helfer{font-size:.74rem; color:var(--secondary-text-color)}
+      .helfer-titel{font-size:.7rem; color:var(--secondary-text-color); opacity:.8;
+        margin-right:1px}
       .helfer.knopf{display:inline-flex; align-items:center; gap:5px;
         cursor:pointer; border:1px solid var(--divider-color); background:none;
         border-radius:14px; padding:2px 9px 2px 7px; font-family:inherit;

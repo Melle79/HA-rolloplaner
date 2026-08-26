@@ -283,6 +283,34 @@ def test_uhrzeit_punkt_verliert_die_klammer():
     assert plan[0]["frueh"] == "" and plan[0]["spaet"] == ""
 
 
+# ------------------------------------------------------- Zählweise ----
+
+def test_umgedrehte_zaehlweise_beschriftet_nur_um():
+    """„auf“ und „zu“ hängen nicht an der Zählweise – nur die Zahl dazwischen.
+
+    Sonst hieße ein geschlossenes Rollo bei umgedrehter Zählung „auf“, und der
+    Schalter, der das Verrechnen verhindern soll, wäre selbst die Fehlerquelle.
+    """
+    def punkt(position):
+        return {"ausloeser": "uhrzeit", "start": "12:00", "position": position,
+                "gilt": "immer", "tage": zeitplan.ALLE, "versatz_min": 0,
+                "frueh": "", "spaet": "", "wenn": []}
+
+    assert zeitplan.beschreibung(punkt(100), invertiert=True).startswith("auf")
+    assert zeitplan.beschreibung(punkt(0), invertiert=True).startswith("zu")
+    assert zeitplan.beschreibung(punkt(35), invertiert=True).startswith("65 %")
+    assert zeitplan.beschreibung(punkt(35)).startswith("35 %")
+
+
+def test_anzeige_prozent_ist_ihre_eigene_umkehrung():
+    """Hin und zurück muss denselben Wert ergeben – daran hängt, dass ein
+    Umschalten der Zählweise keinen gespeicherten Zeitplan verdreht."""
+    for wert in (0, 1, 35, 50, 99, 100):
+        assert store.anzeige_prozent(store.anzeige_prozent(wert, True), True) == wert
+        assert store.anzeige_prozent(wert, False) == wert
+    assert store.anzeige_prozent(None, True) is None
+
+
 if __name__ == "__main__":
     fehler = 0
     for name, fn in sorted(globals().items()):

@@ -60,6 +60,21 @@ sondern am morgigen.
 Schaltpunkte mit je einer Bedingung – und bei „aus“ greift keiner, das Rollo
 bleibt oben.
 
+## Zählweise der Prozentangaben
+
+Home Assistant zählt **100 % = offen**. Amazon Echo zählt andersherum. Unter
+*Einstellungen → Betrieb* lässt sich die Anzeige umdrehen: dann heißt 0 % offen
+und 100 % geschlossen.
+
+Umgedreht wird nur, was angezeigt und eingegeben wird. **Gespeichert bleibt
+alles in der Zählweise von Home Assistant** – sonst stünde nach jedem
+Umschalten jeder Zeitplan auf dem Kopf. „auf“ und „zu“ bleiben ebenfalls, wie
+sie sind; die Wörter hängen nicht an der Zählweise, nur die Zahl dazwischen.
+
+Der Wert der Raum-Sensoren dreht sich mit. Wer in einer Automation eine
+verlässliche Größe braucht, nimmt das Attribut `stellung_ha` – das behält immer
+die Zählweise von Home Assistant.
+
 ## Die Regelkette
 
 Der erste Treffer gewinnt:
@@ -212,6 +227,12 @@ einem `input_select`, zeigt die Karte ihn beim Raum an und lässt ihn dort
 bedienen – als Chip mit Punkt für an/aus, als Auswahlliste bei mehreren
 Stellungen. So lässt sich „die Terrassentür heute mal offen lassen“ dort
 erledigen, wo man ohnehin hinsieht.
+
+Auf dem Chip steht nicht der Name des Helfers, sondern **was er freigibt**:
+*öffnen*, *schließen*, *auf und zu* oder *den ganzen Raum*. Abgeleitet wird das
+aus den Schaltpunkten, an denen er hängt. „Öffnen Nele“ sagt nur, wie der
+Helfer heißt; „öffnen“ sagt, was ausfällt, wenn man ihn ausschaltet. Der volle
+Name steht im Tooltip.
 
 Ist die Karte bereits aus einer anderen Quelle eingebunden (etwa HACS), legt
 das Add-on **nichts** an und schreibt nur einen Hinweis ins Protokoll: Zwei

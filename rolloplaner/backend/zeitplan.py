@@ -214,7 +214,8 @@ def naechster_wechsel(zeitplan: list[dict], jetzt: datetime, kalender: Schulkale
     return None
 
 
-def beschreibung(eintrag: dict, mit_bedingungen: bool = False) -> str:
+def beschreibung(eintrag: dict, mit_bedingungen: bool = False,
+                 invertiert: bool = False) -> str:
     """Ein Schaltpunkt in einem Satz – für Protokoll und Karte.
 
     Die Bedingungen bleiben draußen, sofern nicht ausdrücklich verlangt: Auf
@@ -239,12 +240,14 @@ def beschreibung(eintrag: dict, mit_bedingungen: bool = False) -> str:
         if eintrag.get("spaet"):
             wann += f", spätestens {eintrag['spaet']}"
     stellung = int(eintrag.get("position", 100))
+    # „auf“ und „zu“ bleiben, wie sie sind – die Wörter hängen nicht an der
+    # Zählweise. Nur die Zahl dazwischen dreht sich.
     if stellung >= 100:
         was = "auf"
     elif stellung <= 0:
         was = "zu"
     else:
-        was = f"{stellung} %"
+        was = f"{100 - stellung if invertiert else stellung} %"
     geltung = {"schultag": " an Schultagen", "schulfrei": " an schulfreien Tagen",
                "morgen_schultag": " wenn morgen Schule ist",
                "morgen_schulfrei": " wenn morgen schulfrei ist"}
