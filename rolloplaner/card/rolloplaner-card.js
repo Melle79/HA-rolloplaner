@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.2.0";
+const CARD_VERSION = "2.3.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -347,7 +347,7 @@ class RolloplanerCard extends HTMLElement {
           <span class="lage">${stellungstext(r.sensor.state, inv)}</span>
         </div>
       </div>
-      ${c.show_helfer ? this._helfer(attrs.helfer || []) : ""}
+      ${c.show_helfer ? this._helfer(attrs.helfer || [], r.name) : ""}
       <div class="z3">
         <span class="dann">${attrs.zeitplan
           ? `<span class="planschild">${this._esc(attrs.zeitplan)}</span> ` : ""}${dann}</span>
@@ -387,20 +387,26 @@ class RolloplanerCard extends HTMLElement {
       ><span class="c-text">${this._esc(text)}</span></button>`;
   }
 
-  _helfer(helfer) {
-    // Zwei Schalter desselben Raumes können dieselbe Wirkung haben – dann
+  _helfer(helfer, rolloName) {
+    // Zwei Schalter desselben Rollos können dieselbe Wirkung haben – dann
     // stünde zweimal „schließen“ nebeneinander und niemand wüsste, welcher
-    // welcher ist. In dem Fall kommt der Name des Schalters dazu.
+    // welcher ist. In dem Fall kommt der Name des Schalters dazu, aber nur der
+    // Teil, der etwas sagt: In der Kachel „Terrassentür“ ist „Terrassentür
+    // schliessen“ zu drei Vierteln Wiederholung, und die Kachel ist schmal.
     const wirkung = (h) => (h.wirkungen || [h.wirkung])
       .map((w) => WIRKUNG[w] || w).join(" und ");
     const zaehler = {};
     helfer.forEach((h) => { const w = wirkung(h); zaehler[w] = (zaehler[w] || 0) + 1; });
     const teile = helfer.map((h) => {
       const w = wirkung(h);
-      return this._chip(h, false,
-        zaehler[w] > 1 ? `${w}: ${this._kurzname(h.name)}` : null);
+      if (zaehler[w] < 2) return this._chip(h, false, null);
+      const eigen = this._eigenname(h.name, rolloName);
+      return this._chip(h, false, eigen ? `${w}: ${eigen}` : null);
     }).join("");
-    if (!teile) return "";
+    // Auch ohne Schalter bleibt die Zeile stehen – leer, aber vorhanden. Sonst
+    // wäre eine Kachel ohne Schalter niedriger als ihre Nachbarn, und die
+    // Fußzeile säße in jeder Kachel woanders.
+    if (!teile) return `<div class="chipzeile"></div>`;
     return `<div class="chipzeile"><span class="c-titel">gibt frei</span>${teile}</div>`;
   }
 
@@ -413,6 +419,18 @@ class RolloplanerCard extends HTMLElement {
       .replace(/^Rollosteuerung\s*-?\s*/i, "")
       .replace(/^Rollo\s+/i, "")
       .trim() || name;
+  }
+
+  _eigenname(name, rolloName) {
+    // Was am Schalternamen übrig bleibt, wenn man den Namen des Rollos
+    // abzieht – und nichts, wenn der Rest nur die Wirkung wiederholt.
+    let rest = this._kurzname(name);
+    String(rolloName || "").split(/\s+/).filter((w) => w.length > 3).forEach((w) => {
+      rest = rest.replace(
+        new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), " ");
+    });
+    rest = rest.replace(/\s+/g, " ").trim();
+    return /^(schlie(ss|ß)en|(ö|oe)ffnen|auf|zu|rollo)?$/i.test(rest) ? "" : rest;
   }
 
   _uhr(iso) {
@@ -435,7 +453,10 @@ class RolloplanerCard extends HTMLElement {
          Vorfahren mit container-type – ein Element kann nicht sein eigener
          Container sein. Stand er auf .raeume, blieben deren eigene Regeln
          wirkungslos, und die Karte hing bei einer Spalte fest. */
-      ha-card{display:block; overflow:hidden; container-type:inline-size}
+      ha-card{display:block; overflow:hidden; container-type:inline-size;
+        /* Home Assistant bringt keine verlässliche Grünvariable mit; die
+           meisten Themes setzen --success-color, sonst dieses Grün. */
+        --an-farbe:var(--success-color, #43a047)}
       .rand{padding:14px 16px 12px}
 
       .kopf{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
@@ -469,7 +490,10 @@ class RolloplanerCard extends HTMLElement {
         color:var(--secondary-text-color)}
       .fn ha-icon{--mdc-icon-size:16px}
       .fn:hover{color:var(--primary-text-color)}
-      .fn.an{background:var(--primary-color); border-color:transparent;
+      /* Dieselbe Farbe wie bei den Schaltern in den Kacheln: an ist grün.
+         Die Themenfarbe wäre hier zwar hübscher, sagt aber nichts – ein
+         Schalter, dessen Stellung man an der Farbe nicht abliest, ist keiner. */
+      .fn.an{background:var(--an-farbe); border-color:transparent;
         color:var(--text-primary-color,#fff)}
 
       .naechster{display:flex; align-items:center; gap:6px; margin-top:10px;
@@ -495,26 +519,36 @@ class RolloplanerCard extends HTMLElement {
         border:1px solid var(--divider-color); background:none; border-radius:14px;
         padding:2px 9px 2px 7px; font-family:inherit; font-weight:500;
         font-size:.74rem; color:var(--secondary-text-color); line-height:1.5;
-        max-width:100%}
+        max-width:100%; min-width:0; flex:0 1 auto}
       /* Der Punkt davor sagt an oder aus. Ein bloß etwas hellerer Hintergrund
          reicht dafür nicht – ein Schalter, dessen Stellung man raten muss, ist
          kein Schalter. */
       .chip::before{content:""; width:7px; height:7px; border-radius:50%; flex:none;
         background:currentColor; opacity:.3}
       .chip:hover{color:var(--primary-text-color)}
-      .chip.an{color:var(--primary-text-color); border-color:var(--primary-color);
-        background:rgba(127,127,127,.14)}
-      .chip.an::before{background:var(--primary-color); opacity:1}
-      .chip.auswahl{padding-right:3px; cursor:default}
-      .chip.auswahl::before{background:var(--primary-color); opacity:1}
-      .c-text{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+      /* Grün heißt: gibt frei. Das ist die eine Farbe, die man ohne Nachdenken
+         als „geht“ liest – ein Schalter, dessen Stellung man erst suchen muss,
+         ist keiner. */
+      .chip.an{color:var(--primary-text-color); border-color:var(--an-farbe);
+        background:color-mix(in srgb, var(--an-farbe) 18%, transparent)}
+      .chip.an::before{background:var(--an-farbe); opacity:1}
+      .chip.auswahl{padding-right:3px; cursor:default; border-color:var(--an-farbe)}
+      .chip.auswahl::before{background:var(--an-farbe); opacity:1}
+      .c-text{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+        min-width:2.5ch}
       .chip select{border:none; background:none; font-family:inherit;
         font-size:.74rem; color:var(--primary-text-color); cursor:pointer;
-        padding:1px 2px; max-width:110px}
+        padding:1px 2px; max-width:110px; min-width:0; flex:0 1 auto}
       .chip select:focus{outline:none}
-      .chipzeile{display:flex; gap:5px; flex-wrap:wrap; align-items:center;
-        margin-top:7px}
-      .c-titel{font-size:.7rem; color:var(--secondary-text-color); opacity:.75}
+      /* Eine Reihe, immer. Umbrechen würde die Kachel wachsen lassen und
+         damit ihre ganze Nachbarschaft mitziehen – also stauchen sich die
+         Schalter lieber und schneiden ihren Text ab; der volle Name steht im
+         Tooltip. Die Mindesthöhe hält den Platz frei, auch wenn ein Rollo gar
+         keinen Schalter hat, damit die Fußzeile überall gleich sitzt. */
+      .chipzeile{display:flex; gap:5px; flex-wrap:nowrap; align-items:center;
+        margin-top:7px; min-height:26px; overflow:hidden}
+      .c-titel{font-size:.7rem; color:var(--secondary-text-color); opacity:.75;
+        white-space:nowrap; flex:none}
 
       /* ── Kacheln oder Zeilen, je nach Platz ──
          Eine Karte in einer schmalen Dashboard-Spalte ist etwas anderes als
@@ -527,11 +561,17 @@ class RolloplanerCard extends HTMLElement {
          untereinander, mittel zwei nebeneinander, breit eine Zeile je Rollo.
          Zeilen sind bei viel Breite das Richtige – man liest sie von links
          nach rechts wie eine Liste, statt sechs Kacheln abzusuchen. */
+      /* Gleiche Höhe für alles, was nebeneinander steht: Die Raumblöcke einer
+         Zeile werden auf dieselbe Höhe gezogen (align-items:stretch), der Block
+         gibt sie an sein Raster weiter (flex:1), und grid-auto-rows:1fr teilt
+         sie gleichmäßig auf die Kacheln auf. Ohne diese Kette richtet sich jede
+         Kachel nach ihrem eigenen Inhalt, und die Reihe franst aus. */
       .raeume{display:flex; flex-wrap:wrap; gap:4px 18px; padding:0 12px 12px;
-        align-items:flex-start}
-      .raumgruppe{min-width:250px; max-width:100%}
-      .gruppe{display:grid; gap:10px; align-items:stretch;
-        grid-template-columns:1fr}
+        align-items:stretch}
+      .raumgruppe{min-width:250px; max-width:100%; display:flex;
+        flex-direction:column}
+      .gruppe{display:grid; gap:10px; align-items:stretch; flex:1;
+        grid-auto-rows:1fr; grid-template-columns:1fr}
       .raum{display:flex; flex-direction:column;
         border:1px solid var(--divider-color); border-radius:10px;
         padding:10px 11px 8px}
@@ -545,9 +585,12 @@ class RolloplanerCard extends HTMLElement {
          Name, an dem man die Kachel erkennt – „Wohnzimmer – …“ ist keiner. */
       .name{font-size:1rem; font-weight:500; color:var(--primary-text-color);
         min-width:0; overflow-wrap:anywhere; line-height:1.25}
+      /* Feste Höhen für die Abschnitte, damit in jeder Kachel dasselbe an
+         derselben Stelle steht – auch wenn eine Begründung kürzer ist oder ein
+         Rollo gar keine Schalter hat. */
       .grund{font-size:.76rem; color:var(--secondary-text-color); margin-top:2px;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-        overflow:hidden}
+        overflow:hidden; min-height:2.4em}
       .z1-wert{display:flex; flex-direction:column; align-items:flex-end; flex:none}
       .wert{font-size:1.5rem; font-weight:300; line-height:1.1;
         color:var(--primary-text-color); font-variant-numeric:tabular-nums}
@@ -563,7 +606,7 @@ class RolloplanerCard extends HTMLElement {
       .tipp{border:none; background:none; cursor:pointer; padding:3px;
         border-radius:6px; color:var(--secondary-text-color); line-height:0}
       .tipp:hover{color:var(--primary-text-color); background:rgba(127,127,127,.18)}
-      .tipp.an{color:var(--primary-color)}
+      .tipp.an{color:var(--an-farbe)}
       .tipp ha-icon{--mdc-icon-size:18px; display:block}
 
       .z3{display:flex; align-items:center; gap:8px; margin-top:auto;
@@ -617,7 +660,7 @@ class RolloplanerCard extends HTMLElement {
       .tipp{border:none; background:none; cursor:pointer; padding:3px;
         border-radius:6px; color:var(--secondary-text-color); line-height:0}
       .tipp:hover{color:var(--primary-text-color); background:rgba(127,127,127,.18)}
-      .tipp.an{color:var(--primary-color)}
+      .tipp.an{color:var(--an-farbe)}
       .tipp ha-icon{--mdc-icon-size:18px; display:block}
 
       .z3{display:flex; align-items:center; gap:8px; margin-top:7px;

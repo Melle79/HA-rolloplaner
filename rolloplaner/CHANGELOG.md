@@ -1,5 +1,26 @@
 # Änderungen
 
+## 2.3.0 – 26.08.2026
+
+**Alle Kacheln sind gleich hoch, und ein Schalter, der an ist, ist grün.**
+
+* **Gleiche Höhe, überall.** Vorher richteten sich die Kacheln nur innerhalb
+  ihrer Reihe aneinander aus – ein Rollo mit zwei Schaltern zog seine ganze
+  Reihe in die Länge, und in der schmalen Ansicht war jede Kachel wieder
+  anders hoch. Jetzt hat jeder Abschnitt seinen festen Platz: die Begründung
+  zwei Zeilen, die Schalter eine Reihe, die Fußzeile unten. Auch ein Rollo
+  ohne Schalter behält die Zeile – leer, aber vorhanden.
+* **Grün heißt an.** Die drei Knöpfe oben (Automatik, Hitzeschutz, Urlaub)
+  waren in der Themenfarbe eingefärbt, die Schalter in den Kacheln in Grün.
+  Zwei Farben für dieselbe Aussage sind eine zu viel.
+* **Schalter stauchen sich, statt umzubrechen.** In einer schmalen Kachel
+  schneidet ein Schaltername jetzt ab (der volle steht im Tooltip), statt die
+  Kachel wachsen zu lassen.
+* **Kürzere Schalternamen.** Trägt ein Rollo zwei Schalter derselben Wirkung,
+  stand bisher der ganze Schaltername dabei – in der Kachel „Terrassentür“
+  also „schließen: Terrassentür schliessen“. Der Name des Rollos fällt jetzt
+  weg, er steht schon in der Überschrift.
+
 ## 2.2.0 – 26.08.2026
 
 **Die Karte zeigt wieder Kacheln, auch auf breiten Ansichten.** Die
