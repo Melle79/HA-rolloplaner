@@ -19,7 +19,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "1.3.1";
+const CARD_VERSION = "1.3.2";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -434,9 +434,11 @@ class RolloplanerCard extends HTMLElement {
         background:linear-gradient(160deg,#7fb4d8,#4a7fa5)}
       .rollo.fenster{height:74%; width:calc(40px*1.16); margin-top:5%}
       .rollo.tuer{height:calc(100% - 3px); width:calc(40px*.76)}
-      /* Der Türflügel: Rahmenprofil außen, Glas innen. */
+      /* Die Zarge: an drei Seiten, **unten offen**. Genau daran erkennt man
+         eine Tür – ein umlaufender Rahmen ist ein Fensterrahmen, und die Tür
+         wirkte damit wie ein Kasten, der über dem Boden schwebt. */
       .rollo .fluegel{position:absolute; inset:0; border:2px solid #e2e7ec;
-        border-radius:1px}
+        border-bottom:none; border-radius:1px 1px 0 0}
       .rollo .griff{position:absolute; right:3px; top:47%; width:4px; height:1.5px;
         border-radius:1px; background:#3d4750}
       .rollo .panzer{position:absolute; left:0; right:0; top:0; height:var(--zu,0%);

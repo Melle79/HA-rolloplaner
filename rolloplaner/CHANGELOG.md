@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.3.2 – 26.08.2026
+
+**Die Zarge läuft nur noch an drei Seiten**, unten ist sie offen. Genau daran
+erkennt man eine Tür: Ein umlaufender Rahmen ist ein Fensterrahmen, und die Tür
+wirkte damit wie ein Kasten, der über dem Boden schwebt. Jetzt steht sie auf
+der Bodenlinie.
+
 ## 1.3.1 – 26.08.2026
 
 **Die Tür sah aus wie ein Kühlschrank.** Ein schmales hohes Rechteck mit einem
