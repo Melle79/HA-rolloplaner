@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.0.0";
+const CARD_VERSION = "2.1.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -426,7 +426,12 @@ class RolloplanerCard extends HTMLElement {
 
   _stil() {
     return `<style>
-      ha-card{display:block; overflow:hidden}
+      /* Der Messpunkt für die Breite. Er muss **über** dem liegen, was sich
+         nach ihr richtet: Eine Container-Query fragt immer den nächsten
+         Vorfahren mit container-type – ein Element kann nicht sein eigener
+         Container sein. Stand er auf .raeume, blieben deren eigene Regeln
+         wirkungslos, und die Karte hing bei einer Spalte fest. */
+      ha-card{display:block; overflow:hidden; container-type:inline-size}
       .rand{padding:14px 16px 12px}
 
       .kopf{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
@@ -507,13 +512,19 @@ class RolloplanerCard extends HTMLElement {
         margin-top:7px}
       .c-titel{font-size:.7rem; color:var(--secondary-text-color); opacity:.75}
 
-      /* Kacheln, die sich der Breite anpassen: In einer schmalen
-         Dashboard-Spalte steht eine je Zeile, in einer breiten mehrere.
-         Ausrichtung „stretch“ und ein Fuß mit margin-top:auto halten sie auf gleicher
-         Höhe – sonst hängt der eine „dann offen um …“-Text auf halber Strecke
-         und der andere ganz unten. */
+      /* ── Kacheln oder Zeilen, je nach Platz ──
+         Eine Karte in einer schmalen Dashboard-Spalte ist etwas anderes als
+         eine über die volle Fensterbreite. Dort zerfielen zehn Rollos in sechs
+         schmale Spalten mit großen Löchern dazwischen – und jede Kachel
+         quetschte ihren Text in drei Zeilen, während rechts anderthalbtausend
+         Pixel leer blieben.
+
+         Deshalb misst die Karte ihren eigenen Platz: schmal Kacheln
+         untereinander, mittel zwei nebeneinander, breit eine Zeile je Rollo.
+         Zeilen sind bei viel Breite das Richtige – man liest sie von links
+         nach rechts wie eine Liste, statt sechs Kacheln abzusuchen. */
       .raeume{display:grid; gap:8px; padding:0 12px 12px; align-items:stretch;
-        grid-template-columns:repeat(auto-fill, minmax(230px, 1fr))}
+        grid-template-columns:1fr}
       .raum{display:flex; flex-direction:column;
         border:1px solid var(--divider-color); border-radius:10px;
         padding:10px 11px 8px}
@@ -524,7 +535,7 @@ class RolloplanerCard extends HTMLElement {
       .namenzeile{display:flex; align-items:baseline; gap:6px; min-width:0;
         flex-wrap:wrap}
       /* Umbrechen statt abschneiden: „Wohnzimmer – Terrassentür“ ist der
-         Raumname, an dem man die Kachel erkennt – „Wohnzimmer – …“ ist keiner. */
+         Name, an dem man die Kachel erkennt – „Wohnzimmer – …“ ist keiner. */
       .name{font-size:1rem; font-weight:500; color:var(--primary-text-color);
         min-width:0; overflow-wrap:anywhere; line-height:1.25}
       .grund{font-size:.76rem; color:var(--secondary-text-color); margin-top:2px;
@@ -607,6 +618,36 @@ class RolloplanerCard extends HTMLElement {
         font-size:.75rem; color:var(--secondary-text-color)}
       .dann{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
         white-space:nowrap}
+
+      @container (min-width: 580px){
+        .raeume{grid-template-columns:repeat(2, 1fr)}
+      }
+      @container (min-width: 880px){
+        /* Ab hier: eine Zeile je Rollo über die ganze Breite.
+           Die Zeile ist eine Flexbox, und display:contents auf .z1 hebt nur
+           die eine Verschachtelung auf, die im Weg steht – damit Bild, Text
+           und Zahl direkte Geschwister der Schalter und Knöpfe werden und sich
+           mit „order“ anordnen lassen. */
+        .raeume{grid-template-columns:1fr; gap:0}
+        .raum{display:flex; flex-direction:row; align-items:center; gap:14px;
+          border:none; border-bottom:1px solid var(--divider-color);
+          border-radius:0; padding:8px 6px}
+        .raum:last-child{border-bottom:none}
+        .z1{display:contents}
+        .bild{order:1}
+        .z1-text{order:2; flex:1 1 220px; min-width:0}
+        .grund{-webkit-line-clamp:1}
+        .chipzeile{order:3; flex:0 1 auto; margin-top:0; flex-wrap:nowrap;
+          min-width:0; justify-content:flex-end}
+        .c-titel{display:none}
+        .z3{order:4; flex:0 0 auto; margin-top:0; padding-top:0;
+          justify-content:flex-end}
+        .dann{flex:0 0 auto; text-align:right; min-width:118px}
+        .z1-wert{order:5; flex:none; flex-direction:row; align-items:baseline;
+          gap:5px; min-width:96px; justify-content:flex-end}
+        .wert{font-size:1.2rem}
+        .raumtitel{padding-top:12px}
+      }
 
       .leer{padding:14px 0; color:var(--secondary-text-color); font-size:.85rem;
         text-align:center}

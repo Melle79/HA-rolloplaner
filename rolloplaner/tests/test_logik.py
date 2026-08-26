@@ -8,6 +8,7 @@ Untergang, eine Streuung, die nur in eine Richtung wirkt, ein Schaltpunkt, der
 als erledigt gilt, obwohl er nie ausgeführt wurde.
 """
 import os
+import pathlib
 import sys
 from datetime import date, datetime, timedelta
 
@@ -409,6 +410,41 @@ def test_bedingung_auf_eigenen_schalter_laeuft_durch_dieselbe_pruefung():
     assert not zeitplan.bedingungen_erfuellt(punkt, {"rolloplaner:abc": "aus"})
     # Ein Schalter, den es nicht mehr gibt, lässt den Punkt **nicht** greifen.
     assert not zeitplan.bedingungen_erfuellt(punkt, {})
+
+
+# ------------------------------------------------------------ Die Karte ----
+
+def test_kein_backtick_im_stilblock_der_karte():
+    """Das CSS der Karte steckt in einem JavaScript-Template-String.
+
+    Ein Backtick in einem CSS-Kommentar beendet ihn – ab da liest der Browser
+    Programmtext statt Stil, und die Karte bleibt leer. Das ist beim Bauen
+    dreimal passiert, immer beim Erklären einer CSS-Eigenschaft in Anführungs-
+    zeichen. Deshalb steht es hier und nicht in einem Merkzettel.
+    """
+    karte = (pathlib.Path(__file__).parent.parent / "card"
+             / "rolloplaner-card.js").read_text(encoding="utf-8")
+    stil = karte[karte.index("  _stil() {"):]
+    anzahl = stil.count("`")
+    if anzahl != 2:
+        zeilen = [z.strip()[:70] for z in stil.splitlines() if "`" in z][2:]
+        raise AssertionError(
+            f"{anzahl} Backticks im Stilblock (2 sind richtig): " + "; ".join(zeilen))
+
+
+def test_karte_ist_gueltiges_javascript():
+    """Ein Syntaxfehler in der Karte fällt sonst erst im Dashboard auf – und
+    dort sieht man nur, dass nichts kommt."""
+    import shutil
+    import subprocess
+    node = shutil.which("node")
+    if node is None:
+        return                      # ohne node keine Prüfung, aber kein Fehler
+    karte = (pathlib.Path(__file__).parent.parent / "card" / "rolloplaner-card.js")
+    ergebnis = subprocess.run([node, "--check", str(karte)],
+                              capture_output=True, text=True)
+    if ergebnis.returncode != 0:
+        raise AssertionError(ergebnis.stderr.strip().splitlines()[-1])
 
 
 if __name__ == "__main__":

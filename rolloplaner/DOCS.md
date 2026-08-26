@@ -243,8 +243,13 @@ eines, das zweimal am Tag fährt, meldet sich auch nur zweimal am Tag.
 
 ## Die Karte
 
-Je Rollo eine Kachel, nach Raum geordnet: Name, die Stellung als Zahl – und ein
-**simulierter Rollladen**, der zeigt, wie weit der Panzer heruntersteht. Ein Balken sagt
+Je Rollo eine Kachel oder Zeile, nach Raum geordnet – **was davon, entscheidet
+die Breite der Karte**: in einer schmalen Dashboard-Spalte Kacheln
+untereinander, ab etwa 580 px zwei nebeneinander, ab 880 px eine Zeile je Rollo
+über die ganze Breite. Zeilen liest man bei viel Platz von links nach rechts
+wie eine Liste, statt Kacheln abzusuchen.
+
+Zu sehen sind Name, die Stellung als Zahl – und ein **simulierter Rollladen**, der zeigt, wie weit der Panzer heruntersteht. Ein Balken sagt
 „65 %“, aber nicht, ob das Rollo dabei oben oder unten ist; das Bild sagt es
 ohne Umweg, und beim Fahren läuft es sichtbar mit.
 

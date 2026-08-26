@@ -1,5 +1,32 @@
 # Änderungen
 
+## 2.1.0 – 26.08.2026
+
+**Die Karte richtet sich nach ihrer Breite.** In einer Ansicht über die volle
+Fensterbreite zerfielen zehn Rollos in sechs schmale Spalten mit großen Löchern
+dazwischen – jede Kachel quetschte ihren Text in drei Zeilen, während rechts
+anderthalbtausend Pixel leer blieben.
+
+Jetzt misst die Karte ihren eigenen Platz:
+
+* **schmal** (eine Dashboard-Spalte) – Kacheln untereinander
+* **mittel** (ab 580 px) – zwei nebeneinander
+* **breit** (ab 880 px) – eine **Zeile je Rollo** über die ganze Breite
+
+Zeilen sind bei viel Breite das Richtige: Man liest sie von links nach rechts
+wie eine Liste, statt sechs Kacheln abzusuchen.
+
+Zwei Dinge, die dabei zu lernen waren: Eine Container-Query fragt immer den
+nächsten Vorfahren mit `container-type` – ein Element kann nicht sein eigener
+Container sein. Und bei gleicher Spezifität gewinnt in CSS die spätere Regel,
+also müssen die Queries **nach** den Grundregeln stehen.
+
+**Neu geprüft**: Ein Testfall wacht jetzt darüber, dass im Stilblock der Karte
+kein Backtick steht. Das CSS lebt in einem JavaScript-Template-String; ein
+Backtick in einem Kommentar beendet ihn, und die Karte bleibt leer. Beim Bauen
+ist mir das dreimal passiert – deshalb steht es jetzt in den Tests und nicht
+in einem Merkzettel.
+
 ## 2.0.1 – 26.08.2026
 
 **Neue Betriebsart „nur von Hand“.** Nicht jedes Rollo braucht einen Zeitplan –
