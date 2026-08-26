@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 
 import ha_api
 import sonne as sonnenmodul
+import store
 import zeitplan as zeitplanmodul
 
 _LOGGER = logging.getLogger(__name__)
@@ -201,7 +202,28 @@ def _bildart(raum: dict, index: dict) -> str:
     return "tuer" if all(any(w in n for w in TUER_WORTE) for n in namen) else "fenster"
 
 
-def _bedienbare_helfer(raum: dict, index: dict) -> list[dict]:
+def eigene_zustaende(einstellungen: dict, state: dict) -> dict:
+    """Der Stand der eigenen Schalter, unter ihrem Präfix.
+
+    So laufen eigene und fremde Bedingungen durch dieselbe Prüfung – die
+    Zeitplanlogik muss nicht wissen, wem ein Schalter gehört.
+    """
+    gemerkt = state.get("schalter") or {}
+    out = {}
+    for eintrag in einstellungen.get("eigene_schalter") or []:
+        wert = gemerkt.get(eintrag["id"], eintrag["vorgabe"])
+        out[store.EIGEN_PREFIX + eintrag["id"]] = str(wert)
+    return out
+
+
+def _eigen_verzeichnis(einstellungen: dict) -> dict:
+    """ID → Beschreibung des eigenen Schalters, für die Anzeige."""
+    return {e["id"]: e for e in (einstellungen.get("eigene_schalter") or [])}
+
+
+def _bedienbare_helfer(raum: dict, index: dict,
+                       einstellungen: dict | None = None,
+                       zustaende: dict | None = None) -> list[dict]:
     """Die Entitäten, an denen die Schaltpunkte dieses Raumes hängen.
 
     Damit kann die Dashboard-Karte sie gleich mitbedienen. Sonst müsste man
@@ -235,11 +257,28 @@ def _bedienbare_helfer(raum: dict, index: dict) -> list[dict]:
                 reihenfolge.append(eid)
             stellungen[eid].add(art)
 
+    eigene = _eigen_verzeichnis(einstellungen or {})
     out = []
     for eid in reihenfolge:
-        zustand = index.get(eid)
-        if zustand is None:
-            continue
+        kennung = store.eigener_schalter(eid)
+        if kennung is not None:
+            eintrag = eigene.get(kennung)
+            if eintrag is None:
+                continue
+            # Die Entität, die MQTT daraus gemacht hat – die Karte schaltet
+            # darüber. Sie folgt dem Namen, weil `default_entity_id` es so
+            # vorgibt.
+            domain = "select" if eintrag["art"] == "auswahl" else "switch"
+            name_slug = _slug(eintrag["name"])
+            zustand = {"attributes": {"friendly_name": eintrag["name"],
+                                      "options": eintrag["optionen"]},
+                       "state": (zustaende or {}).get(eid, eintrag["vorgabe"])}
+            eid_ha = f"{domain}.rolloplaner_{name_slug}"
+        else:
+            zustand = index.get(eid)
+            if zustand is None:
+                continue
+            eid_ha = eid
         attrs = zustand.get("attributes") or {}
         arten = stellungen.get(eid) or set()
         if "raum" in arten:
@@ -251,13 +290,22 @@ def _bedienbare_helfer(raum: dict, index: dict) -> list[dict]:
         else:
             wirkung = "beides"
         out.append({
-            "entity_id": eid,
+            "entity_id": eid_ha,
+            "eigen": kennung,
             "name": attrs.get("friendly_name") or eid,
             "zustand": zustand.get("state"),
             "optionen": list(attrs.get("options") or []),
             "wirkung": wirkung,
         })
     return out
+
+
+def _slug(text: str) -> str:
+    """Wie der MQTT-Publisher: derselbe Slug, damit die Entity-ID stimmt."""
+    import re
+    text = (text.lower()
+            .replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss"))
+    return re.sub(r"[^a-z0-9]+", "_", text).strip("_") or "schalter"
 
 
 def _jemand_da(raum: dict, index: dict) -> bool | None:
@@ -341,7 +389,7 @@ def _raum_rechnen(raum: dict, einstellungen: dict, index: dict, state: dict,
         # Auch für Räume, die gleich aussteigen: Die Auswahl in der Karte darf
         # nicht ausgerechnet dann verschwinden, wenn ein Raum gesperrt ist –
         # der Schalter, mit dem man ihn wieder freigibt, steht ja hier.
-        "helfer": _bedienbare_helfer(raum, index),
+        "helfer": _bedienbare_helfer(raum, index, einstellungen, lage["zustaende"]),
         "bildart": _bildart(raum, index),
     }
 
@@ -361,15 +409,27 @@ def _raum_rechnen(raum: dict, einstellungen: dict, index: dict, state: dict,
     # 3. Freigabe -------------------------------------------------------------
     freigabe = raum.get("freigabe_entity")
     if freigabe:
-        zustand = index.get(freigabe)
-        if zustand is None:
-            ergebnis.update(zustand="gesperrt",
-                            begruendung=f"Freigabeschalter {freigabe} fehlt")
-            return ergebnis
-        if not _an(zustand):
-            name = (zustand.get("attributes") or {}).get("friendly_name") or freigabe
-            ergebnis.update(zustand="gesperrt", begruendung=f"„{name}“ ist aus")
-            return ergebnis
+        kennung = store.eigener_schalter(freigabe)
+        if kennung is not None:
+            eintrag = _eigen_verzeichnis(einstellungen).get(kennung)
+            if eintrag is None:
+                ergebnis.update(zustand="gesperrt",
+                                begruendung="Freigabeschalter gibt es nicht mehr")
+                return ergebnis
+            if str(lage["zustaende"].get(freigabe, eintrag["vorgabe"])) != "on":
+                ergebnis.update(zustand="gesperrt",
+                                begruendung=f"„{eintrag['name']}“ ist aus")
+                return ergebnis
+        else:
+            zustand = index.get(freigabe)
+            if zustand is None:
+                ergebnis.update(zustand="gesperrt",
+                                begruendung=f"Freigabeschalter {freigabe} fehlt")
+                return ergebnis
+            if not _an(zustand):
+                name = (zustand.get("attributes") or {}).get("friendly_name") or freigabe
+                ergebnis.update(zustand="gesperrt", begruendung=f"„{name}“ ist aus")
+                return ergebnis
 
     # Der Zeitplan ist die Grundlage; Urlaub und Hitzeschutz verschieben ihn.
     anpassen = _urlaubsversatz(raum, einstellungen, lage)
@@ -433,7 +493,8 @@ def _raum_rechnen(raum: dict, einstellungen: dict, index: dict, state: dict,
     # 6. Fenster --------------------------------------------------------------
     offen = _fenster_offen(raum, index)
     ergebnis["fenster_offen"] = offen
-    ergebnis["helfer"] = _bedienbare_helfer(raum, index)
+    ergebnis["helfer"] = _bedienbare_helfer(raum, index, einstellungen,
+                                            lage["zustaende"])
 
     ergebnis["begruendung"] = beschreibung
     ergebnis["ziel"] = ziel
@@ -702,7 +763,10 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         "simulation": _versatz_wuerfeln(
             state, jetzt, int((einstellungen.get("urlaub") or {}).get("streuung_min", 20))),
         # Für die Bedingungen an Schaltpunkten: entity_id → Zustand als Text.
-        "zustaende": {eid: z.get("state") for eid, z in index.items()},
+        # Die eigenen Schalter stehen unter ihrem Präfix mit darin, damit
+        # eigene und fremde durch dieselbe Prüfung laufen.
+        "zustaende": {**{eid: z.get("state") for eid, z in index.items()},
+                      **eigene_zustaende(einstellungen, state)},
     }
 
     for raum in config["raeume"]:

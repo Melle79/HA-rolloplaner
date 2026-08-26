@@ -1,5 +1,36 @@
 # Änderungen
 
+## 1.5.0 – 26.08.2026
+
+**Der Planer bringt seine Schalter jetzt selbst mit.** Bisher hingen die
+Zeitpläne an fremden `input_boolean`- und `input_select`-Helfern – die gab es
+in diesem Haus schon. Nach einer Neuinstallation gibt es sie **nicht**, und ein
+Zeitplan, der auf eine Entität zeigt, die niemand angelegt hat, schaltet nie.
+
+Unter dem neuen Reiter **Schalter** legt der Planer eigene an und
+veröffentlicht sie über MQTT: als `switch.` (an/aus) oder als `select.`
+(mehrere Stellungen, etwa *normal / 24 Uhr / aus*). Ihren Stand kennt er
+selbst, er überlebt einen Neustart, und ein gelöschter Schalter verschwindet
+auch wieder aus Home Assistant.
+
+* Die **Übernahme** legt sie gleich mit an: gleicher Name (ohne die Vorsilben
+  „Helfer –“ und „Rollosteuerung –“, aus denen sonst hässliche Entity-IDs
+  würden), gleiche Stellungen, übernommener Stand.
+* Für eine bestehende Einrichtung gibt es den Knopf **Fremde Helfer ersetzen**.
+  Die alten Helfer bleiben liegen – sie werden danach nur nicht mehr gebraucht.
+* Zugeordnet wird über die Quell-Entität, nicht über den Namen: Zwei
+  verschiedene Helfer können gleich heißen, und die dürfen nicht zu einem
+  Schalter verschmelzen. Ein zweiter Durchlauf legt deshalb nichts doppelt an.
+* Die ID hängt **nicht** am Namen. Ein umbenannter Schalter behält seine
+  Entität, statt als neue aufzutauchen und die alte als Karteileiche
+  stehenzulassen.
+* Die Selbstauskunft meldet, wenn ein Zeitplan noch an einem fremden Helfer
+  hängt – oder ein eigener Schalter nirgends verwendet wird.
+
+Ein Schalter, der noch als Bedingung in Gebrauch ist, lässt sich nicht löschen:
+Eine Bedingung auf einen Schalter, den es nicht gibt, trifft nie zu, und der
+Schaltpunkt wäre stumm.
+
 ## 1.4.0 – 26.08.2026
 
 **Die Prozentangaben lassen sich umdrehen.** Home Assistant zählt 100 % =

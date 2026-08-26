@@ -311,6 +311,53 @@ def test_anzeige_prozent_ist_ihre_eigene_umkehrung():
     assert store.anzeige_prozent(None, True) is None
 
 
+# --------------------------------------------------- Eigene Schalter ----
+
+def test_eigener_schalter_wird_am_praefix_erkannt():
+    assert store.eigener_schalter("rolloplaner:a1b2c3") == "a1b2c3"
+    assert store.eigener_schalter("input_boolean.x") is None
+    assert store.eigener_schalter("") is None
+
+
+def test_auswahl_braucht_zwei_stellungen():
+    try:
+        store.validate_schalter([{"name": "Halb", "art": "auswahl", "optionen": ["nur eine"]}])
+    except store.ValidationError:
+        pass
+    else:
+        raise AssertionError("eine Auswahl mit einer Stellung ist keine Auswahl")
+
+
+def test_vorgabe_wird_auf_eine_gueltige_stellung_gezogen():
+    """Eine Vorgabe, die es nicht gibt, ließe den Schalter beim ersten Start in
+    einem Zustand stehen, den er gar nicht annehmen kann."""
+    [k] = store.validate_schalter([{"name": "Tür", "art": "auswahl",
+                                    "optionen": ["normal", "aus"], "vorgabe": "gibtsnicht"}])
+    assert k["vorgabe"] == "normal"
+    [k] = store.validate_schalter([{"name": "Öffner", "art": "schalter",
+                                    "vorgabe": "vielleicht"}])
+    assert k["vorgabe"] == "on"
+
+
+def test_schalter_behaelt_seine_id():
+    """Die ID darf nicht am Namen hängen: Ein umbenannter Schalter soll seine
+    Entität in Home Assistant behalten, statt als neue aufzutauchen und die
+    alte als Karteileiche zu hinterlassen."""
+    [k] = store.validate_schalter([{"id": "feste_id", "name": "Vorher"}])
+    [k2] = store.validate_schalter([{**k, "name": "Nachher"}])
+    assert k2["id"] == "feste_id"
+
+
+def test_bedingung_auf_eigenen_schalter_laeuft_durch_dieselbe_pruefung():
+    punkt = {"ausloeser": "uhrzeit", "start": "12:00", "position": 0, "gilt": "immer",
+             "tage": zeitplan.ALLE, "versatz_min": 0, "frueh": "", "spaet": "",
+             "wenn": [{"entity": "rolloplaner:abc", "wert": "24 Uhr"}]}
+    assert zeitplan.bedingungen_erfuellt(punkt, {"rolloplaner:abc": "24 Uhr"})
+    assert not zeitplan.bedingungen_erfuellt(punkt, {"rolloplaner:abc": "aus"})
+    # Ein Schalter, den es nicht mehr gibt, lässt den Punkt **nicht** greifen.
+    assert not zeitplan.bedingungen_erfuellt(punkt, {})
+
+
 if __name__ == "__main__":
     fehler = 0
     for name, fn in sorted(globals().items()):

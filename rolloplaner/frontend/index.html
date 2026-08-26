@@ -263,6 +263,7 @@
 <nav>
   <button data-reiter="uebersicht" class="an">Übersicht</button>
   <button data-reiter="raeume">Räume</button>
+  <button data-reiter="schalter">Schalter</button>
   <button data-reiter="einstellungen">Einstellungen</button>
   <button data-reiter="protokoll">Protokoll</button>
   <button data-reiter="einrichtung">Einrichtung<span class="zaehler" id="z-einrichtung" hidden></span></button>
@@ -290,6 +291,31 @@
       <div style="margin-top:var(--l4)">
         <button id="btn-raum-neu">Raum anlegen</button>
       </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ Schalter ═══ -->
+  <section id="s-schalter">
+    <div class="tafel">
+      <h2>Eigene Schalter</h2>
+      <p class="hinweis" style="margin-bottom:var(--l4)">
+        Diese Schalter gehören dem Planer: Er legt sie in Home Assistant an, kennt
+        ihren Stand und räumt sie wieder ab. Damit hängt kein Zeitplan an Helfern,
+        die jemand vorher von Hand anlegen müsste – nach einer Neuinstallation
+        gäbe es die nicht.
+        Ein <b>Schalter</b> kennt an und aus, eine <b>Auswahl</b> mehrere Stellungen
+        (etwa <i>normal / 24 Uhr / aus</i>).
+      </p>
+      <div id="schalterliste"></div>
+      <div style="margin-top:var(--l4); display:flex; gap:var(--l2); flex-wrap:wrap">
+        <button class="leise" id="btn-schalter-neu">Schalter hinzufügen</button>
+        <button class="leise" id="btn-auswahl-neu">Auswahl hinzufügen</button>
+        <button id="btn-schalter-speichern">Speichern</button>
+      </div>
+    </div>
+    <div class="tafel">
+      <h2>Fremde Helfer ersetzen</h2>
+      <div id="fremde"></div>
     </div>
   </section>
 
@@ -571,10 +597,28 @@ function auswahl(feldname, optionen, wert, leer=null){
   ).join("")}</select>`;
 }
 
+/* Zur Auswahl stehen zuerst die eigenen Schalter des Planers, dann alles, was
+   Home Assistant sonst hergibt. Die Reihenfolge ist Absicht: Wer einen neuen
+   Zeitplan baut, soll auf das Naheliegende stoßen – auf etwas, das der Planer
+   selbst mitbringt und das auch nach einer Neuinstallation da ist. */
 function bedingungsKandidaten(){
   const e = ENTITAETEN || {};
-  return [...(e.auswahl || []), ...(e.schalter || []), ...(e.sonstige_melder || [])]
-    .map((k) => [k.entity_id, k.name]);
+  const eigene = (CONFIG?.einstellungen?.eigene_schalter || [])
+    .map((k) => ["rolloplaner:" + k.id, `${k.name} (Rolloplaner)`]);
+  return [...eigene, ...(e.auswahl || []), ...(e.schalter || []),
+          ...(e.sonstige_melder || [])].map((k) => Array.isArray(k) ? k
+            : [k.entity_id, k.name]);
+}
+
+/* Die möglichen Werte einer Bedingung – bei einem eigenen Schalter kennt der
+   Planer sie genau, sonst bleibt die allgemeine Vorschlagsliste. */
+function werteFuer(entity){
+  const id = String(entity || "").startsWith("rolloplaner:")
+    ? entity.slice("rolloplaner:".length) : null;
+  if (!id) return null;
+  const k = (CONFIG?.einstellungen?.eigene_schalter || []).find((x) => x.id === id);
+  if (!k) return null;
+  return k.art === "auswahl" ? k.optionen : ["on", "off"];
 }
 
 /* Alle vorkommenden Werte in einer Vorschlagsliste: „normal“, „24 Uhr“, „aus“
@@ -616,8 +660,11 @@ function punktZeile(punkt, index){
       <span>nur wenn</span>
       ${auswahl(`p${index}_w${j}_entity`, bedingungsKandidaten(), bedingung.entity)}
       <span>=</span>
-      <input type="text" name="p${index}_w${j}_wert" value="${esc(bedingung.wert)}"
-             list="werte-liste" placeholder="on">
+      ${(() => { const werte = werteFuer(bedingung.entity);
+        return werte
+          ? auswahl(`p${index}_w${j}_wert`, werte.map((w) => [w, w]), bedingung.wert)
+          : `<input type="text" name="p${index}_w${j}_wert" value="${esc(bedingung.wert)}"
+               list="werte-liste" placeholder="on">`; })()}
       <button type="button" class="leise gefahr w-weg"
               data-wenn-weg="${index}:${j}">×</button>
     </div>`).join("")}
@@ -715,7 +762,11 @@ function zeichneDialog(){
 
     <div class="abschnitt"><h3>Sperren</h3>
       <label class="feld"><span>Freigabeschalter (leer = immer freigegeben)</span>
-        ${auswahl("freigabe_entity", (e.schalter || []).map((k) => [k.entity_id, k.name]),
+        ${auswahl("freigabe_entity",
+                  [...(CONFIG?.einstellungen?.eigene_schalter || [])
+                     .filter((k) => k.art === "schalter")
+                     .map((k) => ["rolloplaner:" + k.id, `${k.name} (Rolloplaner)`]),
+                   ...(e.schalter || []).map((k) => [k.entity_id, k.name])],
                   r.freigabe_entity, "keiner")}</label>
       <label class="feld"><span>Fensterkontakte – solange einer offen ist, wird nicht zugefahren</span></label>
       ${hakenliste("fenster", e.fenster || [], r.fenster)}
@@ -769,6 +820,10 @@ function zeichneDialog(){
   $$("#dlg-inhalt select[name$='_ausloeser']").forEach((el) => el.onchange = () => {
     sammleDialog(); zeichneDialog();
   });
+  // Wechselt die Entität einer Bedingung, muss das Wertfeld mitwechseln:
+  // Ein eigener Schalter bringt seine Stellungen mit, eine fremde Entität nicht.
+  $$("#dlg-inhalt select[name*='_w'][name$='_entity']").forEach((el) =>
+    el.onchange = () => { sammleDialog(); zeichneDialog(); });
   const vorlage = $("#dlg-inhalt select[name=vorlage]");
   if (vorlage) vorlage.onchange = () => {
     if (!vorlage.value) return;
@@ -866,6 +921,105 @@ async function raumSpeichern(){
     $("#dlg-fehler").innerHTML = `<div class="fehler">${esc(err.message)}</div>`;
     $("#dlg-inhalt").scrollTop = 0;
   }
+}
+
+/* ────────────────────────────────────────────────────────────── Schalter ─── */
+
+let SCHALTER = null;
+
+function zeichneSchalter(){
+  const liste = SCHALTER || [];
+  $("#schalterliste").innerHTML = liste.length ? `<table>
+    <thead><tr><th>Name</th><th>Art</th><th>Stellungen</th><th>Vorgabe</th>
+      <th>jetzt</th><th></th></tr></thead>
+    <tbody>${liste.map((k, i) => `<tr>
+      <td><input type="text" data-feld="name" data-i="${i}" value="${esc(k.name)}"
+                 maxlength="60"></td>
+      <td>${k.art === "auswahl" ? "Auswahl" : "Schalter"}</td>
+      <td>${k.art === "auswahl"
+        ? `<input type="text" data-feld="optionen" data-i="${i}"
+             value="${esc((k.optionen || []).join(", "))}"
+             placeholder="normal, 24 Uhr, aus">`
+        : '<span class="hinweis">an / aus</span>'}</td>
+      <td>${k.art === "auswahl"
+        ? `<input type="text" data-feld="vorgabe" data-i="${i}" value="${esc(k.vorgabe)}">`
+        : auswahl2(`vorgabe`, i, [["on","an"],["off","aus"]], k.vorgabe)}</td>
+      <td class="hinweis">${esc(k.zustand ?? "–")}</td>
+      <td style="text-align:right">
+        <button class="leise gefahr" data-weg="${i}">Löschen</button></td>
+    </tr>`).join("")}</tbody></table>`
+    : `<div class="leerhinweis">Noch kein eigener Schalter.</div>`;
+
+  $$("#schalterliste [data-feld]").forEach((el) => el.onchange = () => {
+    const k = SCHALTER[Number(el.dataset.i)];
+    if (el.dataset.feld === "optionen") {
+      k.optionen = el.value.split(",").map((t) => t.trim()).filter(Boolean);
+      if (!k.optionen.includes(k.vorgabe)) k.vorgabe = k.optionen[0] || "";
+      zeichneSchalter();
+    } else {
+      k[el.dataset.feld] = el.value;
+    }
+  });
+  $$("#schalterliste [data-weg]").forEach((el) => el.onclick = () => {
+    SCHALTER.splice(Number(el.dataset.weg), 1);
+    zeichneSchalter();
+  });
+}
+
+/* Wie `auswahl`, aber für die Tabellenzeilen mit Index. */
+function auswahl2(feld, i, optionen, wert){
+  return `<select data-feld="${feld}" data-i="${i}">${optionen.map(([w, t]) =>
+    `<option value="${esc(w)}" ${String(w) === String(wert ?? "") ? "selected" : ""}
+     >${esc(t)}</option>`).join("")}</select>`;
+}
+
+async function ladeSchalter(){
+  try { SCHALTER = await hole("api/schalter"); }
+  catch (err) { melden(err.message, true); SCHALTER = []; }
+  zeichneSchalter();
+  zeichneFremde();
+}
+
+/* Welche fremden Helfer stecken noch in den Zeitplänen? */
+function zeichneFremde(){
+  const fremde = new Map();
+  for (const raum of (CONFIG?.raeume || [])) {
+    const merken = (e) => {
+      if (!e || e.startsWith("rolloplaner:")) return;
+      if (!fremde.has(e)) fremde.set(e, []);
+      if (!fremde.get(e).includes(raum.name)) fremde.get(e).push(raum.name);
+    };
+    merken(raum.freigabe_entity);
+    (raum.zeitplan || []).forEach((p) =>
+      (p.wenn || []).forEach((b) => merken(b.entity)));
+  }
+  if (!fremde.size) {
+    $("#fremde").innerHTML = `<div class="leerhinweis">Alle Zeitpläne hängen an
+      eigenen Schaltern des Planers.</div>`;
+    return;
+  }
+  $("#fremde").innerHTML = `<p class="hinweis" style="margin-bottom:var(--l3)">
+      Diese Zeitpläne hängen noch an fremden Helfern. Der Planer kann sie durch
+      eigene ersetzen: gleicher Name, gleiche Stellungen, übernommener Stand.
+      Die alten Helfer bleiben liegen – sie werden danach nur nicht mehr
+      gebraucht.</p>
+    <table><tbody>${[...fremde].map(([e, raeume]) => `<tr>
+      <td><code>${esc(e)}</code></td>
+      <td class="hinweis">${esc(raeume.join(", "))}</td>
+    </tr>`).join("")}</tbody></table>
+    <div style="margin-top:var(--l4)">
+      <button id="btn-fremde-ersetzen">Durch eigene Schalter ersetzen</button>
+    </div>`;
+  $("#btn-fremde-ersetzen").onclick = async () => {
+    if (!confirm("Der Planer legt für jeden dieser Helfer einen eigenen Schalter "
+               + "an und biegt die Zeitpläne darauf um. Fortfahren?")) return;
+    try {
+      const r = await holeJSON("api/schalter/uebernehmen", "POST");
+      melden(r.hinweis || `${r.angelegt} Schalter angelegt`);
+      await aktualisieren();
+      await ladeSchalter();
+    } catch (err) { melden(err.message, true); }
+  };
 }
 
 /* ───────────────────────────────────────────────────────── Einstellungen ─── */
@@ -1135,6 +1289,7 @@ $$("nav button").forEach((knopf) => knopf.onclick = () => {
   $$("main section").forEach((s) =>
     s.classList.toggle("an", s.id === "s-" + knopf.dataset.reiter));
   if (knopf.dataset.reiter === "protokoll") ladeProtokoll();
+  if (knopf.dataset.reiter === "schalter") ladeSchalter();
   if (knopf.dataset.reiter === "einrichtung") { ladeVorschlag(); ladeGesundheit(); }
 });
 
@@ -1159,6 +1314,25 @@ $("#btn-raum-loeschen").onclick = async () => {
   try {
     await holeJSON(`api/raeume/${AKTUELLER_RAUM.id}`, "DELETE");
     $("#raum-dialog").close(); melden("gelöscht"); await aktualisieren();
+  } catch (err) { melden(err.message, true); }
+};
+$("#btn-schalter-neu").onclick = () => {
+  (SCHALTER = SCHALTER || []).push({name: "Neuer Schalter", art: "schalter",
+                                    optionen: [], vorgabe: "on", icon: ""});
+  zeichneSchalter();
+};
+$("#btn-auswahl-neu").onclick = () => {
+  (SCHALTER = SCHALTER || []).push({name: "Neue Auswahl", art: "auswahl",
+                                    optionen: ["normal", "aus"], vorgabe: "normal",
+                                    icon: ""});
+  zeichneSchalter();
+};
+$("#btn-schalter-speichern").onclick = async () => {
+  try {
+    SCHALTER = await holeJSON("api/schalter", "PUT", {schalter: SCHALTER});
+    melden("gespeichert");
+    await aktualisieren();
+    await ladeSchalter();
   } catch (err) { melden(err.message, true); }
 };
 $("#btn-einst-speichern").onclick = einstellungenSpeichern;

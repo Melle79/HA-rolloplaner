@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+import uuid
 import threading
 import time
 import urllib.request
@@ -174,6 +176,7 @@ def _mqtt_starten() -> None:
     _publisher.on_ready = bereit
     _publisher.on_schalter = _schalter_setzen
     _publisher.on_raum = _raum_schalten
+    _publisher.on_eigen = _eigenen_schalter_setzen
     _publisher.on_command = _befehl
     _publisher.start()
 
@@ -183,18 +186,59 @@ def _discovery_auffrischen() -> None:
     if _publisher is None or not _publisher.connected.is_set():
         return
     try:
-        raeume = store.load_config()["raeume"]
+        config = store.load_config()
+        raeume = config["raeume"]
+        eigene = config["einstellungen"].get("eigene_schalter") or []
         aktuell = _publisher.raum_schluessel(raeume)
         zustand = store.load_state()
         veraltet = [k for k in (zustand.get("veroeffentlichte_raeume") or [])
                     if k not in aktuell]
         if veraltet:
             _publisher.entferne_raeume(veraltet)
+
+        # Dasselbe für die eigenen Schalter: Ein gelöschter muss aus Home
+        # Assistant verschwinden, sonst bleibt er als Karteileiche stehen –
+        # die Discovery-Nachricht ist „retained“ und überlebt das Add-on.
+        eigen_aktuell = _publisher.eigene_schluessel(eigene)
+        eigen_veraltet = [k for k in (zustand.get("veroeffentlichte_schalter") or [])
+                          if k not in eigen_aktuell]
+        if eigen_veraltet:
+            _publisher.entferne_eigene(eigen_veraltet)
+
         _publisher.publish_discovery(raeume)
+        _publisher.publish_eigene(eigene, zustand.get("schalter") or {})
         zustand["veroeffentlichte_raeume"] = aktuell
+        zustand["veroeffentlichte_schalter"] = eigen_aktuell
         store.save_state(zustand)
     except Exception as err:  # noqa: BLE001
         _LOGGER.warning("Discovery fehlgeschlagen: %s", err)
+
+
+def _eigenen_schalter_setzen(kennung: str, wert: str) -> None:
+    """Einen eigenen Schalter aus Home Assistant heraus stellen."""
+    config = store.load_config()
+    eintrag = next((e for e in config["einstellungen"].get("eigene_schalter") or []
+                    if e["id"] == kennung), None)
+    if eintrag is None:
+        _LOGGER.warning("Unbekannter eigener Schalter: %s", kennung)
+        return
+
+    if eintrag["art"] == "auswahl":
+        if wert not in eintrag["optionen"]:
+            _LOGGER.warning("„%s“ kennt die Stellung %r nicht", eintrag["name"], wert)
+            return
+        neu = wert
+    else:
+        neu = "on" if str(wert).strip().upper() == "ON" else "off"
+
+    with _takt_lock:
+        state = store.load_state()
+        state.setdefault("schalter", {})[kennung] = neu
+        store.save_state(state)
+    if _publisher is not None:
+        _publisher.publish_eigenen_zustand(kennung, neu)
+    _LOGGER.info("Schalter „%s“ → %s", eintrag["name"], neu)
+    _sofort_rechnen()
 
 
 def _schalter_setzen(key: str, an: bool) -> None:
@@ -399,6 +443,177 @@ def api_einstellungen():
     return jsonify(neu)
 
 
+@app.route("/api/schalter", methods=["GET", "PUT"])
+def api_schalter():
+    """Die eigenen Schalter des Planers verwalten."""
+    config = store.load_config()
+    if request.method == "GET":
+        state = store.load_state()
+        gemerkt = state.get("schalter") or {}
+        return jsonify([{**e, "zustand": gemerkt.get(e["id"], e["vorgabe"])}
+                        for e in config["einstellungen"].get("eigene_schalter") or []])
+    try:
+        liste = store.validate_schalter((request.get_json(force=True) or {}).get("schalter"))
+    except store.ValidationError as err:
+        return jsonify({"fehler": str(err)}), 400
+
+    # Wird ein Schalter gelöscht, der noch als Bedingung in Gebrauch ist, wäre
+    # der betroffene Schaltpunkt stumm: Eine Bedingung auf einen Schalter, den
+    # es nicht gibt, trifft nie zu. Das muss auffallen.
+    vorhanden = {e["id"] for e in liste}
+    benutzt = _benutzte_schalter(config["raeume"])
+    fehlend = sorted(benutzt - vorhanden)
+    if fehlend:
+        namen = {e["id"]: e["name"]
+                 for e in config["einstellungen"].get("eigene_schalter") or []}
+        return jsonify({"fehler": "Noch in Gebrauch: "
+                        + ", ".join(namen.get(i, i) for i in fehlend)}), 400
+
+    store.update_einstellungen({"eigene_schalter": liste})
+    _discovery_auffrischen()
+    _sofort_rechnen()
+    return jsonify(liste)
+
+
+def _in_eigene_umwandeln(raeume: list[dict], einstellungen: dict,
+                         index: dict) -> tuple[list[dict], list[dict], dict]:
+    """Fremde Helfer durch eigene Schalter des Planers ersetzen.
+
+    Aus der Übernahme kommen Bedingungen auf fremde `input_boolean` und
+    `input_select` – die gab es in diesem Haus schon. Bei einer
+    Neuinstallation gibt es sie **nicht**, und ein Zeitplan, der auf eine
+    Entität zeigt, die niemand angelegt hat, schaltet nie.
+
+    Deshalb legt der Planer eigene an: gleicher Name, gleiche Stellungen,
+    übernommener Stand. Danach zeigen alle Bedingungen auf ihn selbst, und die
+    alten Helfer können weg.
+
+    Liefert (Räume, Schalterliste, Anfangszustände).
+    """
+    schalter = list(einstellungen.get("eigene_schalter") or [])
+    # Zugeordnet wird über die **Quell-Entität**, nicht über den Namen: Zwei
+    # verschiedene Helfer können gleich heißen, und die dürfen nicht zu einem
+    # Schalter verschmelzen. Die Quelle bleibt am Schalter stehen, damit ein
+    # zweiter Durchlauf denselben wiederfindet statt einen weiteren anzulegen.
+    nach_quelle = {e["quelle"]: e for e in schalter if e.get("quelle")}
+    vergebene_namen = {e["name"] for e in schalter}
+    zuordnung: dict[str, str] = {}
+    zustaende: dict[str, str] = {}
+
+    def sauberer_name(roh: str) -> str:
+        """Die Vorsilben der alten Helfer weglassen.
+
+        Aus dem Namen wird die entity_id – `switch.rolloplaner_helfer_
+        rollosteuerung_buero` will niemand lesen. Bei einer Namensgleichheit
+        wird durchnummeriert, damit zwei Schalter unterscheidbar bleiben.
+        """
+        name = re.sub(r"^(Helfer|Rollosteuerung)\s*-?\s*", "", roh, flags=re.I)
+        name = re.sub(r"^(Helfer|Rollosteuerung)\s*-?\s*", "", name, flags=re.I)
+        name = re.sub(r"^Rollo\s+", "", name, flags=re.I).strip() or roh
+        name = name[:1].upper() + name[1:]
+        if name not in vergebene_namen:
+            return name
+        for n in range(2, 50):
+            kandidat = f"{name} {n}"
+            if kandidat not in vergebene_namen:
+                return kandidat
+        return roh
+
+    def eigenen_finden(entity: str) -> str | None:
+        """Die Ziel-ID für eine fremde Entität – notfalls neu angelegt."""
+        if store.eigener_schalter(entity):
+            return None                      # ist schon einer
+        if entity in zuordnung:
+            return zuordnung[entity]
+        zustand = index.get(entity)
+        if zustand is None:
+            return None                      # gibt es nicht – dann nichts anfassen
+        attrs = zustand.get("attributes") or {}
+        name = attrs.get("friendly_name") or entity
+        optionen = [str(o) for o in (attrs.get("options") or [])]
+        art = "auswahl" if optionen else "schalter"
+
+        vorhanden = nach_quelle.get(entity)
+        if vorhanden is None:
+            anzeige = sauberer_name(name)
+            vergebene_namen.add(anzeige)
+            vorhanden = {"id": uuid.uuid4().hex[:8], "name": anzeige, "art": art,
+                         "optionen": optionen,
+                         "vorgabe": (zustand.get("state") if art == "auswahl"
+                                     else ("on" if zustand.get("state") == "on" else "off")),
+                         "icon": attrs.get("icon") or "",
+                         "quelle": entity}
+            schalter.append(vorhanden)
+            nach_quelle[entity] = vorhanden
+        zuordnung[entity] = vorhanden["id"]
+        # Den jetzigen Stand mitnehmen: Wer den Öffner gestern abgeschaltet
+        # hat, will ihn nach der Umstellung nicht wieder an vorfinden.
+        zustaende[vorhanden["id"]] = str(zustand.get("state"))
+        return vorhanden["id"]
+
+    neue_raeume = []
+    for raum in raeume:
+        raum = json.loads(json.dumps(raum))
+        freigabe = raum.get("freigabe_entity") or ""
+        if freigabe:
+            kennung = eigenen_finden(freigabe)
+            if kennung:
+                raum["freigabe_entity"] = store.EIGEN_PREFIX + kennung
+        for punkt in raum.get("zeitplan") or []:
+            for bedingung in punkt.get("wenn") or []:
+                kennung = eigenen_finden(bedingung.get("entity") or "")
+                if kennung:
+                    bedingung["entity"] = store.EIGEN_PREFIX + kennung
+        neue_raeume.append(raum)
+    return neue_raeume, schalter, zustaende
+
+
+@app.route("/api/schalter/uebernehmen", methods=["POST"])
+def api_schalter_uebernehmen():
+    """Die fremden Helfer der eingerichteten Räume durch eigene ersetzen."""
+    config = store.load_config()
+    index = {s["entity_id"]: s for s in ha_api.get_states()}
+    if not index:
+        return jsonify({"fehler": "Keine Zustände von Home Assistant erhalten"}), 503
+
+    raeume, schalter, zustaende = _in_eigene_umwandeln(
+        config["raeume"], config["einstellungen"], index)
+    neu = len(schalter) - len(config["einstellungen"].get("eigene_schalter") or [])
+    if not neu and raeume == config["raeume"]:
+        return jsonify({"angelegt": 0, "hinweis": "Es gab nichts umzustellen"})
+
+    store.update_einstellungen({"eigene_schalter": schalter})
+    for raum in raeume:
+        store.update_raum(raum["id"], raum)
+    with _takt_lock:
+        state = store.load_state()
+        state.setdefault("schalter", {}).update(zustaende)
+        store.save_state(state)
+
+    _discovery_auffrischen()
+    _sofort_rechnen()
+    logbuch.eintragen("Einrichtung", "umgestellt",
+                      f"{neu} eigene Schalter angelegt, "
+                      "die Zeitpläne zeigen jetzt auf den Planer selbst")
+    return jsonify({"angelegt": neu,
+                    "schalter": [{"name": e["name"], "art": e["art"]} for e in schalter]})
+
+
+def _benutzte_schalter(raeume: list[dict]) -> set:
+    """Welche eigenen Schalter in Räumen als Bedingung oder Freigabe stehen."""
+    benutzt = set()
+    for raum in raeume:
+        kennung = store.eigener_schalter(raum.get("freigabe_entity") or "")
+        if kennung:
+            benutzt.add(kennung)
+        for punkt in raum.get("zeitplan") or []:
+            for bedingung in punkt.get("wenn") or []:
+                kennung = store.eigener_schalter(bedingung.get("entity") or "")
+                if kennung:
+                    benutzt.add(kennung)
+    return benutzt
+
+
 @app.route("/api/entitaeten")
 def api_entitaeten():
     states = ha_api.get_states()
@@ -435,17 +650,39 @@ def api_uebernahme():
                                         if r["name"] not in ignoriert]
         return jsonify(vorschlag)
 
-    gewuenscht = (request.get_json(force=True) or {}).get("raeume") or []
+    nutzlast = request.get_json(force=True) or {}
+    gewuenscht = nutzlast.get("raeume") or []
+    # Vorgabe: gleich auf eigene Schalter umstellen. Ein übernommener Zeitplan
+    # soll nicht davon abhängen, dass jemand vorher von Hand die passenden
+    # Helfer angelegt hat.
+    eigene = nutzlast.get("eigene_schalter", True)
+    schalter, zustaende = None, {}
+    if eigene:
+        index = {s["entity_id"]: s for s in states}
+        gewuenscht, schalter, zustaende = _in_eigene_umwandeln(
+            gewuenscht, einstellungen, index)
+
     angelegt, fehler = [], []
+    if schalter:
+        try:
+            store.update_einstellungen({"eigene_schalter": schalter})
+        except store.ValidationError as err:
+            return jsonify({"fehler": str(err)}), 400
+        with _takt_lock:
+            state = store.load_state()
+            state.setdefault("schalter", {}).update(zustaende)
+            store.save_state(state)
+
     for entwurf in gewuenscht:
         try:
             angelegt.append(store.add_raum(entwurf))
         except store.ValidationError as err:
             fehler.append({"raum": entwurf.get("name"), "fehler": str(err)})
-    if angelegt:
+    if angelegt or schalter:
         _discovery_auffrischen()
         _sofort_rechnen()
-    return jsonify({"angelegt": angelegt, "fehler": fehler})
+    return jsonify({"angelegt": angelegt, "fehler": fehler,
+                    "schalter": len(schalter or [])})
 
 
 @app.route("/api/vorschlag/abweisen", methods=["POST"])
@@ -561,9 +798,25 @@ def api_gesundheit():
         if raum.get("beschattung") and raum.get("ausrichtung") is None:
             melden("warnung", "Hitzeschutz ohne Ausrichtung – er bleibt wirkungslos",
                    raum["name"])
+        # Eigene Schalter stehen nicht im Zustandsverzeichnis von Home
+        # Assistant, sondern in der Konfiguration – sie sind dort zu suchen.
+        eigene_ids = {e["id"] for e in einstellungen.get("eigene_schalter") or []}
+
+        def pruefe_entitaet(eid: str, was: str, raum_name: str) -> None:
+            kennung = store.eigener_schalter(eid)
+            if kennung is not None:
+                if kennung not in eigene_ids:
+                    melden("fehler", f"{was}: der eigene Schalter gibt es nicht mehr",
+                           raum_name)
+            elif eid not in index:
+                melden("fehler", f"{was} {eid} fehlt", raum_name)
+
         freigabe = raum.get("freigabe_entity")
-        if freigabe and freigabe not in index:
-            melden("fehler", f"Freigabeschalter {freigabe} fehlt", raum["name"])
+        if freigabe:
+            pruefe_entitaet(freigabe, "Freigabeschalter", raum["name"])
+        for punkt in raum.get("zeitplan") or []:
+            for bedingung in punkt.get("wenn") or []:
+                pruefe_entitaet(bedingung.get("entity") or "", "Bedingung", raum["name"])
         for eid in raum.get("fenster") or []:
             if eid not in index:
                 melden("fehler", f"Fensterkontakt {eid} fehlt", raum["name"])
@@ -623,6 +876,27 @@ def api_gesundheit():
                    if daten.get("manuell_bis")]
     if offene_hand:
         melden("hinweis", f"{len(offene_hand)} Rollos stehen im Handbetrieb")
+
+    # Hängt noch ein Zeitplan an einem fremden Helfer? Das läuft hier, aber
+    # nach einer Neuinstallation anderswo nicht – dort gibt es den Helfer nicht.
+    fremde = sorted({
+        eid for raum in config["raeume"]
+        for eid in ([raum.get("freigabe_entity")]
+                    + [b.get("entity") for p in raum.get("zeitplan") or []
+                       for b in p.get("wenn") or []])
+        if eid and not store.eigener_schalter(eid)})
+    if fremde:
+        melden("hinweis",
+               f"{len(fremde)} Zeitpläne hängen an fremden Helfern – der Planer kann "
+               "sie unter „Schalter“ durch eigene ersetzen: " + ", ".join(fremde[:4])
+               + (" …" if len(fremde) > 4 else ""))
+
+    # Ein eigener Schalter, den niemand benutzt, legt eine Entität in Home
+    # Assistant an, die nichts tut.
+    unbenutzt = [e["name"] for e in einstellungen.get("eigene_schalter") or []
+                 if e["id"] not in _benutzte_schalter(config["raeume"])]
+    for name in unbenutzt:
+        melden("hinweis", f"Der eigene Schalter „{name}“ wird nirgends verwendet")
 
     return jsonify({
         "version": VERSION,

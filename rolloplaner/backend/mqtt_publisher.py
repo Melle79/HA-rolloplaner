@@ -30,6 +30,7 @@ AVAILABILITY_TOPIC = f"{BASE_TOPIC}/availability"
 COMMAND_TOPIC = f"{BASE_TOPIC}/cmd"
 SCHALTER_TOPIC = f"{BASE_TOPIC}/schalter"      # …/<key>/set
 RAUM_TOPIC = f"{BASE_TOPIC}/raum"              # …/<key>/set
+EIGEN_TOPIC = f"{BASE_TOPIC}/eigen"            # …/<id>/set – die eigenen Schalter
 DEVICE_ID = "rolloplaner"
 
 # (component, key, Anzeigename, Icon, Einheit, device_class)
@@ -71,6 +72,8 @@ class Publisher:
         self.on_command = None
         self.on_schalter = None      # (key, an: bool)
         self.on_raum = None          # (raum_key, an: bool)
+        self.on_eigen = None         # (schalter_id, wert: str)
+        self._bekannte_eigene: set[str] = set()
         self._bekannte_raeume: set[str] = set()
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2,
                                    client_id="rolloplaner")
@@ -108,6 +111,7 @@ class Publisher:
             client.subscribe(COMMAND_TOPIC, qos=1)
             client.subscribe(f"{SCHALTER_TOPIC}/+/set", qos=1)
             client.subscribe(f"{RAUM_TOPIC}/+/set", qos=1)
+            client.subscribe(f"{EIGEN_TOPIC}/+/set", qos=1)
             self.connected.set()
             if self.on_ready is not None:
                 try:
@@ -133,6 +137,11 @@ class Publisher:
             return
         if msg.topic.startswith(f"{RAUM_TOPIC}/") and self.on_raum is not None:
             self._sicher(self.on_raum, teile[-2], nutzlast.upper() == "ON")
+            return
+        if msg.topic.startswith(f"{EIGEN_TOPIC}/") and self.on_eigen is not None:
+            # Die Nutzlast bleibt, wie sie kommt: Bei einem Schalter ist es
+            # ON/OFF, bei einer Auswahl der Name der Stellung.
+            self._sicher(self.on_eigen, teile[-2], nutzlast)
             return
         if msg.topic != COMMAND_TOPIC or self.on_command is None:
             return
@@ -179,6 +188,63 @@ class Publisher:
             self._bekannte_raeume.discard(key)
         if schluessel:
             _LOGGER.info("Entfernt: %s", ", ".join(schluessel))
+
+    def eigene_schluessel(self, schalter: list[dict] | None) -> list[str]:
+        return [s["id"] for s in schalter or []]
+
+    def entferne_eigene(self, ids: list[str]) -> None:
+        """Entitäten gelöschter eigener Schalter aus Home Assistant nehmen."""
+        for kennung in ids:
+            for component in ("switch", "select"):
+                self._publish(
+                    f"{DISCOVERY_PREFIX}/{component}/{DEVICE_ID}/schalter_{kennung}/config",
+                    "")
+            self._publish(f"{BASE_TOPIC}/schalter_{kennung}/state", "")
+            self._bekannte_eigene.discard(kennung)
+        if ids:
+            _LOGGER.info("Eigene Schalter entfernt: %s", ", ".join(ids))
+
+    def publish_eigene(self, schalter: list[dict] | None, zustaende: dict) -> None:
+        """Die eigenen Schalter des Planers als Entitäten anmelden.
+
+        Ein Add-on, das fremde Helfer voraussetzt, ist nach einer
+        Neuinstallation nutzlos – dort gibt es keine. Diese hier gehören dem
+        Planer: Er legt sie an, kennt ihren Stand und räumt sie wieder ab.
+        """
+        device = self._device()
+        for eintrag in schalter or []:
+            kennung = eintrag["id"]
+            key = f"schalter_{kennung}"
+            self._bekannte_eigene.add(kennung)
+            gemeinsam = {
+                "name": eintrag["name"],
+                # Die unique_id hängt an der ID, nicht am Namen: Ein
+                # umbenannter Schalter behält damit seine Entität, statt als
+                # neue aufzutauchen und die alte als Karteileiche zu
+                # hinterlassen.
+                "unique_id": f"{DEVICE_ID}_{key}",
+                "state_topic": f"{BASE_TOPIC}/{key}/state",
+                "command_topic": f"{EIGEN_TOPIC}/{kennung}/set",
+                "availability_topic": AVAILABILITY_TOPIC,
+                "icon": eintrag.get("icon") or "mdi:window-shutter-cog",
+                "device": device,
+            }
+            if eintrag["art"] == "auswahl":
+                gemeinsam["options"] = eintrag["optionen"]
+                gemeinsam["default_entity_id"] = f"select.{DEVICE_ID}_{_slug(eintrag['name'])}"
+                self._publish(f"{DISCOVERY_PREFIX}/select/{DEVICE_ID}/{key}/config",
+                              json.dumps(gemeinsam))
+            else:
+                gemeinsam["default_entity_id"] = f"switch.{DEVICE_ID}_{_slug(eintrag['name'])}"
+                self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/{key}/config",
+                              json.dumps(gemeinsam))
+            wert = zustaende.get(kennung, eintrag["vorgabe"])
+            self._publish(f"{BASE_TOPIC}/{key}/state", str(wert))
+        if schalter:
+            _LOGGER.info("Eigene Schalter veröffentlicht (%d)", len(schalter))
+
+    def publish_eigenen_zustand(self, kennung: str, wert: str) -> None:
+        self._publish(f"{BASE_TOPIC}/schalter_{kennung}/state", str(wert))
 
     def publish_discovery(self, raeume: list[dict] | None = None) -> None:
         device = self._device()
@@ -386,4 +452,5 @@ class Publisher:
             self._publish(f"{DISCOVERY_PREFIX}/sensor/{DEVICE_ID}/{key}/config", "")
             self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/{key}_an/config", "")
             self._publish(f"{BASE_TOPIC}/{key}/state", "")
+        self.entferne_eigene(list(self._bekannte_eigene))
         _LOGGER.info("Entitäten aus MQTT entfernt")

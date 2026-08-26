@@ -30,6 +30,33 @@ angetastet: die Notöffnung bei Rauch und die Kopplung an den Urlaubsschalter,
 sofern sie über Melder auslösen statt über die Uhr. Der Planer weicht ihnen
 aus (siehe *Rauchsperre*).
 
+## Eigene Schalter
+
+Unter *Schalter* legt der Planer eigene Bedienelemente an und veröffentlicht
+sie über MQTT:
+
+* **Schalter** – kennt an und aus, wird `switch.rolloplaner_<name>`
+* **Auswahl** – mehrere Stellungen, wird `select.rolloplaner_<name>`
+
+Sie gehören dem Planer: Er legt sie an, kennt ihren Stand (der einen Neustart
+überlebt) und räumt sie wieder ab, wenn man sie löscht. Damit hängt kein
+Zeitplan an Helfern, die jemand vorher von Hand anlegen müsste – nach einer
+Neuinstallation gäbe es die nicht.
+
+In einem Zeitplan stehen sie als Bedingung („nur wenn …“) oder als
+Freigabeschalter eines Raumes. Beides taucht in der Lovelace-Karte beim Raum
+auf und lässt sich dort bedienen.
+
+Wer eine bestehende Einrichtung übernommen hat, findet unter *Schalter* den
+Knopf **Fremde Helfer ersetzen**: Der Planer legt für jeden benutzten
+`input_boolean` und `input_select` einen eigenen Schalter an – gleicher Name,
+gleiche Stellungen, übernommener Stand – und biegt die Zeitpläne darauf um. Die
+alten Helfer bleiben liegen und können danach weg.
+
+Ein Schalter, der noch als Bedingung in Gebrauch ist, lässt sich nicht löschen.
+Eine Bedingung auf einen Schalter, den es nicht gibt, trifft nie zu – der
+Schaltpunkt wäre stumm, ohne dass es auffiele.
+
 ## Der Zeitplan
 
 Ein Zeitplan ist eine Liste von **Schaltpunkten** – wie am mechanischen

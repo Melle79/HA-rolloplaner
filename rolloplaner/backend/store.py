@@ -51,6 +51,17 @@ ZUSTAENDE = ["an", "aus"]
 # ein „Rollo Balkontür Luna“ ist eine Tür, ein „Rollo Küche“ ein Fenster.
 BILDARTEN = ["auto", "fenster", "tuer"]
 
+# Die eigenen Schalter des Planers. Ein Add-on, das fremde `input_boolean`
+# voraussetzt, ist nach einer Neuinstallation nutzlos: Dort gibt es keine.
+# Der Planer legt seine Schalter deshalb selbst an und veröffentlicht sie über
+# MQTT – als `switch.` (an/aus) oder als `select.` (mehrere Stellungen).
+SCHALTERARTEN = ["schalter", "auswahl"]
+
+# Bedingungen dürfen auf eigene Schalter zeigen. Das Präfix kann keine
+# entity_id sein, deshalb kommen eigene und fremde ohne zweite Codebahn durch
+# dieselbe Prüfung.
+EIGEN_PREFIX = "rolloplaner:"
+
 # Himmelsrichtungen für den Hitzeschutz, in Grad wie der Azimut der Sonne:
 # 0° Nord, 90° Ost, 180° Süd, 270° West.
 HIMMELSRICHTUNGEN = {
@@ -63,6 +74,13 @@ _TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 
 class ValidationError(ValueError):
     """Ungültige Eingabedaten."""
+
+
+def eigener_schalter(entity: str) -> str | None:
+    """Die ID eines eigenen Schalters, oder None bei einer fremden Entität."""
+    if entity and entity.startswith(EIGEN_PREFIX):
+        return entity[len(EIGEN_PREFIX):]
+    return None
 
 
 def anzeige_prozent(wert, invertiert: bool):
@@ -94,6 +112,9 @@ STANDARD_EINSTELLUNGEN = {
     # der Zählweise von Home Assistant. Sonst stünde nach jedem Umschalten
     # jeder Zeitplan auf dem Kopf.
     "prozent_invertiert": False,
+    # [{"id", "name", "art": "schalter"|"auswahl", "optionen": [...],
+    #   "vorgabe": "on"|"<option>", "icon"}]
+    "eigene_schalter": [],
 
     # Der Not-Aus. Solange ein Melder anschlägt, fasst der Planer **kein**
     # Rollo mehr an. Ohne das führe er einer Notöffnung beim nächsten Takt
@@ -302,6 +323,10 @@ def validate_zeitplan(zeitplan) -> list[dict]:
                 continue
             bedingungen.append({"entity": entity,
                                 "wert": str(bedingung.get("wert") or "").strip()})
+            # `rolloplaner:<id>` zeigt auf einen eigenen Schalter; alles andere
+            # muss wie eine entity_id aussehen.
+            if not eigener_schalter(entity) and "." not in entity:
+                raise ValidationError(f"Bedingung: {entity!r} ist keine Entität")
 
         out.append({
             "ausloeser": ausloeser,
@@ -435,12 +460,69 @@ def validate_einstellungen(roh: dict) -> dict:
             raise ValidationError(f"Urlaub – {name}: ungültige Uhrzeit {wert!r}")
         u[schluessel] = wert
 
+    e["eigene_schalter"] = validate_schalter(e.get("eigene_schalter"))
+
     w = e["wachhund"]
     w["aktiv"] = bool(w["aktiv"])
     w["stumm_stunden"] = _zahl(w["stumm_stunden"], "Schweigefrist", 0.5, 336.0)
     w["hindernis_melden"] = bool(w["hindernis_melden"])
     w["melden_an"] = [str(d).strip() for d in (w.get("melden_an") or []) if str(d).strip()]
     return e
+
+
+def validate_schalter(roh) -> list[dict]:
+    """Die eigenen Schalter prüfen.
+
+    Die ID wird **nie** aus dem Namen abgeleitet: Ein umbenannter Schalter soll
+    seine Entität in Home Assistant behalten und nicht als neue auftauchen,
+    während die alte als Karteileiche stehenbleibt.
+    """
+    if roh is None:
+        return []
+    if not isinstance(roh, list):
+        raise ValidationError("Eigene Schalter: Liste erwartet")
+    out, ids = [], set()
+    for eintrag in roh:
+        if not isinstance(eintrag, dict):
+            raise ValidationError("Schalter: Objekt erwartet")
+        name = str(eintrag.get("name") or "").strip()[:60]
+        if not name:
+            raise ValidationError("Der Schalter braucht einen Namen")
+        art = str(eintrag.get("art") or "schalter").strip()
+        if art not in SCHALTERARTEN:
+            raise ValidationError(f"Unbekannte Schalterart {art!r}")
+
+        optionen = [str(o).strip() for o in (eintrag.get("optionen") or [])
+                    if str(o).strip()]
+        if art == "auswahl":
+            if len(optionen) < 2:
+                raise ValidationError(
+                    f"„{name}“: eine Auswahl braucht mindestens zwei Stellungen")
+            if len(set(optionen)) != len(optionen):
+                raise ValidationError(f"„{name}“: doppelte Stellungen")
+        else:
+            optionen = []
+
+        vorgabe = str(eintrag.get("vorgabe") or "").strip()
+        if art == "auswahl":
+            if vorgabe not in optionen:
+                vorgabe = optionen[0]
+        else:
+            vorgabe = "on" if vorgabe not in ("on", "off") else vorgabe
+
+        kennung = str(eintrag.get("id") or "").strip() or uuid.uuid4().hex[:8]
+        if kennung in ids:
+            raise ValidationError(f"Schalter-ID {kennung} kommt doppelt vor")
+        ids.add(kennung)
+
+        out.append({"id": kennung, "name": name, "art": art,
+                    "optionen": optionen, "vorgabe": vorgabe,
+                    "icon": str(eintrag.get("icon") or "").strip(),
+                    # Woher der Schalter stammt, falls er beim Umstellen aus
+                    # einem fremden Helfer entstanden ist. Nur zur Zuordnung
+                    # bei einem zweiten Durchlauf.
+                    "quelle": str(eintrag.get("quelle") or "").strip()})
+    return out
 
 
 # ------------------------------------------------------------- Raum-CRUD ----
@@ -499,6 +581,10 @@ def load_state() -> dict:
     # Tagesversatz der Urlaubssimulation: je Raum und Schaltpunkt eine Zahl,
     # die einmal am Tag neu gewürfelt wird.
     state.setdefault("simulation", {"tag": None, "versatz": {}})
+    # Der Stand der eigenen Schalter. Er **muss** die Platte überleben – sonst
+    # stünde nach jedem Neustart des Add-ons jede Freigabe wieder auf der
+    # Vorgabe, und ein abends abgeschalteter Raum führe nachts doch.
+    state.setdefault("schalter", {})
     return state
 
 
