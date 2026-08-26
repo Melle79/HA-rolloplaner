@@ -1,8 +1,13 @@
 """Die Regelkette: was soll jedes Rollo jetzt tun, und warum.
 
+Gerechnet wird **je Rollo**. Das ist keine Feinheit: Luna hat ein Fenster und
+eine Balkontür, das Schlafzimmer ebenso. Wer den Raum regelt, kann die
+Balkontür nicht offen lassen, während das Fenster zufährt.
+
 Rangfolge – der erste Treffer gewinnt:
 
-    aus → Rauch → Freigabe → Fenster → Urlaub → Hitzeschutz → Handbetrieb → Zeitplan
+    aus → Rauch → Rollo aus → Zeitplan aus → Fenster → Urlaub → Hitzeschutz
+    → Handbetrieb → Zeitplan
 
 Zwei Grundsätze ziehen sich durch:
 
@@ -159,47 +164,22 @@ def _versatz_fuer(simulation: dict, schluessel: str, streuung: int) -> int:
 
 # ------------------------------------------------------------------ Raum ----
 
-def _fenster_offen(raum: dict, index: dict) -> list[str]:
-    """Welche Kontakte des Raumes gerade offen sind.
-
-    Solange einer offen ist, wird nicht zugefahren. Wer auf der Terrasse steht
-    und das Rollo fährt vor der offenen Tür herunter, steht draußen.
-    """
-    offen = []
-    for eid in raum.get("fenster") or []:
-        zustand = index.get(eid)
-        if _an(zustand):
-            offen.append((zustand.get("attributes") or {}).get("friendly_name") or eid)
-    return offen
-
-
 # Woran ein Rollo als Tür zu erkennen ist. Ein Rollladen vor einer Balkontür
 # geht bis zum Boden; das sieht anders aus als eines vor einem Fenster mit
 # Brüstung, und in der Anzeige soll man es auch so sehen.
 TUER_WORTE = ("tür", "tuer", "door", "balkon", "terrasse")
 
 
-def _bildart(raum: dict, index: dict) -> str:
-    """Zeichnet die Anzeige für diesen Raum ein Fenster oder eine Tür?
-
-    Bei „auto“ zählt der Name jedes Rollos. Ein Raum gilt nur dann als Tür,
-    wenn **alle** seine Rollos welche sind: Luna hat ein Fenster und eine
-    Balkontür, und ein Bild für zwei verschiedene Dinge zeigt besser den
-    Regelfall.
-    """
-    gewaehlt = raum.get("bildart") or "auto"
-    if gewaehlt in ("fenster", "tuer"):
-        return gewaehlt
-
-    namen = []
-    for eid in raum.get("rollos") or []:
-        zustand = index.get(eid)
-        name = ((zustand.get("attributes") or {}).get("friendly_name")
-                if zustand else None) or eid
-        namen.append(name.lower())
-    if not namen:
-        return "fenster"
-    return "tuer" if all(any(w in n for w in TUER_WORTE) for n in namen) else "fenster"
+def anzeigename(rollo: dict, index: dict) -> str:
+    """Der Name, unter dem ein Rollo erscheint."""
+    if rollo.get("name"):
+        return rollo["name"]
+    zustand = index.get(rollo["entity_id"])
+    if zustand:
+        name = (zustand.get("attributes") or {}).get("friendly_name")
+        if name:
+            return name
+    return rollo["entity_id"]
 
 
 def eigene_zustaende(einstellungen: dict, state: dict) -> dict:
@@ -216,36 +196,225 @@ def eigene_zustaende(einstellungen: dict, state: dict) -> dict:
     return out
 
 
-def _eigen_verzeichnis(einstellungen: dict) -> dict:
-    """ID → Beschreibung des eigenen Schalters, für die Anzeige."""
-    return {e["id"]: e for e in (einstellungen.get("eigene_schalter") or [])}
+def _fenster_offen(rollo: dict, index: dict) -> list[str]:
+    """Welche Kontakte dieses Rollos gerade offen sind.
 
-
-def _bedienbare_helfer(raum: dict, index: dict,
-                       einstellungen: dict | None = None,
-                       zustaende: dict | None = None) -> list[dict]:
-    """Die Entitäten, an denen die Schaltpunkte dieses Raumes hängen.
-
-    Damit kann die Dashboard-Karte sie gleich mitbedienen. Sonst müsste man
-    für „die Terrassentür heute mal nicht zufahren“ die Karte verlassen und den
-    Auswahlhelfer anderswo suchen – und genau das war am alten Aufbau lästig.
-
-    Gesammelt wird in der Reihenfolge des Auftretens, damit die Karte nicht bei
-    jedem Takt anders sortiert.
+    Solange einer offen ist, wird nicht zugefahren. Wer auf der Terrasse steht
+    und das Rollo fährt vor der offenen Tür herunter, steht draußen.
     """
-    # Zu jedem Helfer merken, welche Stellungen an ihm hängen. Daraus wird die
-    # Beschriftung: „Öffnen Nele“ sagt nur, wie der Helfer heißt – „öffnen“
-    # sagt, was passiert, wenn man ihn ausschaltet. Auf einer Kachel zählt das
-    # Zweite.
+    offen = []
+    for eid in rollo.get("fenster") or []:
+        zustand = index.get(eid)
+        if _an(zustand):
+            offen.append((zustand.get("attributes") or {}).get("friendly_name") or eid)
+    return offen
+
+
+def _jemand_da(rollo: dict, index: dict) -> bool | None:
+    melder = (rollo.get("praesenz") or []) + (rollo.get("personen") or [])
+    if not melder:
+        return None
+    return any(_an(index.get(eid)) for eid in melder)
+
+
+def _beschattung_pruefen(rollo: dict, einstellungen: dict, index: dict,
+                         sonnenstand, jetzt: datetime,
+                         war_beschattet: bool) -> tuple[bool, str, int | None]:
+    """Steht die Sonne in diesem Fenster, und ist es warm genug?
+
+    Die Hysterese hängt an der Temperatur, nicht am Sonnenstand: Ein Rollo,
+    das an der Grenze zwischen 23,9 und 24,1 Grad im Minutentakt auf und ab
+    fährt, ist schlimmer als gar kein Hitzeschutz.
+    """
+    global_ = einstellungen.get("beschattung") or {}
+    if not global_.get("aktiv", True) or not rollo.get("beschattung"):
+        return False, "", None
+    if rollo.get("ausrichtung") is None:
+        return False, "", None
+
+    elevation, azimut = sonnenstand.stand(jetzt)
+    if not sonnenmodul.sonne_steht_im_fenster(
+            azimut, elevation, rollo.get("ausrichtung"),
+            float(rollo.get("oeffnungswinkel") or 90),
+            float(global_.get("min_elevation", 12.0))):
+        return False, "", None
+
+    aussen = _temperatur(einstellungen.get("aussen_entity"), index)
+    if aussen is None:
+        return False, "", None
+    schwelle = float(global_.get("ab_temperatur", 24.0))
+    if war_beschattet:
+        schwelle -= float(global_.get("hysterese", 1.5))
+    if aussen < schwelle:
+        return False, "", None
+
+    if rollo.get("raumtemp") and rollo.get("raumtemp_ab") is not None:
+        innen = _temperatur(rollo["raumtemp"], index)
+        if innen is not None and innen < float(rollo["raumtemp_ab"]):
+            return False, "", None
+
+    if global_.get("nur_wenn_niemand_da") and _jemand_da(rollo, index):
+        return False, "", None
+
+    position = rollo.get("beschattung_position")
+    if position is None:
+        position = int(global_.get("position", 35))
+    grund = (f"Sonne steht im Fenster ({azimut:.0f}°, {elevation:.0f}° hoch), "
+             f"außen {aussen:.1f} °C")
+    return True, grund, int(position)
+
+
+def _temperatur(entity_id: str | None, index: dict) -> float | None:
+    if not entity_id:
+        return None
+    zustand = index.get(entity_id)
+    if not zustand:
+        return None
+    if entity_id.startswith("weather."):
+        return ha_api.as_float((zustand.get("attributes") or {}).get("temperature"))
+    return ha_api.as_float(zustand.get("state"))
+
+
+def _plan_von(rollo: dict, plaene: dict) -> tuple[list, dict | None]:
+    """Welchem Zeitplan folgt dieses Rollo – und wem gehört er?
+
+    Liefert (Schaltpunkte, Plan). Ohne Plan-ID hat das Rollo einen eigenen;
+    dann ist der zweite Wert ``None``.
+    """
+    if rollo.get("plan"):
+        plan = plaene.get(rollo["plan"])
+        return (plan["zeitplan"] if plan else []), plan
+    return rollo.get("zeitplan") or [], None
+
+
+def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
+                   kalender, sonnenstand, jetzt: datetime, lage: dict,
+                   plaene: dict) -> dict:
+    """Was dieses Rollo jetzt tun soll – mitsamt Begründung.
+
+    Liefert ein Ergebnis, auch wenn nichts zu tun ist: Die Oberfläche soll
+    jederzeit erklären können, warum ein Rollo steht, wo es steht.
+    """
+    eid = rollo["entity_id"]
+    rollo_state = state["rollos"].setdefault(eid, {})
+    zustand = index.get(eid)
+    punkte, plan = _plan_von(rollo, plaene)
+    invertiert = bool(einstellungen.get("prozent_invertiert"))
+
+    ergebnis = {
+        "entity_id": eid,
+        "name": anzeigename(rollo, index),
+        "raum": rollo.get("raum") or "",
+        "art": rollo.get("art") or "fenster",
+        "ist": ha_api.position_von(zustand),
+        "zustand": "plan",
+        "begruendung": "",
+        "ziel": None,
+        "gefahren": False,
+        "plan": plan["name"] if plan else "",
+        "plan_id": rollo.get("plan") or "",
+        "helfer": _bedienbare_helfer(rollo, punkte, index, einstellungen,
+                                     lage["zustaende"]),
+    }
+
+    # 1. aus ------------------------------------------------------------------
+    if not rollo.get("aktiv", True):
+        ergebnis.update(zustand="aus", begruendung="Rollo ist abgeschaltet")
+        return ergebnis
+    if not lage["automatik"]:
+        ergebnis.update(zustand="aus", begruendung="Automatik ist aus")
+        return ergebnis
+    if plan is not None and not plan.get("aktiv", True):
+        ergebnis.update(zustand="gesperrt",
+                        begruendung=f"Zeitplan „{plan['name']}“ ist abgeschaltet")
+        return ergebnis
+
+    # 2. Rauch ----------------------------------------------------------------
+    if lage["rauch"]:
+        ergebnis.update(zustand="rauch", begruendung=lage["rauch_grund"])
+        return ergebnis
+
+    if zustand is None:
+        ergebnis.update(zustand="fehlt", begruendung="In Home Assistant nicht gefunden")
+        return ergebnis
+    if zustand.get("state") == "unavailable":
+        ergebnis.update(zustand="fehlt", begruendung="Nicht erreichbar")
+        return ergebnis
+
+    # Der Zeitplan ist die Grundlage; Urlaub und Hitzeschutz verschieben ihn.
+    anpassen = _urlaubsversatz(rollo, einstellungen, lage)
+    zustaende = lage["zustaende"]
+    treffer = zeitplanmodul.letzter_zeitpunkt(punkte, jetzt, kalender, sonnenstand,
+                                              anpassen, zustaende)
+    naechster = zeitplanmodul.naechster_wechsel(punkte, jetzt, kalender, sonnenstand,
+                                                anpassen, zustaende)
+
+    ziel = None
+    punkt_zeit = None
+    beschreibung = ""
+    if treffer:
+        punkt_zeit, punkt = treffer
+        ziel = int(punkt["position"])
+        beschreibung = zeitplanmodul.beschreibung(punkt, invertiert=invertiert)
+
+    if naechster:
+        ergebnis["naechster_zeitpunkt"] = _iso(naechster[0])
+        ergebnis["naechste_uhrzeit"] = naechster[0].strftime("%H:%M")
+        ergebnis["naechste_stellung"] = int(naechster[1]["position"])
+        ergebnis["naechster_punkt"] = zeitplanmodul.beschreibung(
+            naechster[1], invertiert=invertiert)
+
+    # 3. Urlaub ---------------------------------------------------------------
+    urlaub = einstellungen.get("urlaub") or {}
+    if lage["urlaub"] and urlaub.get("modus") != "plan":
+        ergebnis["urlaub"] = True
+        ergebnis["zustand"] = "urlaub"
+        if urlaub.get("modus") == "zu" or not rollo.get("urlaub_simulation", True):
+            ziel = int(rollo.get("position_zu", 0))
+            punkt_zeit = lage["urlaub_seit"] or punkt_zeit
+            beschreibung = "Urlaub – geschlossen"
+        elif anpassen is not None and treffer:
+            versatz = int((punkt_zeit - _roh_zeitpunkt(
+                treffer[1], punkt_zeit, kalender, sonnenstand)).total_seconds() // 60)
+            if versatz:
+                beschreibung += f" (Urlaubssimulation {versatz:+d} min)"
+
+    # 4. Hitzeschutz ----------------------------------------------------------
+    war_beschattet = bool(rollo_state.get("beschattet"))
+    beschatten, beschattungsgrund, beschattungsposition = _beschattung_pruefen(
+        rollo, einstellungen, index, sonnenstand, jetzt, war_beschattet)
+    if beschatten and ziel is not None and beschattungsposition < ziel:
+        # Nur verdunkeln, nie aufziehen: Steht der Plan ohnehin auf „zu“,
+        # bleibt es dabei.
+        ziel = beschattungsposition
+        ergebnis["zustand"] = "beschattung"
+        beschreibung = beschattungsgrund
+        punkt_zeit = jetzt          # Pegel, kein Zeitpunkt – Flanke unten
+    ergebnis["beschattet"] = beschatten
+
+    if ziel is None:
+        ergebnis.update(zustand="ohne_plan",
+                        begruendung="Kein Schaltpunkt eingerichtet")
+        return ergebnis
+
+    ergebnis["fenster_offen"] = _fenster_offen(rollo, index)
+    ergebnis["begruendung"] = beschreibung
+    ergebnis["ziel"] = ziel
+    ergebnis["punkt_zeit"] = _iso(punkt_zeit)
+    return ergebnis
+
+
+def _bedienbare_helfer(rollo: dict, punkte: list, index: dict,
+                       einstellungen: dict, zustaende: dict) -> list[dict]:
+    """Die Schalter, an denen die Schaltpunkte dieses Rollos hängen.
+
+    Damit kann die Dashboard-Karte sie gleich mitbedienen – sonst müsste man
+    für „die Terrassentür heute mal nicht zufahren“ die Karte verlassen und
+    den Schalter anderswo suchen.
+    """
     stellungen: dict[str, set] = {}
     reihenfolge: list[str] = []
-
-    freigabe = raum.get("freigabe_entity")
-    if freigabe:
-        reihenfolge.append(freigabe)
-        stellungen[freigabe] = {"raum"}
-
-    for punkt in raum.get("zeitplan") or []:
+    for punkt in punkte:
         position = int(punkt.get("position", 100))
         art = "auf" if position >= 100 else "zu" if position <= 0 else "teil"
         for bedingung in punkt.get("wenn") or []:
@@ -257,7 +426,7 @@ def _bedienbare_helfer(raum: dict, index: dict,
                 reihenfolge.append(eid)
             stellungen[eid].add(art)
 
-    eigene = _eigen_verzeichnis(einstellungen or {})
+    eigene = {e["id"]: e for e in (einstellungen.get("eigene_schalter") or [])}
     out = []
     for eid in reihenfolge:
         kennung = store.eigener_schalter(eid)
@@ -265,15 +434,11 @@ def _bedienbare_helfer(raum: dict, index: dict,
             eintrag = eigene.get(kennung)
             if eintrag is None:
                 continue
-            # Die Entität, die MQTT daraus gemacht hat – die Karte schaltet
-            # darüber. Sie folgt dem Namen, weil `default_entity_id` es so
-            # vorgibt.
             domain = "select" if eintrag["art"] == "auswahl" else "switch"
-            name_slug = _slug(eintrag["name"])
             zustand = {"attributes": {"friendly_name": eintrag["name"],
                                       "options": eintrag["optionen"]},
-                       "state": (zustaende or {}).get(eid, eintrag["vorgabe"])}
-            eid_ha = f"{domain}.rolloplaner_{name_slug}"
+                       "state": zustaende.get(eid, eintrag["vorgabe"])}
+            eid_ha = f"{domain}.rolloplaner_{_slug(eintrag['name'])}"
         else:
             zustand = index.get(eid)
             if zustand is None:
@@ -281,14 +446,8 @@ def _bedienbare_helfer(raum: dict, index: dict,
             eid_ha = eid
         attrs = zustand.get("attributes") or {}
         arten = stellungen.get(eid) or set()
-        if "raum" in arten:
-            wirkung = "raum"
-        elif arten == {"auf"}:
-            wirkung = "oeffnen"
-        elif arten == {"zu"}:
-            wirkung = "schliessen"
-        else:
-            wirkung = "beides"
+        wirkung = ("oeffnen" if arten == {"auf"} else
+                   "schliessen" if arten == {"zu"} else "beides")
         out.append({
             "entity_id": eid_ha,
             "eigen": kennung,
@@ -308,210 +467,7 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", text).strip("_") or "schalter"
 
 
-def _jemand_da(raum: dict, index: dict) -> bool | None:
-    melder = (raum.get("praesenz") or []) + (raum.get("personen") or [])
-    if not melder:
-        return None
-    return any(_an(index.get(eid)) for eid in melder)
-
-
-def _beschattung_pruefen(raum: dict, einstellungen: dict, index: dict,
-                         sonnenstand, jetzt: datetime,
-                         war_beschattet: bool) -> tuple[bool, str, int | None]:
-    """Steht die Sonne im Fenster, und ist es warm genug?
-
-    Die Hysterese hängt an der Temperatur, nicht am Sonnenstand: Ein Rollo,
-    das an der Grenze zwischen 23,9 und 24,1 Grad im Minutentakt auf und ab
-    fährt, ist schlimmer als gar kein Hitzeschutz.
-    """
-    global_ = einstellungen.get("beschattung") or {}
-    if not global_.get("aktiv", True) or not raum.get("beschattung"):
-        return False, "", None
-    if raum.get("ausrichtung") is None:
-        return False, "", None
-
-    elevation, azimut = sonnenstand.stand(jetzt)
-    if not sonnenmodul.sonne_steht_im_fenster(
-            azimut, elevation, raum.get("ausrichtung"),
-            float(raum.get("oeffnungswinkel") or 90),
-            float(global_.get("min_elevation", 12.0))):
-        return False, "", None
-
-    aussen = _temperatur(einstellungen.get("aussen_entity"), index)
-    if aussen is None:
-        return False, "", None
-    schwelle = float(global_.get("ab_temperatur", 24.0))
-    if war_beschattet:
-        schwelle -= float(global_.get("hysterese", 1.5))
-    if aussen < schwelle:
-        return False, "", None
-
-    # Ein zweites Kriterium von innen, wenn der Raum einen Fühler hat: Nicht
-    # jeder warme Tag heizt jeden Raum auf.
-    if raum.get("raumtemp") and raum.get("raumtemp_ab") is not None:
-        innen = _temperatur(raum["raumtemp"], index)
-        if innen is not None and innen < float(raum["raumtemp_ab"]):
-            return False, "", None
-
-    if global_.get("nur_wenn_niemand_da") and _jemand_da(raum, index):
-        return False, "", None
-
-    position = raum.get("beschattung_position")
-    if position is None:
-        position = int(global_.get("position", 35))
-    grund = (f"Sonne steht im Fenster ({azimut:.0f}°, {elevation:.0f}° hoch), "
-             f"außen {aussen:.1f} °C")
-    return True, grund, int(position)
-
-
-def _temperatur(entity_id: str | None, index: dict) -> float | None:
-    if not entity_id:
-        return None
-    zustand = index.get(entity_id)
-    if not zustand:
-        return None
-    if entity_id.startswith("weather."):
-        return ha_api.as_float((zustand.get("attributes") or {}).get("temperature"))
-    return ha_api.as_float(zustand.get("state"))
-
-
-def _raum_rechnen(raum: dict, einstellungen: dict, index: dict, state: dict,
-                  kalender, sonnenstand, jetzt: datetime, lage: dict) -> dict:
-    """Was dieser Raum jetzt tun soll – mitsamt Begründung.
-
-    Liefert ein Ergebnis, auch wenn nichts zu tun ist: Die Oberfläche soll
-    jederzeit erklären können, warum ein Rollo steht, wo es steht.
-    """
-    raum_state = state["raeume"].setdefault(raum["id"], {})
-    ergebnis = {
-        "id": raum["id"], "name": raum["name"], "zustand": "plan",
-        "begruendung": "", "ziel": None, "rollos": [], "schaltet": False,
-        # Auch für Räume, die gleich aussteigen: Die Auswahl in der Karte darf
-        # nicht ausgerechnet dann verschwinden, wenn ein Raum gesperrt ist –
-        # der Schalter, mit dem man ihn wieder freigibt, steht ja hier.
-        "helfer": _bedienbare_helfer(raum, index, einstellungen, lage["zustaende"]),
-        "bildart": _bildart(raum, index),
-    }
-
-    # 1. aus ------------------------------------------------------------------
-    if not raum.get("aktiv", True):
-        ergebnis.update(zustand="aus", begruendung="Raum ist abgeschaltet")
-        return ergebnis
-    if not lage["automatik"]:
-        ergebnis.update(zustand="aus", begruendung="Automatik ist aus")
-        return ergebnis
-
-    # 2. Rauch ----------------------------------------------------------------
-    if lage["rauch"]:
-        ergebnis.update(zustand="rauch", begruendung=lage["rauch_grund"])
-        return ergebnis
-
-    # 3. Freigabe -------------------------------------------------------------
-    freigabe = raum.get("freigabe_entity")
-    if freigabe:
-        kennung = store.eigener_schalter(freigabe)
-        if kennung is not None:
-            eintrag = _eigen_verzeichnis(einstellungen).get(kennung)
-            if eintrag is None:
-                ergebnis.update(zustand="gesperrt",
-                                begruendung="Freigabeschalter gibt es nicht mehr")
-                return ergebnis
-            if str(lage["zustaende"].get(freigabe, eintrag["vorgabe"])) != "on":
-                ergebnis.update(zustand="gesperrt",
-                                begruendung=f"„{eintrag['name']}“ ist aus")
-                return ergebnis
-        else:
-            zustand = index.get(freigabe)
-            if zustand is None:
-                ergebnis.update(zustand="gesperrt",
-                                begruendung=f"Freigabeschalter {freigabe} fehlt")
-                return ergebnis
-            if not _an(zustand):
-                name = (zustand.get("attributes") or {}).get("friendly_name") or freigabe
-                ergebnis.update(zustand="gesperrt", begruendung=f"„{name}“ ist aus")
-                return ergebnis
-
-    # Der Zeitplan ist die Grundlage; Urlaub und Hitzeschutz verschieben ihn.
-    anpassen = _urlaubsversatz(raum, einstellungen, lage)
-    zustaende = lage["zustaende"]
-    treffer = zeitplanmodul.letzter_zeitpunkt(
-        raum.get("zeitplan") or [], jetzt, kalender, sonnenstand, anpassen, zustaende)
-    naechster = zeitplanmodul.naechster_wechsel(
-        raum.get("zeitplan") or [], jetzt, kalender, sonnenstand, anpassen, zustaende)
-
-    invertiert = bool(einstellungen.get("prozent_invertiert"))
-    ziel = None
-    punkt_zeit = None
-    beschreibung = ""
-    if treffer:
-        punkt_zeit, punkt = treffer
-        ziel = int(punkt["position"])
-        beschreibung = zeitplanmodul.beschreibung(punkt, invertiert=invertiert)
-
-    if naechster:
-        ergebnis["naechster_zeitpunkt"] = _iso(naechster[0])
-        ergebnis["naechste_uhrzeit"] = naechster[0].strftime("%H:%M")
-        ergebnis["naechste_stellung"] = int(naechster[1]["position"])
-        ergebnis["naechster_punkt"] = zeitplanmodul.beschreibung(
-            naechster[1], invertiert=invertiert)
-
-    # 4. Urlaub ---------------------------------------------------------------
-    # Die Simulation steckt schon in `anpassen` und damit in `punkt_zeit`;
-    # hier bleibt nur der Fall „im Urlaub alles zu“.
-    urlaub = einstellungen.get("urlaub") or {}
-    if lage["urlaub"] and urlaub.get("modus") != "plan":
-        ergebnis["urlaub"] = True
-        ergebnis["zustand"] = "urlaub"
-        if urlaub.get("modus") == "zu" or not raum.get("urlaub_simulation", True):
-            ziel = int(raum.get("position_zu", 0))
-            punkt_zeit = lage["urlaub_seit"] or punkt_zeit
-            beschreibung = "Urlaub – geschlossen"
-        elif anpassen is not None and treffer:
-            versatz = int((punkt_zeit - _roh_zeitpunkt(
-                treffer[1], punkt_zeit, kalender, sonnenstand)).total_seconds() // 60)
-            if versatz:
-                beschreibung += f" (Urlaubssimulation {versatz:+d} min)"
-
-    # 5. Hitzeschutz ----------------------------------------------------------
-    war_beschattet = bool(raum_state.get("beschattet"))
-    beschatten, beschattungsgrund, beschattungsposition = _beschattung_pruefen(
-        raum, einstellungen, index, sonnenstand, jetzt, war_beschattet)
-    if beschatten and ziel is not None and beschattungsposition < ziel:
-        # Nur verdunkeln, nie aufziehen: Steht der Plan ohnehin auf „zu“,
-        # bleibt es dabei.
-        ziel = beschattungsposition
-        ergebnis["zustand"] = "beschattung"
-        beschreibung = beschattungsgrund
-        punkt_zeit = jetzt          # Pegel, kein Zeitpunkt – Flanke unten
-    ergebnis["beschattet"] = beschatten
-
-    if ziel is None:
-        ergebnis.update(zustand="ohne_plan",
-                        begruendung="Kein Schaltpunkt eingerichtet")
-        return ergebnis
-
-    # 6. Fenster --------------------------------------------------------------
-    offen = _fenster_offen(raum, index)
-    ergebnis["fenster_offen"] = offen
-    ergebnis["helfer"] = _bedienbare_helfer(raum, index, einstellungen,
-                                            lage["zustaende"])
-
-    ergebnis["begruendung"] = beschreibung
-    ergebnis["ziel"] = ziel
-    ergebnis["punkt_zeit"] = _iso(punkt_zeit)
-
-    # 7. Handbetrieb und 8. Ausführung stecken in _rollos_stellen(); erst dort
-    # steht fest, ob überhaupt etwas zu fahren ist.
-    return ergebnis
-
-
-def _roh_zeitpunkt(eintrag: dict, verschoben: datetime, kalender, sonnenstand) -> datetime:
-    """Der unverschobene Zeitpunkt – nur, um den Versatz anzeigen zu können."""
-    roh = zeitplanmodul.zeitpunkt_von(eintrag, verschoben.date(), sonnenstand)
-    return roh if roh is not None else verschoben
-
-
-def _urlaubsversatz(raum: dict, einstellungen: dict, lage: dict):
+def _urlaubsversatz(rollo: dict, einstellungen: dict, lage: dict):
     """Die Funktion, die jeden Schaltpunkt um den Tagesversatz verschiebt.
 
     ``None``, wenn nicht simuliert wird – dann bleibt der Zeitplan unberührt.
@@ -519,19 +475,27 @@ def _urlaubsversatz(raum: dict, einstellungen: dict, lage: dict):
     urlaub = einstellungen.get("urlaub") or {}
     if not lage["urlaub"] or urlaub.get("modus") != "simulation":
         return None
-    if not raum.get("urlaub_simulation", True):
+    if not rollo.get("urlaub_simulation", True):
         return None
     streuung = int(urlaub.get("streuung_min", 20))
     if streuung <= 0:
         return None
 
     def anpassen(zeitpunkt: datetime, eintrag: dict, tag) -> datetime:
-        schluessel = (f"{raum['id']}|{tag}|{eintrag.get('ausloeser')}|"
+        # Der Schlüssel hängt am Rollo: Zwei Rollos am selben Zeitplan sollen
+        # verschieden streuen, sonst fährt das halbe Haus wieder im Gleichtakt.
+        schluessel = (f"{rollo['entity_id']}|{tag}|{eintrag.get('ausloeser')}|"
                       f"{eintrag.get('start')}|{eintrag.get('position')}")
         versatz = _versatz_fuer(lage["simulation"], schluessel, streuung)
         return _in_fenster(zeitpunkt + timedelta(minutes=versatz), urlaub)
 
     return anpassen
+
+
+def _roh_zeitpunkt(eintrag: dict, verschoben: datetime, kalender, sonnenstand) -> datetime:
+    """Der unverschobene Zeitpunkt – nur, um den Versatz anzeigen zu können."""
+    roh = zeitplanmodul.zeitpunkt_von(eintrag, verschoben.date(), sonnenstand)
+    return roh if roh is not None else verschoben
 
 
 def _in_fenster(wann: datetime, urlaub: dict) -> datetime:
@@ -552,166 +516,129 @@ def _in_fenster(wann: datetime, urlaub: dict) -> datetime:
 
 # ------------------------------------------------------------- Ausführen ----
 
-def _rollos_stellen(raum: dict, ergebnis: dict, einstellungen: dict, index: dict,
-                    state: dict, jetzt: datetime, protokoll) -> None:
-    """Die Rollos eines Raumes auf die errechnete Stellung bringen.
+def _rollo_stellen(rollo: dict, ergebnis: dict, einstellungen: dict, index: dict,
+                   state: dict, jetzt: datetime, protokoll) -> None:
+    """Das Rollo auf die errechnete Stellung bringen.
 
     Hier entscheidet sich, ob überhaupt gefahren wird. Vier Gründe, es zu
-    lassen: Es ist schon richtig, der Schaltpunkt ist nicht neu, jemand hat von
-    Hand gefahren, oder ein Fenster steht offen.
+    lassen: Es steht schon richtig, der Schaltpunkt ist nicht neu, jemand hat
+    von Hand gefahren, oder ein Fenster steht offen.
     """
-    raum_state = state["raeume"].setdefault(raum["id"], {})
+    eid = rollo["entity_id"]
+    rollo_state = state["rollos"].setdefault(eid, {})
     ziel = ergebnis.get("ziel")
     trockenlauf = bool(einstellungen.get("trockenlauf"))
-    beobachten = raum.get("betriebsart") == "beobachten"
+    beobachten = rollo.get("betriebsart") == "beobachten"
 
-    if ziel is None or ergebnis["zustand"] in ("aus", "rauch", "gesperrt", "ohne_plan"):
+    if ziel is None or ergebnis["zustand"] in ("aus", "rauch", "gesperrt",
+                                               "ohne_plan", "fehlt"):
         return
 
     punkt_zeit = _aus_iso(ergebnis.get("punkt_zeit"))
-    zuletzt = _aus_iso(raum_state.get("letzter_punkt"))
-    beschattung_wechsel = bool(raum_state.get("beschattet")) != bool(ergebnis["beschattet"])
+    zuletzt = _aus_iso(rollo_state.get("letzter_punkt"))
+    beschattung_wechsel = bool(rollo_state.get("beschattet")) != bool(ergebnis["beschattet"])
 
     # Die Flanke: ein Schaltpunkt zählt nur, wenn er seit dem letzten Mal neu
     # dazugekommen ist.
     neuer_punkt = punkt_zeit is not None and (zuletzt is None or punkt_zeit > zuletzt)
     if not neuer_punkt and not beschattung_wechsel:
         ergebnis["begruendung"] = ergebnis["begruendung"] or "unverändert"
-        _stellungen_erfassen(raum, ergebnis, index, state, jetzt)
+        _stellung_erfassen(rollo, ergebnis, index, state, jetzt, einstellungen)
         return
 
     # „Nur schließen“: der Planer fährt zu, öffnet aber nie von selbst.
-    if raum.get("betriebsart") == "nur_schliessen" and ziel > int(raum.get("position_zu", 0)):
+    if rollo.get("betriebsart") == "nur_schliessen" and ziel > int(rollo.get("position_zu", 0)):
         ergebnis["zustand"] = "nur_schliessen"
         ergebnis["begruendung"] = "Betriebsart „nur schließen“ – bleibt in Ruhe"
-        raum_state["letzter_punkt"] = _iso(punkt_zeit)
-        _stellungen_erfassen(raum, ergebnis, index, state, jetzt)
+        rollo_state["letzter_punkt"] = _iso(punkt_zeit)
         return
 
-    # Fenster offen: Zufahren wird unterdrückt, Öffnen bleibt erlaubt.
+    zustand = index.get(eid)
+    ist = ha_api.position_von(zustand)
     offen = ergebnis.get("fenster_offen") or []
-    gefahren = []
-    # Wurde ein Rollo aus einem Grund übergangen, der von selbst wieder
-    # weggeht? Dann darf der Schaltpunkt **nicht** als erledigt gelten – sonst
-    # bliebe das Rollo bis zum nächsten Tag offen, weil die Terrassentür in
-    # der einen Minute offen stand, in der der Punkt fällig wurde.
-    aufgeschoben = False
-    for eid in raum.get("rollos") or []:
-        zustand = index.get(eid)
-        ist = ha_api.position_von(zustand)
-        rollo_state = state["rollos"].setdefault(eid, {})
-        eintrag = {"entity_id": eid, "ist": ist, "ziel": ziel, "gefahren": False,
-                   "name": ((zustand.get("attributes") or {}).get("friendly_name")
-                            if zustand else eid) or eid}
 
-        if zustand is None:
-            eintrag["hinweis"] = "nicht gefunden"
-            aufgeschoben = True
-            ergebnis["rollos"].append(eintrag)
-            continue
-        if zustand.get("state") == "unavailable":
-            eintrag["hinweis"] = "nicht erreichbar"
-            aufgeschoben = True
-            ergebnis["rollos"].append(eintrag)
-            continue
+    # Fenster offen: Zufahren wird unterdrückt, Öffnen bleibt erlaubt.
+    if offen and ist is not None and ziel < ist:
+        ergebnis["zustand"] = "fenster"
+        ergebnis["begruendung"] = "Offen: " + ", ".join(offen)
+        # Der Punkt bleibt offen. Sobald die Tür zugeht, wird er nachgeholt –
+        # und zwar der dann *zuletzt fällige*.
+        ergebnis["aufgeschoben"] = True
+        rollo_state["beschattet"] = bool(ergebnis["beschattet"])
+        return
 
-        if offen and ist is not None and ziel < ist:
-            eintrag["hinweis"] = "Fenster offen – bleibt stehen"
-            ergebnis["zustand"] = "fenster"
-            ergebnis["begruendung"] = "Offen: " + ", ".join(offen)
-            aufgeschoben = True
-            ergebnis["rollos"].append(eintrag)
-            continue
+    # Handbetrieb: Steht das Rollo woanders, als der Planer es zuletzt
+    # hingefahren hat, war jemand am Schalter. Ein neu fälliger Schaltpunkt
+    # beendet die Schonfrist – sonst müsste man daran denken, sie aufzuheben.
+    manuell_bis = _aus_iso(rollo_state.get("manuell_bis"))
+    if (einstellungen.get("manuell_respektieren") and manuell_bis
+            and jetzt < manuell_bis and not neuer_punkt):
+        ergebnis["zustand"] = "manuell"
+        ergebnis["begruendung"] = f"Handbetrieb bis {manuell_bis.strftime('%H:%M')} Uhr"
+        return
 
-        # Handbetrieb: Steht das Rollo woanders, als der Planer es zuletzt
-        # hingefahren hat, war jemand am Schalter. Dann gilt eine Schonfrist –
-        # aber ein neu fälliger Schaltpunkt beendet sie. Sonst müsste man
-        # daran denken, den Handbetrieb wieder aufzuheben.
-        manuell_bis = _aus_iso(rollo_state.get("manuell_bis"))
-        if (einstellungen.get("manuell_respektieren") and manuell_bis
-                and jetzt < manuell_bis and not neuer_punkt):
-            eintrag["hinweis"] = f"Handbetrieb bis {manuell_bis.strftime('%H:%M')} Uhr"
-            ergebnis["zustand"] = "manuell"
-            ergebnis["rollos"].append(eintrag)
-            continue
+    if ist is not None and abs(ist - ziel) <= TOLERANZ:
+        ergebnis["hinweis"] = "steht schon richtig"
+        rollo_state["letzter_punkt"] = _iso(punkt_zeit)
+        rollo_state["beschattet"] = bool(ergebnis["beschattet"])
+        rollo_state["ziel"] = ziel
+        return
 
-        if ist is not None and abs(ist - ziel) <= TOLERANZ:
-            eintrag["hinweis"] = "steht schon richtig"
-            ergebnis["rollos"].append(eintrag)
-            continue
-
-        if trockenlauf or beobachten:
-            eintrag["hinweis"] = "Trockenlauf" if trockenlauf else "beobachten"
-            ergebnis["rollos"].append(eintrag)
-            gefahren.append(eintrag["name"])
-            continue
-
+    if trockenlauf or beobachten:
+        ergebnis["hinweis"] = "Trockenlauf" if trockenlauf else "beobachten"
+        ergebnis["gefahren"] = True
+    else:
         erfolg = ha_api.set_position(eid, ziel, zustand)
-        eintrag["gefahren"] = erfolg
+        ergebnis["gefahren"] = erfolg
         if erfolg:
             rollo_state.update(ziel=ziel, gesetzt_am=_iso(jetzt),
                                grund=ergebnis["begruendung"], manuell_bis=None)
-            gefahren.append(eintrag["name"])
         else:
-            eintrag["hinweis"] = "Fahrbefehl abgelehnt"
-        ergebnis["rollos"].append(eintrag)
+            ergebnis["hinweis"] = "Fahrbefehl abgelehnt"
 
-    if gefahren:
-        ergebnis["schaltet"] = True
+    if ergebnis["gefahren"]:
         invertiert = bool(einstellungen.get("prozent_invertiert"))
         was = ("auf" if ziel >= 100 else "zu" if ziel <= 0
                else f"{100 - ziel if invertiert else ziel} %")
-        protokoll(raum["name"], was,
+        protokoll(ergebnis["name"], was,
                   ergebnis["begruendung"] + (" (Trockenlauf)" if trockenlauf else ""),
-                  ", ".join(gefahren),
-                  art="warnung" if trockenlauf else None)
+                  eid, art="warnung" if trockenlauf else None)
 
-    if punkt_zeit is not None and not aufgeschoben:
-        raum_state["letzter_punkt"] = _iso(punkt_zeit)
-    elif aufgeschoben:
-        # Der Punkt bleibt offen. Sobald das Hindernis weg ist, wird er
-        # nachgeholt – und zwar der dann *zuletzt fällige*, nicht dieser hier.
-        # Geht die Terrassentür erst morgens um drei zu, ist das immer noch
-        # „21:00 zu“; geht sie um neun zu, ist es „07:00 auf“.
-        ergebnis["aufgeschoben"] = True
-    raum_state["beschattet"] = bool(ergebnis["beschattet"])
-    raum_state["ziel"] = ziel
+    if punkt_zeit is not None:
+        rollo_state["letzter_punkt"] = _iso(punkt_zeit)
+    rollo_state["beschattet"] = bool(ergebnis["beschattet"])
+    rollo_state["ziel"] = ziel
 
 
-def _stellungen_erfassen(raum: dict, ergebnis: dict, index: dict, state: dict,
-                         jetzt: datetime) -> None:
-    """Ohne Schaltvorgang: nur nachsehen, wo die Rollos stehen.
+def _stellung_erfassen(rollo: dict, ergebnis: dict, index: dict, state: dict,
+                       jetzt: datetime, einstellungen: dict) -> None:
+    """Ohne Schaltvorgang: nur nachsehen, wo das Rollo steht.
 
     Dabei fällt der Handbetrieb auf – die einzige Stelle, an der er überhaupt
     erkannt werden kann, denn Home Assistant sagt nicht, wer gefahren ist.
     """
-    einstellungen_stunden = state.get("_manuell_stunden", 12.0)
-    for eid in raum.get("rollos") or []:
-        zustand = index.get(eid)
-        ist = ha_api.position_von(zustand)
-        eintrag = {"entity_id": eid, "ist": ist, "ziel": ergebnis.get("ziel"),
-                   "gefahren": False,
-                   "name": ((zustand.get("attributes") or {}).get("friendly_name")
-                            if zustand else eid) or eid}
-        rollo_state = state["rollos"].setdefault(eid, {})
-        gesetzt = _aus_iso(rollo_state.get("gesetzt_am"))
-        eigenes_ziel = rollo_state.get("ziel")
+    eid = rollo["entity_id"]
+    zustand = index.get(eid)
+    ist = ha_api.position_von(zustand)
+    rollo_state = state["rollos"].setdefault(eid, {})
+    gesetzt = _aus_iso(rollo_state.get("gesetzt_am"))
+    eigenes_ziel = rollo_state.get("ziel")
+    stunden = float(einstellungen.get("manuell_stunden", 12.0))
 
-        if (ist is not None and eigenes_ziel is not None
-                and abs(ist - int(eigenes_ziel)) > TOLERANZ
-                and gesetzt and jetzt - gesetzt > timedelta(minutes=FAHRZEIT_MIN)
-                and not ha_api.faehrt(zustand)):
-            if not rollo_state.get("manuell_bis"):
-                rollo_state["manuell_bis"] = _iso(
-                    jetzt + timedelta(hours=float(einstellungen_stunden)))
-            eintrag["hinweis"] = "von Hand gefahren"
-        ergebnis["rollos"].append(eintrag)
+    if (ist is not None and eigenes_ziel is not None
+            and abs(ist - int(eigenes_ziel)) > TOLERANZ
+            and gesetzt and jetzt - gesetzt > timedelta(minutes=FAHRZEIT_MIN)
+            and not ha_api.faehrt(zustand)):
+        if not rollo_state.get("manuell_bis"):
+            rollo_state["manuell_bis"] = _iso(jetzt + timedelta(hours=stunden))
+        ergebnis["hinweis"] = "von Hand gefahren"
+        ergebnis["zustand"] = "manuell"
 
 
 # ------------------------------------------------------------------ Takt ----
 
 def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
-    """Ein Durchlauf: alle Räume rechnen und, wo nötig, fahren.
+    """Ein Durchlauf: alle Rollos rechnen und, wo nötig, fahren.
 
     ``wachhund_haken`` bekommt die bereits geladenen Zustände gereicht. Ohne
     ihn müsste der Wächter ``/states`` ein zweites Mal abrufen – anderthalb
@@ -719,7 +646,7 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
     """
     einstellungen = config["einstellungen"]
     jetzt = _jetzt()
-    bericht = {"zeit": _iso(jetzt), "raeume": [], "stoerungen": []}
+    bericht = {"zeit": _iso(jetzt), "rollos": [], "stoerungen": []}
 
     if not ha_api.available():
         bericht["fehler"] = "Kein SUPERVISOR_TOKEN"
@@ -751,7 +678,6 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         state["urlaub_seit"] = None
 
     rauch, rauch_grund = _rauchsperre(einstellungen, index, state, jetzt)
-    state["_manuell_stunden"] = float(einstellungen.get("manuell_stunden", 12.0))
 
     elevation, azimut = sonnenstand.stand(jetzt)
     lage = {
@@ -769,15 +695,17 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
                       **eigene_zustaende(einstellungen, state)},
     }
 
-    for raum in config["raeume"]:
-        ergebnis = _raum_rechnen(raum, einstellungen, index, state, kalender,
-                                 sonnenstand, jetzt, lage)
+    plaene = {p["id"]: p for p in config.get("plaene") or []}
+
+    for rollo in config.get("rollos") or []:
+        ergebnis = _rollo_rechnen(rollo, einstellungen, index, state, kalender,
+                                  sonnenstand, jetzt, lage, plaene)
         try:
-            _rollos_stellen(raum, ergebnis, einstellungen, index, state, jetzt, protokoll)
-        except Exception as err:  # noqa: BLE001 – ein Raum darf die übrigen nicht mitreißen
-            _LOGGER.exception("Raum %s fehlgeschlagen", raum.get("name"))
+            _rollo_stellen(rollo, ergebnis, einstellungen, index, state, jetzt, protokoll)
+        except Exception as err:  # noqa: BLE001 – eines darf die übrigen nicht mitreißen
+            _LOGGER.exception("Rollo %s fehlgeschlagen", rollo.get("entity_id"))
             ergebnis["begruendung"] = f"Fehler: {err}"
-        bericht["raeume"].append(ergebnis)
+        bericht["rollos"].append(ergebnis)
 
     if wachhund_haken is not None:
         try:
@@ -785,27 +713,45 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         except Exception:  # noqa: BLE001 – der Wächter darf den Takt nicht kippen
             _LOGGER.exception("Wächter fehlgeschlagen")
 
-    # Welcher Schalter betrifft welche Räume? Ohne diese Auskunft sieht in der
-    # Karte jeder Schalter aus, als gehöre er dem Raum, in dessen Kachel er
+    # Welcher Schalter betrifft welche Rollos? Ohne diese Auskunft sieht in der
+    # Karte jeder Schalter aus, als gehöre er dem Rollo, in dessen Kachel er
     # steht – und wer „Obergeschoss schließen“ bei Nele ausschaltet, wundert
     # sich, warum es bei Luna auch verschwindet. Es ist derselbe Schalter.
     freigaben: dict[str, dict] = {}
-    for ergebnis in bericht["raeume"]:
+    for ergebnis in bericht["rollos"]:
         for helfer in ergebnis.get("helfer") or []:
             eintrag = freigaben.setdefault(helfer["entity_id"], {
                 **{k: v for k, v in helfer.items() if k != "wirkung"},
-                "wirkungen": [], "raeume": []})
-            eintrag["raeume"].append(ergebnis["name"])
+                "wirkungen": [], "rollos": [], "raeume": []})
+            eintrag["rollos"].append(ergebnis["name"])
+            raum = ergebnis.get("raum") or ""
+            if raum not in eintrag["raeume"]:
+                eintrag["raeume"].append(raum)
             if helfer["wirkung"] not in eintrag["wirkungen"]:
                 eintrag["wirkungen"].append(helfer["wirkung"])
     for eintrag in freigaben.values():
+        # Als „geteilt“ gilt, was **über einen Raum hinaus** wirkt. Dass ein
+        # Schalter beide Rollos in Lunas Zimmer betrifft, überrascht niemanden;
+        # dass derselbe Schalter auch bei Nele hängt, sehr wohl – und genau das
+        # gehört sichtbar nach oben, statt in beiden Kacheln als eigener
+        # Schalter aufzutreten.
         eintrag["geteilt"] = len(eintrag["raeume"]) > 1
-    # Und zurück an die Räume, damit die Kachel weiß, was sie zeigen darf.
-    for ergebnis in bericht["raeume"]:
+    for ergebnis in bericht["rollos"]:
         for helfer in ergebnis.get("helfer") or []:
             helfer["geteilt"] = freigaben[helfer["entity_id"]]["geteilt"]
 
+    # Die Zeitpläne mit ihrem Stand – für die Karte und die Übersicht.
+    plan_bericht = []
+    for plan in config.get("plaene") or []:
+        folger = [r for r in bericht["rollos"] if r.get("plan_id") == plan["id"]]
+        plan_bericht.append({
+            "id": plan["id"], "name": plan["name"], "aktiv": plan.get("aktiv", True),
+            "rollos": [r["name"] for r in folger],
+            "punkte": len(plan.get("zeitplan") or []),
+        })
+
     bericht.update({
+        "plaene": plan_bericht,
         "freigaben": sorted(freigaben.values(), key=lambda e: e["name"]),
         "prozent_invertiert": bool(einstellungen.get("prozent_invertiert")),
         "automatik": lage["automatik"],

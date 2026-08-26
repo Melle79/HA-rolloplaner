@@ -1,23 +1,39 @@
 # Rolloplaner
 
-Rollladensteuerung für Home Assistant: ein Zeitplan je Raum, der nach Uhrzeit
+Rollladensteuerung für Home Assistant: je Rollo ein Zeitplan, der nach Uhrzeit
 **oder** nach dem Stand der Sonne schaltet, dazu Hitzeschutz, Urlaubssimulation
 und eine Rauchsperre.
 
-Der Planer tritt an die Stelle einer Sammlung von Automationen und
-Hilfsschaltern. Der Unterschied ist nicht nur Ordnung: Ein Hilfsschalter war
-bisher eine **Bedingung** in einer Automation, die zu ihrer Uhrzeit lief. Wer
-ihn umlegte, bewegte nie ein Rollo – es passierte erst am nächsten Tag etwas,
-oder auch gar nichts. Beim Planer ist der Schalter der Zustand selbst.
+## Wie der Planer denkt
+
+**Die Steuereinheit ist das Rollo, nicht der Raum.** Das ist die Entscheidung,
+aus der alles Übrige folgt – und sie ergibt sich aus jedem Haus, in dem ein
+Zimmer ein Fenster *und* eine Balkontür hat. Wer den Raum steuert, kann die
+Balkontür nicht offen lassen, während das Fenster zufährt, und muss für jedes
+Rollo mit eigenem Regime einen Kunstraum erfinden.
+
+Jedes Rollo führt deshalb seine eigenen Angaben:
+
+* **was dahintersteckt** – Fenster, Balkontür, Terrassentür, Dachfenster, Haustür
+* **wohin es zeigt** – die Himmelsrichtung für den Hitzeschutz
+* **welcher Kontakt es sperrt** – damit niemand ausgesperrt wird
+* **was „offen“ und „zu“ heißen** – nicht jeder Antrieb fährt bis zum Anschlag
+
+Und es folgt einem **benannten Zeitplan**, den sich mehrere Rollos teilen –
+oder einem eigenen. Ein Zeitplan gehört keinem Raum, sondern allen, die ihm
+folgen.
+
+**Der Raum** kommt aus Home Assistant und steuert nichts. Er ordnet die
+Anzeige: Er ist der Ort, an dem man ein Rollo sucht.
 
 ## Einrichten
 
 1. Add-on starten. Es beginnt im **Trockenlauf**: Es rechnet, protokolliert –
    und fährt nichts. So lässt sich alles in Ruhe prüfen.
 2. Reiter **Einrichtung** öffnen. Der Planer liest `automations.yaml` und
-   schlägt vor, was er dort findet: Räume, Rollos, Schaltzeiten,
-   Freigabeschalter. Prüfen, abhaken, anlegen.
-3. Im Reiter **Übersicht** eine Weile mitlesen. Jeder Raum sagt, was er tun
+   schlägt vor, was er dort findet – je Rollo die Schaltzeiten, und für Rollos
+   mit gleichem Muster einen gemeinsamen Zeitplan. Prüfen, abhaken, anlegen.
+3. Im Reiter **Übersicht** eine Weile mitlesen. Jedes Rollo sagt, was es tun
    würde und warum.
 4. Wenn es stimmt: **Trockenlauf** in den Einstellungen ausschalten. Der
    Planer setzt den geltenden Stand dann sofort durch.
@@ -43,9 +59,9 @@ Sie gehören dem Planer: Er legt sie an, kennt ihren Stand (der einen Neustart
 Zeitplan an Helfern, die jemand vorher von Hand anlegen müsste – nach einer
 Neuinstallation gäbe es die nicht.
 
-In einem Zeitplan stehen sie als Bedingung („nur wenn …“) oder als
-Freigabeschalter eines Raumes. Beides taucht in der Lovelace-Karte beim Raum
-auf und lässt sich dort bedienen.
+In einem Zeitplan stehen sie als
+Bedingung an einem Schaltpunkt. Sie tauchen in der Lovelace-Karte bei dem Rollo
+auf, dessen Schaltpunkte an ihnen hängen, und lassen sich dort bedienen.
 
 Wer eine bestehende Einrichtung übernommen hat, findet unter *Schalter* den
 Knopf **Fremde Helfer ersetzen**: Der Planer legt für jeden benutzten
@@ -98,7 +114,7 @@ alles in der Zählweise von Home Assistant** – sonst stünde nach jedem
 Umschalten jeder Zeitplan auf dem Kopf. „auf“ und „zu“ bleiben ebenfalls, wie
 sie sind; die Wörter hängen nicht an der Zählweise, nur die Zahl dazwischen.
 
-Der Wert der Raum-Sensoren dreht sich mit. Wer in einer Automation eine
+Der Wert der Rollo-Sensoren dreht sich mit. Wer in einer Automation eine
 verlässliche Größe braucht, nimmt das Attribut `stellung_ha` – das behält immer
 die Zählweise von Home Assistant.
 
@@ -106,14 +122,16 @@ die Zählweise von Home Assistant.
 
 Der erste Treffer gewinnt:
 
+Gerechnet wird **je Rollo**:
+
 | Rang | Zustand | Was er bedeutet |
 | --- | --- | --- |
-| 1 | **aus** | Der Raum oder die Automatik ist abgeschaltet |
+| 1 | **aus** | Das Rollo oder die Automatik ist abgeschaltet |
 | 2 | **Rauchsperre** | Ein Melder schlägt an – der Planer fasst nichts an |
-| 3 | **gesperrt** | Der Freigabeschalter des Raumes ist aus |
+| 3 | **gesperrt** | Der Zeitplan, dem es folgt, ist stillgelegt |
 | 4 | **Fenster offen** | Ein Kontakt ist offen – es wird nicht zugefahren |
 | 5 | **Urlaub** | Urlaubsprogramm statt Zeitplan |
-| 6 | **Hitzeschutz** | Die Sonne steht im Fenster und es ist warm |
+| 6 | **Hitzeschutz** | Die Sonne steht in *diesem* Fenster und es ist warm |
 | 7 | **Handbetrieb** | Jemand hat von Hand gefahren |
 | 8 | **Zeitplan** | Der Normalfall |
 
@@ -139,9 +157,13 @@ abschalten.**
 ## Hitzeschutz
 
 Steht die Sonne im Fenster und ist es draußen warm, fährt das Rollo teilweise
-zu. Dafür braucht der Raum eine **Ausrichtung** – wohin das Fenster zeigt. Ohne
-sie bleibt der Hitzeschutz wirkungslos: Der Planer kann nicht raten, und ein
-geratener Wert verschattet zur falschen Tageszeit.
+zu. Dafür braucht **jedes Rollo** eine Ausrichtung – wohin sein Fenster zeigt.
+Das gehört ans Rollo und nicht an den Raum: Ein Zimmer kann ein Fenster nach
+Süden und eines nach Westen haben, und die wollen zu verschiedenen Tageszeiten
+verschattet werden.
+
+Ohne Ausrichtung bleibt der Hitzeschutz wirkungslos: Der Planer kann nicht
+raten, und ein geratener Wert verschattet zur falschen Tageszeit.
 
 Im Winter bleibt das Rollo offen, auch bei tiefstehender Sonne. Die wärmt kaum,
 und genau die will man haben.
@@ -204,8 +226,9 @@ eines, das zweimal am Tag fährt, meldet sich auch nur zweimal am Tag.
 | --- | --- |
 | `sensor.rolloplaner_status` | Gesamtlage, mit Sonnenzeiten und Außentemperatur als Attribute |
 | `sensor.rolloplaner_naechster_wechsel` | Der nächste Schaltpunkt im ganzen Haus, als fertiger Text |
-| `sensor.rolloplaner_raum_<name>` | Zielstellung des Raumes in Prozent, mit Begründung |
-| `switch.rolloplaner_raum_<name>_an` | Automatik dieses Raumes |
+| `sensor.rolloplaner_rollo_<name>` | Zielstellung dieses Rollos in Prozent, mit Begründung |
+| `switch.rolloplaner_rollo_<name>_an` | Automatik dieses Rollos |
+| `switch.rolloplaner_plan_<name>` | Automatik eines gemeinsamen Zeitplans |
 | `switch.rolloplaner_automatik` | Automatik insgesamt |
 | `switch.rolloplaner_beschattung` | Hitzeschutz |
 | `switch.rolloplaner_urlaubssimulation` | Urlaubssimulation |
@@ -214,18 +237,16 @@ eines, das zweimal am Tag fährt, meldet sich auch nur zweimal am Tag.
 
 ## Die Karte
 
-Je Raum eine Kachel: Raumname, die Stellung als Zahl – und ein **simulierter
-Rollladen**, der zeigt, wie weit der Panzer heruntersteht. Ein Balken sagt
+Je Rollo eine Kachel, nach Raum geordnet: Name, die Stellung als Zahl – und ein
+**simulierter Rollladen**, der zeigt, wie weit der Panzer heruntersteht. Ein Balken sagt
 „65 %“, aber nicht, ob das Rollo dabei oben oder unten ist; das Bild sagt es
 ohne Umweg, und beim Fahren läuft es sichtbar mit.
 
 Vor einer **Tür** sieht der Rollladen anders aus als vor einem **Fenster**: Die
 Tür reicht bis zur Bodenlinie hinunter und hat einen Flügelrahmen mit Griff,
-das Fenster hängt darüber in der Wand. Welches
-Bild ein Raum bekommt, entscheidet der Planer nach den Namen seiner Rollos –
-„Rollo Balkontür Luna“ ist eine Tür, „Rollo Küche“ ein Fenster. Ein Raum gilt
-nur dann als Tür, wenn *alle* seine Rollos welche sind. Überstimmen lässt sich
-das im Raum-Dialog unter *Stellungen → Anzeige zeichnet*.
+das Fenster hängt darüber in der Wand. Gezeichnet wird nach der **Art** des
+Rollos – die steht im Rollo-Dialog und wird beim Übernehmen aus dem Namen
+geraten.
 
 Das Add-on bringt seine Lovelace-Karte selbst mit; eine getrennte Installation
 über HACS ist nicht nötig. Beim Start wird sie nach `www/` kopiert und als
@@ -245,12 +266,13 @@ show_raeume: true
 show_naechster: true
 show_stoerungen: true
 show_helfer: true         # die Helfer, an denen die Schaltpunkte hängen
-allow_fahren: true        # Auf/Zu je Raum
-raeume: [Küche, Wohnzimmer]   # ohne Angabe: alle
+allow_fahren: true        # Auf/Zu je Rollo
+gruppieren: true          # nach Raum ordnen
+raeume: [Küche, Wohnzimmer]   # welche Räume – ohne Angabe: alle
 ```
 
-**Die Helfer je Raum**: Hängt ein Schaltpunkt an einem `input_boolean` oder
-einem `input_select`, zeigt die Karte ihn beim Raum an und lässt ihn dort
+**Die Helfer je Rollo**: Hängt ein Schaltpunkt an einem `input_boolean` oder
+einem `input_select`, zeigt die Karte ihn bei dem Rollo an und lässt ihn dort
 bedienen – als Chip mit Punkt für an/aus, als Auswahlliste bei mehreren
 Stellungen. So lässt sich „die Terrassentür heute mal offen lassen“ dort
 erledigen, wo man ohnehin hinsieht.
@@ -261,21 +283,21 @@ Schaltpunkten, an denen er hängt. „Öffnen Nele“ sagt nur, wie der Schalter
 heißt; „öffnen“ sagt, was ausfällt, wenn man ihn ausschaltet. Der volle Name
 steht im Tooltip.
 
-Ein Schalter, der **mehrere Räume** betrifft, steht nicht in deren Kacheln,
-sondern einmal oben unter *Gilt für mehrere Räume*. Sonst sähe er in jeder
-Kachel aus wie ein eigener – und wer ihn bei einem Raum ausschaltet, wundert
+Ein Schalter, der über **einen Raum hinaus** wirkt, steht nicht in den Kacheln,
+sondern einmal oben unter *Gilt für mehrere Rollos*. Sonst sähe er in jeder
+Kachel aus wie ein eigener – und wer ihn bei einem Rollo ausschaltet, wundert
 sich, warum er beim anderen auch weg ist. Es ist derselbe Schalter.
 
 Ist die Karte bereits aus einer anderen Quelle eingebunden (etwa HACS), legt
 das Add-on **nichts** an und schreibt nur einen Hinweis ins Protokoll: Zwei
 Registrierungen desselben Elements legen das Dashboard lahm.
 
-## „Warum fährt der Raum nicht?“
+## „Warum fährt das Rollo nicht?“
 
 Der Reiter **Einrichtung** hat unten eine Selbstauskunft. Sie beantwortet fast
-alle Fälle: fehlende Entitäten, Räume ohne Schaltpunkt, Rollos in zwei Räumen,
-Hitzeschutz ohne Ausrichtung – und ob noch alte Automationen mitlaufen, die
-gegen den Planer anfahren.
+alle Fälle: fehlende Entitäten, Rollos ohne Schaltpunkt, Hitzeschutz ohne
+Ausrichtung, **Türen ohne Kontakt**, stillgelegte Schaltpunkte – und ob noch
+alte Automationen mitlaufen, die gegen den Planer anfahren.
 
 Bleibt es unklar, hilft das **Protokoll**: Dort steht jede Fahrt mit ihrer
 Begründung. Nur Fahrten, keine Takte – so bleibt es lesbar.

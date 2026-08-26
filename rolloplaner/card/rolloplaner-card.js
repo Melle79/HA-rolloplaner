@@ -3,8 +3,10 @@
  * Minimale Konfiguration:
  *   type: custom:rolloplaner-card
  *
- * Die Karte findet ihre Räume selbst: Alles, was als `sensor.rolloplaner_raum_*`
- * in Home Assistant steht, taucht auf. Geschaltet wird über die Entitäten, die
+ * Die Karte findet ihre Rollos selbst: Alles, was als `sensor.rolloplaner_rollo_*`
+ * in Home Assistant steht, taucht auf – geordnet nach dem Raum, den das Add-on
+ * mitliefert. Der Raum steuert nichts; er ist nur der Ort, an dem man ein Rollo
+ * sucht. Geschaltet wird über die Entitäten, die
  * das Add-on per MQTT anlegt – die Karte kennt keine eigene Logik und keinen
  * eigenen Zustand.
  *
@@ -19,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "1.6.0";
+const CARD_VERSION = "2.0.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -32,6 +34,7 @@ const DEFAULTS = {
   show_helfer: true,        // die Helfer, an denen die Schaltpunkte hängen
   allow_fahren: true,
   raeume: null,             // null = alle, sonst Liste von Raumnamen
+  gruppieren: true,         // nach Raum ordnen
 };
 
 const FUNKTIONEN = [
@@ -49,6 +52,9 @@ const WIRKUNG = {
   raum: "alles",
 };
 
+// Welche Arten bis zum Boden gehen – die werden als Tür gezeichnet.
+const TUERARTEN = ["balkontuer", "terrassentuer", "haustuer"];
+
 const ZUSTAND_TEXT = {
   beschattung: "Hitzeschutz", urlaub: "Urlaub", rauch: "Rauchsperre",
   fenster: "Fenster offen", manuell: "Handbetrieb", aus: "aus",
@@ -62,7 +68,7 @@ function rollobild(position, art) {
   // heruntersteht, ist eine Tatsache und keine Frage der Beschriftung.
   const p = Number(position);
   const zu = Number.isNaN(p) ? 100 : Math.max(0, Math.min(100, 100 - p));
-  const tuer = art === "tuer";
+  const tuer = TUERARTEN.includes(art);
   return `<div class="bild"><div class="rollo ${tuer ? "tuer" : "fenster"}"
     style="--zu:${zu}%">
     ${tuer ? '<div class="fluegel"></div><div class="griff"></div>' : ""}
@@ -90,21 +96,21 @@ class RolloplanerCard extends HTMLElement {
     this._config = { ...DEFAULTS, ...config };
   }
 
-  getCardSize() { return 4 + (this._raeumeAnzahl || 0); }
+  getCardSize() { return 4 + (this._rolloAnzahl || 0); }
 
   static getStubConfig() { return { ...DEFAULTS }; }
 
   set hass(hass) {
     this._hass = hass;
     const status = hass.states["sensor.rolloplaner_status"];
-    const raeume = this._raeumeSammeln(hass);
-    this._raeumeAnzahl = raeume.length;
+    const rollos = this._rollosSammeln(hass);
+    this._rolloAnzahl = rollos.length;
     // Nur neu zeichnen, wenn sich wirklich etwas geändert hat – sonst klappt
     // jede Auswahlliste zu, während man noch darin liest.
     const signatur = JSON.stringify([
       status && status.state,
       FUNKTIONEN.map(([e]) => hass.states[e] && hass.states[e].state),
-      raeume.map((r) => [r.sensor.state, r.sensor.attributes.zustand,
+      rollos.map((r) => [r.sensor.state, r.sensor.attributes.zustand,
                          r.sensor.attributes.prozent_invertiert,
                          r.sensor.attributes.begruendung,
                          r.sensor.attributes.naechste_uhrzeit,
@@ -121,13 +127,13 @@ class RolloplanerCard extends HTMLElement {
     ]);
     if (signatur === this._signatur) return;
     this._signatur = signatur;
-    this._render(status, raeume);
+    this._render(status, rollos);
   }
 
-  _raeumeSammeln(hass) {
+  _rollosSammeln(hass) {
     const gewuenscht = this._config.raeume;
     return Object.keys(hass.states)
-      .filter((e) => e.startsWith("sensor.rolloplaner_raum_"))
+      .filter((e) => e.startsWith("sensor.rolloplaner_rollo_"))
       .map((e) => {
         const sensor = hass.states[e];
         const schalterId = e.replace(/^sensor\./, "switch.") + "_an";
@@ -138,12 +144,14 @@ class RolloplanerCard extends HTMLElement {
           // Zeile zweimal dasselbe.
           name: (sensor.attributes.friendly_name || e)
             .replace(/^Rolloplaner\s+/, "").replace(/^Rollo\s+/, ""),
+          raum: sensor.attributes.raum || "",
           sensor,
           schalter: hass.states[schalterId] || null,
         };
       })
-      .filter((r) => !gewuenscht || gewuenscht.includes(r.name))
-      .sort((a, b) => a.name.localeCompare(b.name, "de"));
+      .filter((r) => !gewuenscht || gewuenscht.includes(r.raum))
+      .sort((a, b) => (a.raum || "").localeCompare(b.raum || "", "de")
+                      || a.name.localeCompare(b.name, "de"));
   }
 
   // ------------------------------------------------------------- Bedienen ---
@@ -158,18 +166,18 @@ class RolloplanerCard extends HTMLElement {
       { entity_id: entityId, option });
   }
 
-  _fahrbefehl(raumId, position) {
-    // Der Raum wird über seine ID angesprochen, nicht über den Namen: Ein
-    // umbenannter Raum behält seine ID, und die Karte muss nicht raten.
+  _fahrbefehl(cover, position) {
+    // Angesprochen wird die Entität des Rollos – sie ist der Schlüssel, unter
+    // dem der Planer es führt.
     this._hass.callService("mqtt", "publish", {
       topic: "rolloplaner/cmd",
-      payload: JSON.stringify({ befehl: "fahren", raum: raumId, position }),
+      payload: JSON.stringify({ befehl: "fahren", rollo: cover, position }),
     });
   }
 
   // -------------------------------------------------------------- Zeichnen ---
 
-  _render(status, raeume) {
+  _render(status, rollos) {
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
     const c = this._config;
 
@@ -245,22 +253,37 @@ class RolloplanerCard extends HTMLElement {
       const geteilt = (a.freigaben || []).filter((f) => this._hass.states[f.entity_id]);
       if (geteilt.length) {
         freigabenHtml = `<div class="freigaben">
-          <div class="f-titel">Gilt für mehrere Räume</div>
+          <div class="f-titel">Gilt für mehrere Rollos</div>
           <div class="f-liste">${geteilt.map((f) => this._chip(f, true)).join("")}</div>
         </div>`;
       }
     }
 
-    let raumHtml = "";
+    let rolloHtml = "";
     if (c.show_raeume) {
-      raumHtml = raeume.length
-        ? `<div class="raeume">${raeume.map((r) => this._raum(r)).join("")}</div>`
-        : `<div class="rand"><div class="leer">Noch kein Raum eingerichtet.</div></div>`;
+      if (!rollos.length) {
+        rolloHtml = `<div class="rand"><div class="leer">Noch kein Rollo eingerichtet.</div></div>`;
+      } else if (c.gruppieren) {
+        // Ein durchgehendes Raster mit Raumüberschriften darin: Ein eigenes
+        // Raster je Raum ließe die Kachel eines Einzelrollos über die ganze
+        // Breite laufen.
+        const nachRaum = new Map();
+        rollos.forEach((r) => {
+          const raum = r.raum || "Ohne Bereich";
+          if (!nachRaum.has(raum)) nachRaum.set(raum, []);
+          nachRaum.get(raum).push(r);
+        });
+        rolloHtml = `<div class="raeume">${[...nachRaum].map(([raum, liste]) =>
+          `<div class="raumtitel">${this._esc(raum)}</div>`
+          + liste.map((r) => this._rollo(r)).join("")).join("")}</div>`;
+      } else {
+        rolloHtml = `<div class="raeume">${rollos.map((r) => this._rollo(r)).join("")}</div>`;
+      }
     }
 
     this.shadowRoot.innerHTML = `<ha-card>
       <div class="rand">${kopf}${warnung}${funktionen}${naechsterHtml}${freigabenHtml}</div>
-      ${raumHtml}
+      ${rolloHtml}
     </ha-card>${this._stil()}`;
 
     this.shadowRoot.querySelectorAll("[data-schalter]").forEach((el) =>
@@ -274,7 +297,7 @@ class RolloplanerCard extends HTMLElement {
         this._auswaehlen(el.dataset.auswahl, el.value)));
   }
 
-  _raum(r) {
+  _rollo(r) {
     const c = this._config;
     const attrs = r.sensor.attributes || {};
     const zustand = attrs.zustand || "plan";
@@ -291,10 +314,10 @@ class RolloplanerCard extends HTMLElement {
       ? `dann ${stellungstext(attrs.naechste_stellung, inv)} um ${this._esc(attrs.naechste_uhrzeit)} Uhr`
       : "";
 
-    const knoepfe = c.allow_fahren && attrs.raum_id ? `
-      <button class="tipp" data-fahren="${attrs.raum_id}" data-position="100"
+    const knoepfe = c.allow_fahren && attrs.cover ? `
+      <button class="tipp" data-fahren="${attrs.cover}" data-position="100"
               title="öffnen"><ha-icon icon="mdi:arrow-up"></ha-icon></button>
-      <button class="tipp" data-fahren="${attrs.raum_id}" data-position="0"
+      <button class="tipp" data-fahren="${attrs.cover}" data-position="0"
               title="schließen"><ha-icon icon="mdi:arrow-down"></ha-icon></button>` : "";
     const kippe = r.schalter ? `<button class="tipp ${an ? "an" : ""}"
         data-schalter="${r.schalter.entity_id}" data-an="${an ? "0" : "1"}"
@@ -307,7 +330,7 @@ class RolloplanerCard extends HTMLElement {
     return `<div class="raum ${an ? "" : "ruht"}">
       <div class="z1">
         ${rollobild(attrs.stellung_ha === null || attrs.stellung_ha === undefined
-                    ? r.sensor.state : attrs.stellung_ha, attrs.bildart)}
+                    ? r.sensor.state : attrs.stellung_ha, attrs.art)}
         <div class="z1-text">
           <div class="namenzeile">
             <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>${schild}
@@ -321,7 +344,8 @@ class RolloplanerCard extends HTMLElement {
       </div>
       ${c.show_helfer ? this._helfer(attrs.helfer || []) : ""}
       <div class="z3">
-        <span class="dann">${dann}</span>
+        <span class="dann">${attrs.zeitplan
+          ? `<span class="planschild">${this._esc(attrs.zeitplan)}</span> ` : ""}${dann}</span>
         <span class="knoepfe">${knoepfe}${kippe}</span>
       </div>
     </div>`;
@@ -336,8 +360,8 @@ class RolloplanerCard extends HTMLElement {
     if (!zustand) return "";
     const wirkungen = h.wirkungen || [h.wirkung];
     const wirkungstext = wirkungen.map((w) => WIRKUNG[w] || w).join(" und ");
-    const raeume = h.raeume ? `\n${h.raeume.join(", ")}` : "";
-    const titel = `${h.name} – gibt ${wirkungstext} frei${raeume}\n${h.entity_id}`;
+    const betrifft = h.rollos ? `\n${h.rollos.join(", ")}` : "";
+    const titel = `${h.name} – gibt ${wirkungstext} frei${betrifft}\n${h.entity_id}`;
 
     if (h.optionen && h.optionen.length) {
       // In der Kachel steht die Wirkung, oben der Name: „Terrassentür
@@ -448,6 +472,13 @@ class RolloplanerCard extends HTMLElement {
       .f-titel{font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
         color:var(--secondary-text-color); opacity:.8; margin-bottom:6px}
       .f-liste{display:flex; gap:5px; flex-wrap:wrap; align-items:center}
+      .raumtitel{grid-column:1/-1; font-size:.68rem; letter-spacing:.09em;
+        text-transform:uppercase; color:var(--secondary-text-color); opacity:.85;
+        font-weight:600; padding:6px 0 3px; border-bottom:1px solid var(--divider-color)}
+      .raumtitel:first-child{padding-top:0}
+      .planschild{display:inline-block; padding:0 6px; border-radius:12px;
+        background:rgba(127,127,127,.2); color:var(--secondary-text-color);
+        font-size:.68rem; font-weight:600}
 
       /* ── Ein Chip, ein Aussehen – oben wie in der Kachel ── */
       .chip{display:inline-flex; align-items:center; gap:5px; cursor:pointer;

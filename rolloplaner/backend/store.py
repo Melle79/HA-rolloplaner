@@ -1,4 +1,16 @@
-"""Persistenz: Konfiguration (Räume, Zeitpläne, Einstellungen) und Laufzeitzustand.
+"""Persistenz: Konfiguration (Rollos, Zeitpläne, Einstellungen) und Laufzeitzustand.
+
+**Die Steuereinheit ist das Rollo, nicht der Raum.** Das ist der Kern des
+Modells, und er ergibt sich aus dem Haus: Luna hat ein Fenster und eine
+Balkontür, das Schlafzimmer ebenso, das Wohnzimmer zwei Fenster und eine
+Terrassentür. Wer den Raum steuert, kann die Balkontür nicht offen lassen,
+während das Fenster zufährt – und muss für jedes Rollo mit eigenem Regime
+einen Kunstraum erfinden.
+
+Jedes Rollo führt deshalb seine eigenen Angaben: was es ist (Fenster, Balkon-
+oder Terrassentür), wohin es zeigt, welcher Kontakt es sperrt. Und es folgt
+einem **benannten Zeitplan**, den sich mehrere Rollos teilen – oder einem
+eigenen. Der Raum kommt aus Home Assistant und ordnet nur die Anzeige.
 
 Drei Dateien unter ``/data``:
 
@@ -47,9 +59,19 @@ BETRIEBSARTEN = ["plan", "nur_schliessen", "beobachten"]
 
 ZUSTAENDE = ["an", "aus"]
 
-# Was die Anzeige zeichnet. „auto“ entscheidet nach den Namen der Rollos –
-# ein „Rollo Balkontür Luna“ ist eine Tür, ein „Rollo Küche“ ein Fenster.
-BILDARTEN = ["auto", "fenster", "tuer"]
+# Was hinter dem Rollladen steckt. Das ist keine Frage der Optik: Eine
+# Balkontür braucht eine Fenstersperre (wer draußen steht, will nicht
+# ausgesperrt werden), ein Dachfenster hat eine andere Sonnenbahn, und in der
+# Anzeige sieht eine Tür anders aus als ein Fenster.
+ARTEN = {
+    "fenster": "Fenster",
+    "balkontuer": "Balkontür",
+    "terrassentuer": "Terrassentür",
+    "dachfenster": "Dachfenster",
+    "haustuer": "Haustür",
+}
+# Welche davon bis zum Boden gehen – die Anzeige zeichnet sie als Tür.
+TUERARTEN = ("balkontuer", "terrassentuer", "haustuer")
 
 # Die eigenen Schalter des Planers. Ein Add-on, das fremde `input_boolean`
 # voraussetzt, ist nach einer Neuinstallation nutzlos: Dort gibt es keine.
@@ -159,34 +181,45 @@ STANDARD_EINSTELLUNGEN = {
     },
 }
 
-STANDARD_RAUM = {
-    "name": "Neuer Raum",
+STANDARD_PLAN = {
+    "name": "Neuer Zeitplan",
+    "aktiv": True,
+    "zeitplan": [],
+}
+
+STANDARD_ROLLO = {
+    # Die Entität ist der Schlüssel: Ein Rollo ist genau ein `cover.`.
+    "entity_id": "",
+    "name": "",                # leer = der Name aus Home Assistant
+    "raum": "",                # aus dem Bereich; nur zum Ordnen der Anzeige
+    "art": "fenster",
     "aktiv": True,
     "betriebsart": "plan",
-    "rollos": [],
-    "freigabe_entity": "",     # leer = der Raum ist immer freigegeben
-    "fenster": [],             # Kontakte, die das Zufahren sperren
+    # Welchem benannten Zeitplan das Rollo folgt. Leer = es hat einen eigenen.
+    "plan": "",
+    "zeitplan": [],
+    # Hitzeschutz gehört ans Rollo, nicht an den Raum: Ein Zimmer kann ein
+    # Fenster nach Süden und eines nach Westen haben, und die wollen zu
+    # verschiedenen Tageszeiten verschattet werden.
+    "ausrichtung": None,
+    "oeffnungswinkel": 90,
+    "beschattung": False,
+    "beschattung_position": None,
+    "raumtemp": "",
+    "raumtemp_ab": None,
+    # Kontakte, die das Zufahren sperren. An einer Balkontür ist das kein
+    # Zubehör, sondern der Unterschied zwischen „zu“ und „ausgesperrt“.
+    "fenster": [],
     "praesenz": [],
     "personen": [],
-    # Hitzeschutz je Raum. Ohne Ausrichtung bleibt er aus: Der Planer kann
-    # nicht erraten, wohin ein Fenster zeigt, und ein geratener Wert
-    # verschattet zur falschen Tageszeit.
-    "ausrichtung": None,       # Grad, 0 = Nord, 180 = Süd
-    "oeffnungswinkel": 90,     # ± um die Ausrichtung, in dem die Sonne zählt
-    "beschattung": False,
-    "beschattung_position": None,   # None = die globale Vorgabe
-    "raumtemp": "",            # optional: erst beschatten, wenn es drinnen warm ist
-    "raumtemp_ab": None,
     "urlaub_simulation": True,
     "position_offen": 100,
     "position_zu": 0,
-    "bildart": "auto",
-    "zeitplan": [],
 }
 
 
 def _leer_config() -> dict:
-    return {"einstellungen": dict(STANDARD_EINSTELLUNGEN), "raeume": []}
+    return {"einstellungen": dict(STANDARD_EINSTELLUNGEN), "plaene": [], "rollos": []}
 
 
 # ------------------------------------------------------------------- I/O ----
@@ -233,8 +266,32 @@ def load_config() -> dict:
         return _leer_config()
     return {
         "einstellungen": _merge(STANDARD_EINSTELLUNGEN, roh.get("einstellungen") or {}),
-        "raeume": [_merge(STANDARD_RAUM, r) for r in (roh.get("raeume") or [])],
+        "plaene": [_merge(STANDARD_PLAN, p) for p in (roh.get("plaene") or [])],
+        "rollos": [_merge(STANDARD_ROLLO, r) for r in (roh.get("rollos") or [])],
     }
+
+
+def ist_alte_konfiguration() -> bool:
+    """Steckt in ``config.json`` noch das raumzentrierte Modell?
+
+    Bis Fassung 1.6 war der Raum die Steuereinheit. Diese Konfiguration lässt
+    sich nicht sinnvoll weiterverwenden – ein Raum mit drei Rollos wusste
+    nicht, welches davon eine Terrassentür ist.
+    """
+    with _lock:
+        roh = _read(CONFIG_FILE, None)
+    return bool(roh) and bool(roh.get("raeume")) and not roh.get("rollos")
+
+
+def alte_konfiguration_sichern() -> str | None:
+    """Die alte Konfiguration beiseitelegen, bevor neu eingerichtet wird."""
+    with _lock:
+        roh = _read(CONFIG_FILE, None)
+        if not roh:
+            return None
+        ziel = os.path.join(DATA_DIR, "config-vor-umbau.json")
+        _write(ziel, roh)
+    return ziel
 
 
 def save_config(config: dict) -> dict:
@@ -354,23 +411,43 @@ def validate_zeitplan(zeitplan) -> list[dict]:
     return out
 
 
-def validate_raum(raum: dict, vorhandene_id: str | None = None) -> dict:
-    if not isinstance(raum, dict):
-        raise ValidationError("Raum: Objekt erwartet")
-    name = str(raum.get("name") or "").strip()[:60]
+def validate_plan(plan: dict, vorhandene_id: str | None = None) -> dict:
+    """Ein benannter Zeitplan, den sich mehrere Rollos teilen können."""
+    if not isinstance(plan, dict):
+        raise ValidationError("Zeitplan: Objekt erwartet")
+    name = str(plan.get("name") or "").strip()[:60]
     if not name:
-        raise ValidationError("Der Raum braucht einen Namen")
+        raise ValidationError("Der Zeitplan braucht einen Namen")
+    return {
+        "id": vorhandene_id or str(plan.get("id") or "").strip() or uuid.uuid4().hex[:8],
+        "name": name,
+        "aktiv": bool(plan.get("aktiv", True)),
+        "zeitplan": validate_zeitplan(plan.get("zeitplan") or []),
+    }
 
-    rollos = [str(e).strip() for e in (raum.get("rollos") or []) if str(e).strip()]
-    for eid in rollos:
-        if not eid.startswith("cover."):
-            raise ValidationError(f"{eid} ist kein Rollladen")
 
-    betriebsart = str(raum.get("betriebsart") or "plan").strip()
+def validate_rollo(rollo: dict) -> dict:
+    """Ein Rollo mit allem, was nur es betrifft.
+
+    Der Schlüssel ist die Entität, nicht eine erfundene ID: Ein Rollo *ist*
+    sein ``cover.`` – es kann nicht zweimal vorkommen, und wer es in Home
+    Assistant umbenennt, hat immer noch dasselbe Rollo.
+    """
+    if not isinstance(rollo, dict):
+        raise ValidationError("Rollo: Objekt erwartet")
+    entity_id = str(rollo.get("entity_id") or "").strip()
+    if not entity_id.startswith("cover."):
+        raise ValidationError(f"{entity_id or '(leer)'} ist kein Rollladen")
+
+    art = str(rollo.get("art") or "fenster").strip()
+    if art not in ARTEN:
+        raise ValidationError(f"Unbekannte Art {art!r}")
+
+    betriebsart = str(rollo.get("betriebsart") or "plan").strip()
     if betriebsart not in BETRIEBSARTEN:
         raise ValidationError(f"Unbekannte Betriebsart {betriebsart!r}")
 
-    ausrichtung = raum.get("ausrichtung")
+    ausrichtung = rollo.get("ausrichtung")
     if ausrichtung in (None, "", "null"):
         ausrichtung = None
     elif isinstance(ausrichtung, str) and ausrichtung.lower() in HIMMELSRICHTUNGEN:
@@ -378,47 +455,45 @@ def validate_raum(raum: dict, vorhandene_id: str | None = None) -> dict:
     else:
         ausrichtung = int(_zahl(ausrichtung, "Ausrichtung", 0, 359))
 
-    raumtemp_ab = raum.get("raumtemp_ab")
+    raumtemp_ab = rollo.get("raumtemp_ab")
     raumtemp_ab = (None if raumtemp_ab in (None, "", "null")
                    else _zahl(raumtemp_ab, "Raumtemperatur-Schwelle", 10.0, 40.0))
 
-    beschattung_position = raum.get("beschattung_position")
+    beschattung_position = rollo.get("beschattung_position")
     beschattung_position = (None if beschattung_position in (None, "", "null")
                             else _position(beschattung_position, "Beschattungsstellung"))
 
-    bildart = str(raum.get("bildart") or "auto").strip()
-    if bildart not in BILDARTEN:
-        raise ValidationError(f"Unbekannte Darstellung {bildart!r}")
-
-    offen = _position(raum.get("position_offen", 100), "Stellung offen")
-    zu = _position(raum.get("position_zu", 0), "Stellung zu")
+    offen = _position(rollo.get("position_offen", 100), "Stellung offen")
+    zu = _position(rollo.get("position_zu", 0), "Stellung zu")
     if offen <= zu:
         raise ValidationError("„Offen“ muss über „Zu“ liegen")
 
+    plan = str(rollo.get("plan") or "").strip()
+    # Entweder es folgt einem Plan, oder es hat einen eigenen – nicht beides.
+    eigener = [] if plan else validate_zeitplan(rollo.get("zeitplan") or [])
+
     return {
-        "id": vorhandene_id or uuid.uuid4().hex[:8],
-        "name": name,
-        "aktiv": bool(raum.get("aktiv", True)),
+        "entity_id": entity_id,
+        "name": str(rollo.get("name") or "").strip()[:60],
+        "raum": str(rollo.get("raum") or "").strip()[:60],
+        "art": art,
+        "aktiv": bool(rollo.get("aktiv", True)),
         "betriebsart": betriebsart,
-        "rollos": rollos,
-        "freigabe_entity": str(raum.get("freigabe_entity") or "").strip(),
-        "fenster": [str(e).strip() for e in (raum.get("fenster") or []) if str(e).strip()],
-        "praesenz": [str(e).strip() for e in (raum.get("praesenz") or []) if str(e).strip()],
-        "personen": [str(e).strip() for e in (raum.get("personen") or []) if str(e).strip()],
+        "plan": plan,
+        "zeitplan": eigener,
         "ausrichtung": ausrichtung,
-        "oeffnungswinkel": int(_zahl(raum.get("oeffnungswinkel", 90),
+        "oeffnungswinkel": int(_zahl(rollo.get("oeffnungswinkel", 90),
                                      "Öffnungswinkel", 10, 180)),
-        # Ohne Ausrichtung kann der Hitzeschutz nicht rechnen – dann bleibt er
-        # aus, auch wenn das Häkchen gesetzt ist.
-        "beschattung": bool(raum.get("beschattung", False)) and ausrichtung is not None,
+        "beschattung": bool(rollo.get("beschattung", False)) and ausrichtung is not None,
         "beschattung_position": beschattung_position,
-        "raumtemp": str(raum.get("raumtemp") or "").strip(),
+        "raumtemp": str(rollo.get("raumtemp") or "").strip(),
         "raumtemp_ab": raumtemp_ab,
-        "urlaub_simulation": bool(raum.get("urlaub_simulation", True)),
+        "fenster": [str(e).strip() for e in (rollo.get("fenster") or []) if str(e).strip()],
+        "praesenz": [str(e).strip() for e in (rollo.get("praesenz") or []) if str(e).strip()],
+        "personen": [str(e).strip() for e in (rollo.get("personen") or []) if str(e).strip()],
+        "urlaub_simulation": bool(rollo.get("urlaub_simulation", True)),
         "position_offen": offen,
         "position_zu": zu,
-        "bildart": bildart,
-        "zeitplan": validate_zeitplan(raum.get("zeitplan") or []),
     }
 
 
@@ -525,35 +600,109 @@ def validate_schalter(roh) -> list[dict]:
     return out
 
 
-# ------------------------------------------------------------- Raum-CRUD ----
+# ------------------------------------------------------------------ CRUD ----
 
-def add_raum(raum: dict) -> dict:
+def rollos_setzen(rollos: list) -> list[dict]:
+    """Die ganze Rolloliste auf einmal – ein Rollo kommt nur einmal vor."""
     config = load_config()
-    neu = validate_raum(raum)
-    config["raeume"].append(neu)
+    gesehen, out = set(), []
+    for roh in rollos or []:
+        eintrag = validate_rollo(roh)
+        if eintrag["entity_id"] in gesehen:
+            raise ValidationError(f"{eintrag['entity_id']} steht doppelt in der Liste")
+        gesehen.add(eintrag["entity_id"])
+        out.append(eintrag)
+    _plaene_pruefen(out, config["plaene"])
+    config["rollos"] = out
+    save_config(config)
+    return out
+
+
+def update_rollo(entity_id: str, rollo: dict) -> dict:
+    config = load_config()
+    for i, vorhanden in enumerate(config["rollos"]):
+        if vorhanden["entity_id"] == entity_id:
+            neu = validate_rollo({**rollo, "entity_id": entity_id})
+            _plaene_pruefen([neu], config["plaene"])
+            config["rollos"][i] = neu
+            save_config(config)
+            return neu
+    raise ValidationError("Rollo nicht gefunden")
+
+
+def add_rollo(rollo: dict) -> dict:
+    config = load_config()
+    neu = validate_rollo(rollo)
+    if any(r["entity_id"] == neu["entity_id"] for r in config["rollos"]):
+        raise ValidationError(f"{neu['entity_id']} ist schon eingerichtet")
+    _plaene_pruefen([neu], config["plaene"])
+    config["rollos"].append(neu)
     save_config(config)
     return neu
 
 
-def update_raum(raum_id: str, raum: dict) -> dict:
+def delete_rollo(entity_id: str) -> bool:
     config = load_config()
-    for i, vorhanden in enumerate(config["raeume"]):
-        if vorhanden.get("id") == raum_id:
-            neu = validate_raum(raum, vorhandene_id=raum_id)
-            config["raeume"][i] = neu
-            save_config(config)
-            return neu
-    raise ValidationError("Raum nicht gefunden")
-
-
-def delete_raum(raum_id: str) -> bool:
-    config = load_config()
-    vorher = len(config["raeume"])
-    config["raeume"] = [r for r in config["raeume"] if r.get("id") != raum_id]
-    if len(config["raeume"]) == vorher:
+    vorher = len(config["rollos"])
+    config["rollos"] = [r for r in config["rollos"] if r["entity_id"] != entity_id]
+    if len(config["rollos"]) == vorher:
         return False
     save_config(config)
     return True
+
+
+def _plaene_pruefen(rollos: list[dict], plaene: list[dict]) -> None:
+    """Zeigt jedes Rollo auf einen Zeitplan, den es gibt?
+
+    Ein Rollo, das einem gelöschten Plan folgt, hätte gar keinen – und stünde
+    still, ohne dass man ihm das ansieht.
+    """
+    vorhanden = {p["id"] for p in plaene}
+    for rollo in rollos:
+        if rollo["plan"] and rollo["plan"] not in vorhanden:
+            raise ValidationError(
+                f"{rollo['entity_id']}: den Zeitplan gibt es nicht")
+
+
+def add_plan(plan: dict) -> dict:
+    config = load_config()
+    neu = validate_plan(plan)
+    config["plaene"].append(neu)
+    save_config(config)
+    return neu
+
+
+def update_plan(plan_id: str, plan: dict) -> dict:
+    config = load_config()
+    for i, vorhanden in enumerate(config["plaene"]):
+        if vorhanden["id"] == plan_id:
+            config["plaene"][i] = validate_plan(plan, vorhandene_id=plan_id)
+            save_config(config)
+            return config["plaene"][i]
+    raise ValidationError("Zeitplan nicht gefunden")
+
+
+def delete_plan(plan_id: str) -> bool:
+    """Einen Zeitplan löschen – aber nicht, solange ihm ein Rollo folgt."""
+    config = load_config()
+    folgen = [r["entity_id"] for r in config["rollos"] if r["plan"] == plan_id]
+    if folgen:
+        raise ValidationError("Diesem Zeitplan folgen noch: " + ", ".join(folgen))
+    vorher = len(config["plaene"])
+    config["plaene"] = [p for p in config["plaene"] if p["id"] != plan_id]
+    if len(config["plaene"]) == vorher:
+        return False
+    save_config(config)
+    return True
+
+
+def plaene_setzen(plaene: list) -> list[dict]:
+    config = load_config()
+    out = [validate_plan(p) for p in plaene or []]
+    _plaene_pruefen(config["rollos"], out)
+    config["plaene"] = out
+    save_config(config)
+    return out
 
 
 def update_einstellungen(roh: dict) -> dict:
@@ -571,11 +720,14 @@ def load_state() -> dict:
         state = _read(STATE_FILE, None)
     if not isinstance(state, dict):
         state = {}
-    # entity_id -> {ziel, gesetzt_am, ausloeser, gemeldet}
+    # entity_id -> {ziel, gesetzt_am, grund, manuell_bis,
+    #               letzter_punkt, beschattet}
+    # Alles am Rollo: Der zuletzt ausgeführte Schaltpunkt gehört zum Rollo und
+    # nicht zum Plan – zwei Rollos am selben Plan können verschieden weit sein,
+    # wenn eines wegen offener Tür übergangen wurde.
     state.setdefault("rollos", {})
-    # raum_id -> {letzter_punkt, beschattet, manuell_bis}
-    state.setdefault("raeume", {})
-    state.setdefault("veroeffentlichte_raeume", [])
+    state.setdefault("veroeffentlichte_rollos", [])
+    state.setdefault("veroeffentlichte_plaene", [])
     state.setdefault("stoerungen", {})
     state.setdefault("rauch_bis", None)
     # Tagesversatz der Urlaubssimulation: je Raum und Schaltpunkt eine Zahl,

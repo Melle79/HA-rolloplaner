@@ -236,42 +236,95 @@ def test_falten_laesst_verschiedene_bedingungen_stehen():
     assert len(uebernahme._falten(plan)) == 2
 
 
-def test_freigabe_wird_nur_hochgezogen_wenn_alle_sie_teilen():
-    gemeinsam = {"zeitplan": [
-        {"wenn": [{"entity": "input_boolean.a", "wert": "on"}], "position": 100},
-        {"wenn": [{"entity": "input_boolean.a", "wert": "on"}], "position": 0}],
-        "freigabe_entity": ""}
-    uebernahme._freigabe_hochziehen(gemeinsam)
-    assert gemeinsam["freigabe_entity"] == "input_boolean.a"
-    assert gemeinsam["zeitplan"][0]["wenn"] == []
+def test_gleiche_muster_teilen_sich_einen_plan():
+    """Zwei Rollos, die identisch fahren, bekommen einen gemeinsamen Zeitplan –
+    ein einzelnes behält seinen eigenen. Ein benannter Plan mit einem Folger
+    wäre nur ein Umweg."""
+    def punkte(uhr):
+        return [{"ausloeser": "uhrzeit", "start": uhr, "position": 100,
+                 "gilt": "immer", "tage": zeitplan.ALLE, "versatz_min": 0,
+                 "frueh": "", "spaet": "", "wenn": []}]
 
-    getrennt = {"zeitplan": [
-        {"wenn": [{"entity": "input_boolean.oeffner", "wert": "on"}], "position": 100},
-        {"wenn": [{"entity": "input_boolean.schliesser", "wert": "on"}], "position": 0}],
-        "freigabe_entity": ""}
-    uebernahme._freigabe_hochziehen(getrennt)
-    assert getrennt["freigabe_entity"] == ""
-    assert getrennt["zeitplan"][0]["wenn"]
+    je_rollo = {
+        "cover.a": {"zeitplan": punkte("07:00"), "quellen": [], "hinweise": []},
+        "cover.b": {"zeitplan": punkte("07:00"), "quellen": [], "hinweise": []},
+        "cover.c": {"zeitplan": punkte("09:00"), "quellen": [], "hinweise": []},
+    }
+    bereiche = {"cover.a": "Küche", "cover.b": "Küche", "cover.c": "Bad"}
+    cover = [{"entity_id": e, "name": e} for e in je_rollo]
+    rollos, plaene = uebernahme._zu_plaenen(je_rollo, bereiche, cover)
+
+    assert len(plaene) == 1, "a und b teilen sich einen Plan, c nicht"
+    assert plaene[0]["name"] == "Küche"
+    nach_id = {r["entity_id"]: r for r in rollos}
+    assert nach_id["cover.a"]["plan"] == nach_id["cover.b"]["plan"] == plaene[0]["id"]
+    assert nach_id["cover.c"]["plan"] == ""
+    assert len(nach_id["cover.c"]["zeitplan"]) == 1
+
+
+def test_rollo_ohne_automation_kommt_trotzdem_mit():
+    """Sonst fehlten die beiden Schlafzimmer-Rollos stillschweigend – sie
+    fahren heute nur bei Rauch und im Urlaub."""
+    cover = [{"entity_id": "cover.ohne", "name": "Rollo ohne Plan"}]
+    rollos, plaene = uebernahme._zu_plaenen({}, {"cover.ohne": "Bad"}, cover)
+    assert len(rollos) == 1 and rollos[0]["zeitplan"] == []
+    assert rollos[0]["hinweise"], "das muss auffallen"
 
 
 # ------------------------------------------------------------------ Store ----
 
-def test_raum_ohne_ausrichtung_beschattet_nicht():
-    raum = store.validate_raum({"name": "Test", "beschattung": True, "ausrichtung": None})
-    assert raum["beschattung"] is False
+def test_rollo_ohne_ausrichtung_beschattet_nicht():
+    rollo = store.validate_rollo({"entity_id": "cover.x", "beschattung": True,
+                                  "ausrichtung": None})
+    assert rollo["beschattung"] is False
 
 
 def test_himmelsrichtung_als_wort():
-    raum = store.validate_raum({"name": "Test", "ausrichtung": "sw"})
-    assert raum["ausrichtung"] == 225
+    rollo = store.validate_rollo({"entity_id": "cover.x", "ausrichtung": "sw"})
+    assert rollo["ausrichtung"] == 225
 
 
 def test_offen_muss_ueber_zu_liegen():
     try:
-        store.validate_raum({"name": "Test", "position_offen": 0, "position_zu": 100})
+        store.validate_rollo({"entity_id": "cover.x", "position_offen": 0,
+                              "position_zu": 100})
     except store.ValidationError:
         return
     raise AssertionError("verdrehte Stellungen hätten auffallen müssen")
+
+
+def test_nur_cover_sind_rollos():
+    """Ein Rollo *ist* sein `cover.` – alles andere wäre eine Verwechslung,
+    die erst beim Fahren auffiele."""
+    for eid in ("light.x", "input_boolean.y", ""):
+        try:
+            store.validate_rollo({"entity_id": eid})
+        except store.ValidationError:
+            continue
+        raise AssertionError(f"{eid!r} hätte abgewiesen werden müssen")
+
+
+def test_rollo_folgt_entweder_einem_plan_oder_hat_einen_eigenen():
+    """Beides gleichzeitig wäre zweideutig: Welcher gilt dann?"""
+    punkt = {"ausloeser": "uhrzeit", "start": "07:00", "position": 100,
+             "tage": ["mon"]}
+    mit_plan = store.validate_rollo({"entity_id": "cover.x", "plan": "abc",
+                                     "zeitplan": [punkt]})
+    assert mit_plan["zeitplan"] == []
+    ohne = store.validate_rollo({"entity_id": "cover.x", "zeitplan": [punkt]})
+    assert len(ohne["zeitplan"]) == 1
+
+
+def test_art_wird_aus_dem_namen_geraten_nicht_aus_der_id():
+    """In dieser Anlage heißt die Schlafzimmer-Balkontür
+    `cover.rollo_terrassentur`: Das Gerät hing im alten Haus woanders. Der Name
+    wurde gepflegt, die ID nicht."""
+    assert uebernahme.art_raten("Rollo Schlafzimmer Balkontür",
+                                "cover.rollo_terrassentur") == "balkontuer"
+    assert uebernahme.art_raten("Rollo Terrassentür", "cover.terrassentur") == "terrassentuer"
+    assert uebernahme.art_raten("Rollo Küche", "cover.rollo_kuche") == "fenster"
+    # Ohne aussagekräftigen Namen zählt die ID
+    assert uebernahme.art_raten("", "cover.balkon_links") == "balkontuer"
 
 
 def test_uhrzeit_punkt_verliert_die_klammer():

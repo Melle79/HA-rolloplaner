@@ -104,8 +104,10 @@
   .hakenliste .h-leer{padding:10px 6px; color:var(--grau); font-size:.82rem}
 
   /* ═══ Räume ═══ */
-  .raumliste{display:grid; gap:var(--l3);
-    grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+  .raumliste{display:grid; gap:var(--l3); align-items:stretch;
+    grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+  .raum{display:flex; flex-direction:column}
+  .raum .raum-fuss{margin-top:auto}
   .raum{background:var(--flaeche); border:1px solid var(--linie);
     border-radius:var(--rund-gross); padding:var(--l4); position:relative}
   .raum.aus{opacity:.55}
@@ -243,6 +245,18 @@
   .sonne-zeile{display:flex; gap:var(--l4); flex-wrap:wrap; font-size:.82rem;
     color:var(--leise)}
   .sonne-zeile b{color:var(--text); font-weight:600}
+
+  /* ═══ Rolloliste, nach Raum geordnet ═══ */
+  .raumtitel{font-size:.72rem; text-transform:uppercase; letter-spacing:.13em;
+    color:var(--leise); font-weight:600; margin:var(--l4) 0 0;
+    grid-column:1/-1; padding-bottom:var(--l1);
+    border-bottom:1px solid var(--linie)}
+  .raumtitel:first-child{margin-top:0}
+  .planschild{display:inline-flex; align-items:center; gap:4px; padding:1px 8px;
+    border-radius:20px; font-size:.72rem; font-weight:600;
+    background:var(--flaeche3); color:var(--leise)}
+  .planschild.eigen{background:transparent; border:1px dashed var(--linie)}
+  td.knopfspalte{text-align:right; white-space:nowrap}
 </style>
 </head>
 <body>
@@ -262,7 +276,8 @@
 
 <nav>
   <button data-reiter="uebersicht" class="an">Übersicht</button>
-  <button data-reiter="raeume">Räume</button>
+  <button data-reiter="rollos">Rollos</button>
+  <button data-reiter="plaene">Zeitpläne</button>
   <button data-reiter="schalter">Schalter</button>
   <button data-reiter="einstellungen">Einstellungen</button>
   <button data-reiter="protokoll">Protokoll</button>
@@ -280,16 +295,37 @@
       <h2>Störungen</h2>
       <div id="stoerungen"></div>
     </div>
-    <div class="raumliste" id="uebersicht-raeume"></div>
+    <div id="uebersicht-rollos"></div>
   </section>
 
-  <!-- ══════════════════════════════════════════════════════ Räume ═══ -->
-  <section id="s-raeume">
+  <!-- ═════════════════════════════════════════════════════ Rollos ═══ -->
+  <section id="s-rollos">
     <div class="tafel">
-      <h2>Räume</h2>
-      <div id="raum-verwaltung"></div>
+      <h2>Rollos</h2>
+      <p class="hinweis" style="margin-bottom:var(--l4)">
+        Jedes Rollo führt seine eigenen Angaben: was dahintersteckt, wohin es zeigt,
+        welcher Kontakt es sperrt. Den <b>Zeitplan</b> teilt es sich mit anderen –
+        oder es hat einen eigenen.
+      </p>
+      <div id="rolloliste"></div>
       <div style="margin-top:var(--l4)">
-        <button id="btn-raum-neu">Raum anlegen</button>
+        <button class="leise" id="btn-rollo-neu">Rollo hinzufügen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════ Zeitpläne ═══ -->
+  <section id="s-plaene">
+    <div class="tafel">
+      <h2>Gemeinsame Zeitpläne</h2>
+      <p class="hinweis" style="margin-bottom:var(--l4)">
+        Ein Zeitplan gehört keinem Raum, sondern allen Rollos, die ihm folgen.
+        Was hier geändert wird, gilt für alle davon – und jeder Zeitplan hat einen
+        eigenen Schalter in Home Assistant, mit dem er stillgelegt werden kann.
+      </p>
+      <div id="planliste"></div>
+      <div style="margin-top:var(--l4)">
+        <button class="leise" id="btn-plan-neu">Zeitplan anlegen</button>
       </div>
     </div>
   </section>
@@ -301,8 +337,8 @@
       <p class="hinweis" style="margin-bottom:var(--l4)">
         Diese Schalter gehören dem Planer: Er legt sie in Home Assistant an, kennt
         ihren Stand und räumt sie wieder ab. Damit hängt kein Zeitplan an Helfern,
-        die jemand vorher von Hand anlegen müsste – nach einer Neuinstallation
-        gäbe es die nicht.
+        die jemand vorher von Hand anlegen müsste – nach einer Neuinstallation gäbe
+        es die nicht.
         Ein <b>Schalter</b> kennt an und aus, eine <b>Auswahl</b> mehrere Stellungen
         (etwa <i>normal / 24 Uhr / aus</i>).
       </p>
@@ -334,7 +370,7 @@
   <section id="s-protokoll">
     <div class="tafel">
       <h2>Protokoll</h2>
-      <table><thead><tr><th>Zeit</th><th>Raum</th><th>Was</th><th>Warum</th></tr></thead>
+      <table><thead><tr><th>Zeit</th><th>Rollo</th><th>Was</th><th>Warum</th></tr></thead>
         <tbody id="protokoll"></tbody></table>
       <div style="margin-top:var(--l4)">
         <button class="leise gefahr" id="btn-protokoll-leeren">Protokoll leeren</button>
@@ -347,8 +383,9 @@
     <div class="tafel">
       <h2>Aus den vorhandenen Automationen</h2>
       <p class="hinweis" style="margin-bottom:var(--l4)">
-        Der Planer liest <code>automations.yaml</code> und schlägt vor, was er dort findet.
-        Übernommen wird nichts von selbst – erst wenn Sie hier zustimmen.
+        Der Planer liest <code>automations.yaml</code> und schlägt vor, was er dort
+        findet: je Rollo die Schaltzeiten, und für Rollos mit gleichem Muster einen
+        gemeinsamen Zeitplan. Übernommen wird nichts von selbst.
         <b>Die alten Automationen bleiben aktiv</b>; schalten Sie sie ab, sobald der
         Planer läuft, sonst fahren beide gegeneinander.
       </p>
@@ -364,14 +401,14 @@
 
 <div class="melder" id="melder"></div>
 
-<dialog id="raum-dialog">
-  <form method="dialog" id="raum-form">
-    <div class="dlg-kopf"><h2 id="dlg-titel">Raum</h2>
+<dialog id="dialog">
+  <form method="dialog" id="dlg-form">
+    <div class="dlg-kopf"><h2 id="dlg-titel">…</h2>
       <button class="leise" value="abbruch" formnovalidate>Schließen</button></div>
     <div class="dlg-inhalt" id="dlg-inhalt"></div>
     <div class="dlg-fuss">
-      <button type="button" class="leise gefahr" id="btn-raum-loeschen">Löschen</button>
-      <button type="button" id="btn-raum-speichern">Speichern</button>
+      <button type="button" class="leise gefahr" id="btn-dlg-loeschen">Löschen</button>
+      <button type="button" id="btn-dlg-speichern">Speichern</button>
     </div>
   </form>
 </dialog>
@@ -386,16 +423,21 @@ const GELTUNG = [["immer","immer"],["schultag","an Schultagen"],
                  ["schulfrei","an schulfreien Tagen"],
                  ["morgen_schultag","wenn morgen Schule ist"],
                  ["morgen_schulfrei","wenn morgen schulfrei ist"]];
-const RICHTUNGEN = [["","unbekannt"],["0","Nord"],["45","Nordost"],["90","Ost"],
-                    ["135","Südost"],["180","Süd"],["225","Südwest"],["270","West"],
-                    ["315","Nordwest"]];
+const RICHTUNGEN = [["0","Nord"],["45","Nordost"],["90","Ost"],["135","Südost"],
+                    ["180","Süd"],["225","Südwest"],["270","West"],["315","Nordwest"]];
+const ARTEN = [["fenster","Fenster"],["balkontuer","Balkontür"],
+               ["terrassentuer","Terrassentür"],["dachfenster","Dachfenster"],
+               ["haustuer","Haustür"]];
+const TUERARTEN = ["balkontuer","terrassentuer","haustuer"];
 const ZUSTAND_TEXT = {
   plan:"Zeitplan", beschattung:"Hitzeschutz", urlaub:"Urlaub", rauch:"Rauchsperre",
   fenster:"Fenster offen", manuell:"Handbetrieb", aus:"aus", gesperrt:"gesperrt",
-  ohne_plan:"kein Plan", nur_schliessen:"nur schließen",
+  ohne_plan:"kein Plan", nur_schliessen:"nur schließen", fehlt:"fehlt",
 };
 
-let CONFIG = null, ENTITAETEN = null, BERICHT = null, AKTUELLER_RAUM = null;
+let CONFIG = null, ENTITAETEN = null, BERICHT = null;
+let ENTWURF = null;        // was im Dialog gerade bearbeitet wird
+let DIALOGART = null;      // "rollo" | "plan"
 
 const $ = (s, wurzel=document) => wurzel.querySelector(s);
 const $$ = (s, wurzel=document) => [...wurzel.querySelectorAll(s)];
@@ -428,19 +470,26 @@ function uhrzeit(iso){
   const d = new Date(iso);
   return isNaN(d) ? "–" : d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
 }
-/* Home Assistant zählt 100 % = offen, Amazon Echo andersherum. Ist die
-   Zählweise umgedreht, dreht sich **alles**, was der Benutzer sieht und
-   eingibt – gespeichert wird aber immer in der Zählweise von Home Assistant.
-   Sonst stünde nach jedem Umschalten jeder Zeitplan auf dem Kopf.
 
-   `zeige` rechnet vom gespeicherten Wert in den angezeigten, `lies` zurück.
-   Beide sind ihre eigene Umkehrung – ein Vertauschen fällt deshalb nicht auf,
-   und darum steht die Rechnung an genau einer Stelle. */
-const invertiert = () => Boolean(CONFIG && CONFIG.einstellungen
-                                 && CONFIG.einstellungen.prozent_invertiert);
+/* Home Assistant zählt 100 % = offen, Amazon Echo andersherum. Ist die
+   Zählweise umgedreht, dreht sich alles, was der Benutzer sieht und eingibt –
+   gespeichert wird aber immer in der Zählweise von Home Assistant. Sonst
+   stünde nach jedem Umschalten jeder Zeitplan auf dem Kopf.
+
+   `zeige` und `lies` sind dieselbe Rechnung: Ein Vertauschen fällt deshalb
+   nicht auf, und darum steht sie an genau einer Stelle. */
+const invertiert = () => Boolean(CONFIG?.einstellungen?.prozent_invertiert);
 const zeige = (wert) => (wert === null || wert === undefined || !invertiert())
   ? wert : 100 - Number(wert);
 const lies = zeige;
+
+/* Der Name eines Rollos: eigener Name, sonst der aus Home Assistant, sonst
+   die Entität. An drei Stellen gebraucht – deshalb hier und nicht dreimal. */
+function rolloName(rollo){
+  if (rollo.name) return rollo.name;
+  const k = (ENTITAETEN?.rollos || []).find((x) => x.entity_id === rollo.entity_id);
+  return (k && k.name) || rollo.entity_id;
+}
 
 function stellungstext(p){
   if (p === null || p === undefined) return "–";
@@ -448,6 +497,49 @@ function stellungstext(p){
   if (p >= 100) return "offen";
   if (p <= 0) return "zu";
   return zeige(p) + " %";
+}
+
+function auswahl(feldname, optionen, wert, leer=null){
+  const eintraege = leer ? [["", leer], ...optionen] : optionen;
+  return `<select name="${feldname}">${eintraege.map(([w, t]) =>
+    `<option value="${esc(w)}" ${String(w) === String(wert ?? "") ? "selected" : ""}>${esc(t)}</option>`
+  ).join("")}</select>`;
+}
+
+function hakenliste(feldname, kandidaten, gewaehlt, gruppieren=true){
+  if (!kandidaten.length)
+    return `<div class="hakenliste kurz"><div class="h-leer">Nichts gefunden</div></div>`;
+  const gruppen = new Map();
+  kandidaten.forEach((k) => {
+    const gruppe = gruppieren ? (k.bereich || "Ohne Bereich") : "";
+    if (!gruppen.has(gruppe)) gruppen.set(gruppe, []);
+    gruppen.get(gruppe).push(k);
+  });
+  let html = "";
+  for (const [gruppe, liste] of gruppen) {
+    if (gruppe) html += `<div class="h-gruppe">${esc(gruppe)}</div>`;
+    html += liste.map((k) => {
+      const an = gewaehlt.includes(k.entity_id);
+      return `<label class="${an ? "an" : ""}">
+        <input type="checkbox" name="${feldname}" value="${esc(k.entity_id)}" ${an ? "checked" : ""}>
+        <span class="h-text">${esc(k.name)} <span class="h-eid">${esc(k.entity_id)}</span></span>
+      </label>`;
+    }).join("");
+  }
+  return `<div class="hakenliste">${html}</div>`;
+}
+
+/* ─────────────────────────────────────────── Das Bild: Fenster oder Tür ─── */
+
+function rollobild(position, art){
+  const p = Number(position);
+  const zu = Number.isNaN(p) ? 100 : Math.max(0, Math.min(100, 100 - p));
+  const tuer = TUERARTEN.includes(art);
+  return `<div class="bild"><div class="rollo ${tuer ? "tuer" : "fenster"}"
+    style="--zu:${zu}%">
+    ${tuer ? '<div class="fluegel"></div><div class="griff"></div>' : ""}
+    <div class="panzer"></div><div class="kasten"></div>
+  </div></div>`;
 }
 
 /* ─────────────────────────────────────────────────────────── Übersicht ─── */
@@ -476,142 +568,96 @@ function zeichneUebersicht(){
     `<div class="befund"><span class="art-${s.schwere==="fehler"?"fehler":"warnung"}">
       ${esc(s.text)}</span></div>`).join("");
 
-  const raeume = b.raeume || [];
-  $("#uebersicht-raeume").innerHTML = raeume.length ? raeume.map(karte).join("")
-    : `<div class="leerhinweis">Noch kein Raum eingerichtet –
-       schauen Sie unter <b>Einrichtung</b>, was sich aus den vorhandenen
-       Automationen übernehmen lässt.</div>`;
-  $$("#uebersicht-raeume [data-fahren]").forEach((el) =>
+  const rollos = b.rollos || [];
+  if (!rollos.length) {
+    $("#uebersicht-rollos").innerHTML = `<div class="tafel"><div class="leerhinweis">
+      Noch kein Rollo eingerichtet – schauen Sie unter <b>Einrichtung</b>, was sich
+      aus den vorhandenen Automationen übernehmen lässt.</div></div>`;
+    return;
+  }
+  // Nach Raum ordnen: Der Raum steuert nichts mehr, aber er ist der Ort, an dem
+  // man ein Rollo sucht.
+  const nachRaum = new Map();
+  rollos.forEach((r) => {
+    const raum = r.raum || "Ohne Bereich";
+    if (!nachRaum.has(raum)) nachRaum.set(raum, []);
+    nachRaum.get(raum).push(r);
+  });
+  // Ein durchgehendes Raster mit Überschriften darin: Ein eigenes Raster je
+  // Raum ließe die Kachel eines Einzelrollos über die ganze Breite laufen.
+  $("#uebersicht-rollos").innerHTML = `<div class="raumliste">${
+    [...nachRaum].map(([raum, liste]) =>
+      `<div class="raumtitel">${esc(raum)}</div>` + liste.map(kachel).join("")
+    ).join("")}</div>`;
+
+  $$("#uebersicht-rollos [data-fahren]").forEach((el) =>
     el.onclick = () => fahren(el.dataset.fahren, Number(el.dataset.position)));
-  $$("#uebersicht-raeume [data-hand]").forEach((el) =>
+  $$("#uebersicht-rollos [data-hand]").forEach((el) =>
     el.onclick = () => handbetriebAufheben(el.dataset.hand));
 }
 
-/* Der Rollladen vor einem Fenster oder einer Tür – dieselbe Grafik wie in der
-   Lovelace-Karte, damit Add-on und Dashboard nicht verschieden aussehen. */
-function rollobild(position, art){
-  const p = Number(position);
-  const zu = Number.isNaN(p) ? 100 : Math.max(0, Math.min(100, 100 - p));
-  const tuer = art === "tuer";
-  return `<div class="bild"><div class="rollo ${tuer ? "tuer" : "fenster"}"
-    style="--zu:${zu}%">
-    ${tuer ? '<div class="fluegel"></div><div class="griff"></div>' : ""}
-    <div class="panzer"></div><div class="kasten"></div>
-  </div></div>`;
-}
-
-function karte(raum){
-  const zustand = raum.zustand || "plan";
-  const ziel = raum.ziel;
-  const rollos = (raum.rollos || []).map((r) => `
-    <div class="rollo-zeile"><span class="r-name">${esc(r.name)}</span>
-      <span class="r-wert">${r.ist === null || r.ist === undefined ? "?" : zeige(r.ist) + " %"}</span>
-      ${r.hinweis ? `<span class="r-wert" style="color:var(--grau)">${esc(r.hinweis)}</span>` : ""}
-    </div>`).join("");
-  const naechster = raum.naechste_uhrzeit
-    ? `dann ${stellungstext(raum.naechste_stellung)} um ${esc(raum.naechste_uhrzeit)} Uhr` : "";
-  const hand = (raum.rollos || []).some((r) => (r.hinweis || "").includes("Hand"));
+function kachel(rollo){
+  const zustand = rollo.zustand || "plan";
+  const ziel = rollo.ziel;
+  const naechster = rollo.naechste_uhrzeit
+    ? `dann ${stellungstext(rollo.naechste_stellung)} um ${esc(rollo.naechste_uhrzeit)} Uhr` : "";
+  const hand = (rollo.hinweis || "").includes("Hand") || zustand === "manuell";
+  const plan = rollo.plan
+    ? `<span class="planschild">${esc(rollo.plan)}</span>`
+    : `<span class="planschild eigen">eigener Plan</span>`;
   return `<article class="raum ${zustand === "aus" ? "aus" : ""}">
     <div class="raum-kopf">
-      ${rollobild(ziel, raum.bildart)}
-      <h3>${esc(raum.name)}</h3>
+      ${rollobild(ziel, rollo.art)}
+      <h3>${esc(rollo.name)}</h3>
       <div class="rechts">
         <span class="raum-ziel">${ziel === null || ziel === undefined ? "–" : zeige(ziel)}<small>%</small></span>
         <span class="lage">${stellungstext(ziel)}</span>
       </div>
     </div>
-    <div><span class="marke-schild m-${zustand}">${ZUSTAND_TEXT[zustand] || zustand}</span></div>
-    <p class="raum-grund">${esc(raum.begruendung || "")}</p>
-    ${rollos}
+    <div style="display:flex; gap:var(--l2); flex-wrap:wrap; align-items:center">
+      ${ZUSTAND_TEXT[zustand] && zustand !== "plan"
+        ? `<span class="marke-schild m-${zustand}">${ZUSTAND_TEXT[zustand]}</span>` : ""}
+      ${plan}
+    </div>
+    <p class="raum-grund">${esc(rollo.begruendung || "")}</p>
     <div class="raum-fuss">
       <span style="flex:1">${esc(naechster)}</span>
-      <button class="leise" data-fahren="${raum.id}" data-position="100">auf</button>
-      <button class="leise" data-fahren="${raum.id}" data-position="0">zu</button>
-      ${hand ? `<button class="leise" data-hand="${raum.id}">Handbetrieb aufheben</button>` : ""}
+      <button class="leise" data-fahren="${esc(rollo.entity_id)}" data-position="100">auf</button>
+      <button class="leise" data-fahren="${esc(rollo.entity_id)}" data-position="0">zu</button>
+      ${hand ? `<button class="leise" data-hand="${esc(rollo.entity_id)}">Handbetrieb aufheben</button>` : ""}
     </div>
   </article>`;
 }
 
-async function fahren(raumId, position){
+async function fahren(entityId, position){
   try {
-    await holeJSON("api/fahren", "POST", {raum: raumId, position});
-    melden(`gefahren auf ${position} %`);
+    await holeJSON("api/fahren", "POST", {rollo: entityId, position: lies(position)});
+    melden(`gefahren`);
     setTimeout(aktualisieren, 1200);
   } catch (err) { melden(err.message, true); }
 }
 
-async function handbetriebAufheben(raumId){
+async function handbetriebAufheben(entityId){
   try {
-    const r = await holeJSON(`api/handbetrieb?raum=${encodeURIComponent(raumId)}`, "DELETE");
+    const r = await holeJSON(`api/handbetrieb?rollo=${encodeURIComponent(entityId)}`, "DELETE");
     melden(`Handbetrieb aufgehoben (${r.aufgehoben})`);
     setTimeout(aktualisieren, 900);
   } catch (err) { melden(err.message, true); }
 }
 
-/* ─────────────────────────────────────────────────────────────── Räume ─── */
+/* ─────────────────────────────────────────── Der Schaltpunkt-Editor ─── */
+/* Rollo-Dialog und Zeitplan-Dialog teilen ihn sich: Ein Schaltpunkt ist
+   dasselbe, egal wem der Plan gehört. */
 
-function zeichneRaeume(){
-  const raeume = (CONFIG && CONFIG.raeume) || [];
-  $("#raum-verwaltung").innerHTML = raeume.length ? `<table>
-    <thead><tr><th>Raum</th><th>Rollos</th><th>Schaltpunkte</th><th>Betrieb</th><th></th></tr></thead>
-    <tbody>${raeume.map((r) => `<tr>
-      <td><b>${esc(r.name)}</b>${r.aktiv ? "" : ' <span class="hinweis">(aus)</span>'}</td>
-      <td>${r.rollos.length}</td>
-      <td>${r.zeitplan.length}</td>
-      <td>${r.betriebsart === "plan" ? "Plan"
-           : r.betriebsart === "nur_schliessen" ? "nur schließen" : "beobachten"}</td>
-      <td style="text-align:right"><button class="leise" data-raum="${r.id}">Bearbeiten</button></td>
-    </tr>`).join("")}</tbody></table>`
-    : `<div class="leerhinweis">Noch kein Raum eingerichtet.</div>`;
-  $$("#raum-verwaltung [data-raum]").forEach((el) =>
-    el.onclick = () => raumDialog(raeume.find((r) => r.id === el.dataset.raum)));
-}
-
-function hakenliste(feldname, kandidaten, gewaehlt, gruppieren=true){
-  if (!kandidaten.length)
-    return `<div class="hakenliste kurz"><div class="h-leer">Nichts gefunden</div></div>`;
-  const gruppen = new Map();
-  kandidaten.forEach((k) => {
-    const gruppe = gruppieren ? (k.bereich || "Ohne Bereich") : "";
-    if (!gruppen.has(gruppe)) gruppen.set(gruppe, []);
-    gruppen.get(gruppe).push(k);
-  });
-  let html = "";
-  for (const [gruppe, liste] of gruppen) {
-    if (gruppe) html += `<div class="h-gruppe">${esc(gruppe)}</div>`;
-    html += liste.map((k) => {
-      const an = gewaehlt.includes(k.entity_id);
-      return `<label class="${an ? "an" : ""}">
-        <input type="checkbox" name="${feldname}" value="${esc(k.entity_id)}" ${an ? "checked" : ""}>
-        <span class="h-text">${esc(k.name)} <span class="h-eid">${esc(k.entity_id)}</span></span>
-      </label>`;
-    }).join("");
-  }
-  return `<div class="hakenliste">${html}</div>`;
-}
-
-function auswahl(feldname, optionen, wert, leer=null){
-  const eintraege = leer ? [["", leer], ...optionen] : optionen;
-  return `<select name="${feldname}">${eintraege.map(([w, t]) =>
-    `<option value="${esc(w)}" ${String(w) === String(wert ?? "") ? "selected" : ""}>${esc(t)}</option>`
-  ).join("")}</select>`;
-}
-
-/* Zur Auswahl stehen zuerst die eigenen Schalter des Planers, dann alles, was
-   Home Assistant sonst hergibt. Die Reihenfolge ist Absicht: Wer einen neuen
-   Zeitplan baut, soll auf das Naheliegende stoßen – auf etwas, das der Planer
-   selbst mitbringt und das auch nach einer Neuinstallation da ist. */
 function bedingungsKandidaten(){
   const e = ENTITAETEN || {};
   const eigene = (CONFIG?.einstellungen?.eigene_schalter || [])
     .map((k) => ["rolloplaner:" + k.id, `${k.name} (Rolloplaner)`]);
-  return [...eigene, ...(e.auswahl || []), ...(e.schalter || []),
-          ...(e.sonstige_melder || [])].map((k) => Array.isArray(k) ? k
-            : [k.entity_id, k.name]);
+  return [...eigene, ...(e.auswahl || []).map((k) => [k.entity_id, k.name]),
+          ...(e.schalter || []).map((k) => [k.entity_id, k.name]),
+          ...(e.sonstige_melder || []).map((k) => [k.entity_id, k.name])];
 }
 
-/* Die möglichen Werte einer Bedingung – bei einem eigenen Schalter kennt der
-   Planer sie genau, sonst bleibt die allgemeine Vorschlagsliste. */
 function werteFuer(entity){
   const id = String(entity || "").startsWith("rolloplaner:")
     ? entity.slice("rolloplaner:".length) : null;
@@ -621,8 +667,6 @@ function werteFuer(entity){
   return k.art === "auswahl" ? k.optionen : ["on", "off"];
 }
 
-/* Alle vorkommenden Werte in einer Vorschlagsliste: „normal“, „24 Uhr“, „aus“
-   stehen dann zur Auswahl, statt abgetippt werden zu müssen. */
 function werteListe(){
   const werte = new Set(["on", "off"]);
   ((ENTITAETEN || {}).auswahl || []).forEach((k) =>
@@ -632,22 +676,21 @@ function werteListe(){
 }
 
 function punktZeile(punkt, index){
-  const sonnenauslöser = punkt.ausloeser !== "uhrzeit";
+  const sonne = punkt.ausloeser !== "uhrzeit";
   return `<div class="punkt-zeile" data-punkt="${index}">
     ${auswahl(`p${index}_ausloeser`, AUSLOESER, punkt.ausloeser)}
-    <input type="${sonnenauslöser ? "number" : "time"}"
-           name="p${index}_start"
-           value="${sonnenauslöser ? (punkt.versatz_min || 0) : esc(punkt.start || "")}"
-           ${sonnenauslöser ? 'step="5" min="-180" max="180" title="Versatz in Minuten"' : ""}>
+    <input type="${sonne ? "number" : "time"}" name="p${index}_start"
+           value="${sonne ? (punkt.versatz_min || 0) : esc(punkt.start || "")}"
+           ${sonne ? 'step="5" min="-180" max="180" title="Versatz in Minuten"' : ""}>
     <div style="display:flex; gap:4px; align-items:center">
       <input type="time" name="p${index}_frueh" value="${esc(punkt.frueh || "")}"
-             title="frühestens" placeholder="frühestens" ${sonnenauslöser ? "" : "disabled"}>
+             title="frühestens" ${sonne ? "" : "disabled"}>
       <input type="time" name="p${index}_spaet" value="${esc(punkt.spaet || "")}"
-             title="spätestens" placeholder="spätestens" ${sonnenauslöser ? "" : "disabled"}>
+             title="spätestens" ${sonne ? "" : "disabled"}>
     </div>
     <div style="display:flex; gap:4px; align-items:center">
-      <input type="number" name="p${index}_position" value="${zeige(punkt.position)}" min="0" max="100"
-             step="5" title="Stellung in Prozent" style="max-width:74px">
+      <input type="number" name="p${index}_position" value="${zeige(punkt.position)}"
+             min="0" max="100" step="5" title="Stellung in Prozent" style="max-width:74px">
       ${auswahl(`p${index}_gilt`, GELTUNG, punkt.gilt)}
     </div>
     <button type="button" class="leise gefahr" data-punkt-weg="${index}">×</button>
@@ -665,8 +708,7 @@ function punktZeile(punkt, index){
           ? auswahl(`p${index}_w${j}_wert`, werte.map((w) => [w, w]), bedingung.wert)
           : `<input type="text" name="p${index}_w${j}_wert" value="${esc(bedingung.wert)}"
                list="werte-liste" placeholder="on">`; })()}
-      <button type="button" class="leise gefahr w-weg"
-              data-wenn-weg="${index}:${j}">×</button>
+      <button type="button" class="leise gefahr w-weg" data-wenn-weg="${index}:${j}">×</button>
     </div>`).join("")}
     <div class="wennzeile">
       <button type="button" class="leise" data-wenn-neu="${index}">Bedingung hinzufügen</button>
@@ -676,167 +718,29 @@ function punktZeile(punkt, index){
   </div>`;
 }
 
-function raumDialog(raum){
-  const neu = !raum;
-  AKTUELLER_RAUM = raum ? JSON.parse(JSON.stringify(raum)) : {
-    name: "", aktiv: true, betriebsart: "plan", rollos: [], zeitplan: [],
-    fenster: [], praesenz: [], personen: [], freigabe_entity: "",
-    ausrichtung: null, oeffnungswinkel: 90, beschattung: false,
-    beschattung_position: null, raumtemp: "", raumtemp_ab: null,
-    urlaub_simulation: true, position_offen: 100, position_zu: 0, bildart: "auto",
-  };
-  $("#dlg-titel").textContent = neu ? "Raum anlegen" : AKTUELLER_RAUM.name;
-  $("#btn-raum-loeschen").hidden = neu;
-  zeichneDialog();
-  $("#raum-dialog").showModal();
-}
-
-function zeichneDialog(){
-  const r = AKTUELLER_RAUM;
-  const e = ENTITAETEN || {};
-  $("#dlg-inhalt").innerHTML = werteListe() + `
-    <div id="dlg-fehler"></div>
-    <div class="abschnitt">
-      <div class="gitter g2">
-        <label class="feld"><span>Name</span>
-          <input type="text" name="name" value="${esc(r.name)}" required maxlength="60"></label>
-        <label class="feld"><span>Betriebsart</span>
-          ${auswahl("betriebsart", [["plan","Plan – auf und zu"],
-                                    ["nur_schliessen","nur schließen"],
-                                    ["beobachten","beobachten, nicht fahren"]], r.betriebsart)}
-          <span class="hinweis">„beobachten“ rechnet mit, fährt aber nichts – für den Probelauf
-            eines einzelnen Raumes.</span></label>
-      </div>
-      <label class="haken"><input type="checkbox" name="aktiv" ${r.aktiv ? "checked" : ""}>
-        Raum ist eingeschaltet</label>
-    </div>
-
-    <div class="abschnitt"><h3>Rollos</h3>
-      ${hakenliste("rollos", e.rollos || [], r.rollos)}
-    </div>
-
-    <div class="abschnitt"><h3>Zeitplan</h3>
-      <div class="punktliste" id="punktliste">
-        ${(r.zeitplan || []).length ? `<div class="punkt-kopf">
-          <span>Auslöser</span><span>Zeit / Versatz</span><span>frühestens · spätestens</span>
-          <span>Stellung · gilt</span><span>x</span></div>` : ""}
-        ${(r.zeitplan || []).map(punktZeile).join("") ||
-          `<div class="leerhinweis">Noch kein Schaltpunkt.</div>`}
-      </div>
-      <div style="margin-top:var(--l3); display:flex; gap:var(--l2); flex-wrap:wrap">
-        <button type="button" class="leise" id="btn-punkt-neu">Schaltpunkt hinzufügen</button>
-        <span style="max-width:220px">${auswahl("vorlage",
-          [["","Vorlage einfügen …"],["wohnraum","Wohnraum"],
-           ["kinderzimmer","Kinderzimmer"],["schlafzimmer","Schlafzimmer"],
-           ["buero","Büro"]], "")}</span>
-      </div>
-      <p class="hinweis">Bei einem Sonnenauslöser ist die zweite Spalte der Versatz in Minuten;
-        „frühestens“ und „spätestens“ klammern ihn ein.</p>
-    </div>
-
-    <div class="abschnitt"><h3>Hitzeschutz</h3>
-      <div class="gitter g3">
-        <label class="feld"><span>Fenster zeigt nach</span>
-          ${auswahl("ausrichtung", RICHTUNGEN.slice(1), r.ausrichtung, "unbekannt")}</label>
-        <label class="feld"><span>Öffnungswinkel</span>
-          <input type="number" name="oeffnungswinkel" value="${r.oeffnungswinkel}"
-                 min="10" max="180" step="10"></label>
-        <label class="feld"><span>Stellung (leer = Vorgabe)</span>
-          <input type="number" name="beschattung_position" min="0" max="100" step="5"
-                 value="${r.beschattung_position === null || r.beschattung_position === undefined
-                          ? "" : zeige(r.beschattung_position)}"></label>
-      </div>
-      <label class="haken"><input type="checkbox" name="beschattung" ${r.beschattung ? "checked" : ""}>
-        Hitzeschutz für diesen Raum</label>
-      <p class="hinweis">Ohne Ausrichtung bleibt er wirkungslos – der Planer kann nicht raten,
-        wohin ein Fenster zeigt.</p>
-      <div class="gitter g2" style="margin-top:var(--l3)">
-        <label class="feld"><span>Raumfühler (freiwillig)</span>
-          ${auswahl("raumtemp", (e.raumtemp || []).map((k) => [k.entity_id, k.name]),
-                    r.raumtemp, "keiner")}</label>
-        <label class="feld"><span>… erst ab dieser Raumtemperatur</span>
-          <input type="number" name="raumtemp_ab" step="0.5" min="10" max="40"
-                 value="${r.raumtemp_ab ?? ""}"></label>
-      </div>
-    </div>
-
-    <div class="abschnitt"><h3>Sperren</h3>
-      <label class="feld"><span>Freigabeschalter (leer = immer freigegeben)</span>
-        ${auswahl("freigabe_entity",
-                  [...(CONFIG?.einstellungen?.eigene_schalter || [])
-                     .filter((k) => k.art === "schalter")
-                     .map((k) => ["rolloplaner:" + k.id, `${k.name} (Rolloplaner)`]),
-                   ...(e.schalter || []).map((k) => [k.entity_id, k.name])],
-                  r.freigabe_entity, "keiner")}</label>
-      <label class="feld"><span>Fensterkontakte – solange einer offen ist, wird nicht zugefahren</span></label>
-      ${hakenliste("fenster", e.fenster || [], r.fenster)}
-      <label class="haken" style="margin-top:var(--l3)">
-        <input type="checkbox" name="urlaub_simulation" ${r.urlaub_simulation ? "checked" : ""}>
-        Im Urlaub mitsimulieren</label>
-    </div>
-
-    <div class="abschnitt"><h3>Stellungen</h3>
-      <div class="gitter g3">
-        <label class="feld"><span>Anzeige zeichnet</span>
-          ${auswahl("bildart", [["auto","automatisch nach den Namen"],
-                                ["fenster","Fenster"],["tuer","Tür"]], r.bildart)}
-          <span class="hinweis">Ein Rollo vor einer Balkontür geht bis zum Boden –
-            das sieht anders aus als eines vor einem Fenster mit Brüstung.</span></label>
-      </div>
-      <div class="gitter g2">
-        <label class="feld"><span>„offen“ heißt</span>
-          <input type="number" name="position_offen" value="${zeige(r.position_offen)}"
-                 min="0" max="100" step="5"></label>
-        <label class="feld"><span>„zu“ heißt</span>
-          <input type="number" name="position_zu" value="${zeige(r.position_zu)}"
-                 min="0" max="100" step="5"></label>
-      </div>
-    </div>`;
-
-  $("#btn-punkt-neu").onclick = () => {
-    sammleDialog();
-    AKTUELLER_RAUM.zeitplan.push({ausloeser:"uhrzeit", start:"07:00", versatz_min:0,
-      frueh:"", spaet:"", position:100, gilt:"immer",
-      tage:TAGE.map(([w]) => w), name:""});
-    zeichneDialog();
-  };
-  $$("#dlg-inhalt [data-punkt-weg]").forEach((el) => el.onclick = () => {
-    sammleDialog();
-    AKTUELLER_RAUM.zeitplan.splice(Number(el.dataset.punktWeg), 1);
-    zeichneDialog();
-  });
-  $$("#dlg-inhalt [data-wenn-neu]").forEach((el) => el.onclick = () => {
-    sammleDialog();
-    const punkt = AKTUELLER_RAUM.zeitplan[Number(el.dataset.wennNeu)];
-    (punkt.wenn = punkt.wenn || []).push({entity: "", wert: "on"});
-    zeichneDialog();
-  });
-  $$("#dlg-inhalt [data-wenn-weg]").forEach((el) => el.onclick = () => {
-    sammleDialog();
-    const [i, j] = el.dataset.wennWeg.split(":").map(Number);
-    AKTUELLER_RAUM.zeitplan[i].wenn.splice(j, 1);
-    zeichneDialog();
-  });
-  $$("#dlg-inhalt select[name$='_ausloeser']").forEach((el) => el.onchange = () => {
-    sammleDialog(); zeichneDialog();
-  });
-  // Wechselt die Entität einer Bedingung, muss das Wertfeld mitwechseln:
-  // Ein eigener Schalter bringt seine Stellungen mit, eine fremde Entität nicht.
-  $$("#dlg-inhalt select[name*='_w'][name$='_entity']").forEach((el) =>
-    el.onchange = () => { sammleDialog(); zeichneDialog(); });
-  const vorlage = $("#dlg-inhalt select[name=vorlage]");
-  if (vorlage) vorlage.onchange = () => {
-    if (!vorlage.value) return;
-    sammleDialog();
-    AKTUELLER_RAUM.zeitplan = VORLAGEN[vorlage.value].map((p) => ({...p}));
-    zeichneDialog();
-  };
+function punktliste(punkte){
+  return `<div class="punktliste" id="punktliste">
+    ${punkte.length ? `<div class="punkt-kopf">
+      <span>Auslöser</span><span>Zeit / Versatz</span><span>frühestens · spätestens</span>
+      <span>Stellung · gilt</span><span>x</span></div>` : ""}
+    ${punkte.map(punktZeile).join("") ||
+      `<div class="leerhinweis">Noch kein Schaltpunkt.</div>`}
+  </div>
+  <div style="margin-top:var(--l3); display:flex; gap:var(--l2); flex-wrap:wrap;
+              align-items:center">
+    <button type="button" class="leise" id="btn-punkt-neu">Schaltpunkt hinzufügen</button>
+    <span style="max-width:220px">${auswahl("vorlage",
+      [["","Vorlage einfügen …"],["wohnraum","Wohnraum"],["kinderzimmer","Kinderzimmer"],
+       ["schlafzimmer","Schlafzimmer"],["buero","Büro"]], "")}</span>
+  </div>
+  <p class="hinweis">Bei einem Sonnenauslöser ist die zweite Spalte der Versatz in
+    Minuten; „frühestens“ und „spätestens“ klammern ihn ein.</p>`;
 }
 
 const WERKTAGE = ["mon","tue","wed","thu","fri"];
 const ALLE = TAGE.map(([w]) => w);
 const punkt = (position, ausloeser="uhrzeit", start="", rest={}) => ({
-  ausloeser, start, versatz_min:0, frueh:"", spaet:"", position,
+  ausloeser, start, versatz_min:0, frueh:"", spaet:"", position, wenn:[],
   gilt:"immer", tage:ALLE, name:"", ...rest});
 const VORLAGEN = {
   wohnraum: [punkt(100,"uhrzeit","06:30",{gilt:"schultag",tage:WERKTAGE}),
@@ -854,41 +758,53 @@ const VORLAGEN = {
           punkt(0,"sonnenuntergang","",{spaet:"23:00"})],
 };
 
-function sammleDialog(){
-  const wurzel = $("#dlg-inhalt");
-  const r = AKTUELLER_RAUM;
+function punktKnoepfe(neuZeichnen){
+  const knopf = $("#btn-punkt-neu");
+  if (knopf) knopf.onclick = () => {
+    sammleDialog();
+    ENTWURF.zeitplan.push(punkt(100, "uhrzeit", "07:00"));
+    neuZeichnen();
+  };
+  $$("#dlg-inhalt [data-punkt-weg]").forEach((el) => el.onclick = () => {
+    sammleDialog();
+    ENTWURF.zeitplan.splice(Number(el.dataset.punktWeg), 1);
+    neuZeichnen();
+  });
+  $$("#dlg-inhalt [data-wenn-neu]").forEach((el) => el.onclick = () => {
+    sammleDialog();
+    const p = ENTWURF.zeitplan[Number(el.dataset.wennNeu)];
+    (p.wenn = p.wenn || []).push({entity: "", wert: "on"});
+    neuZeichnen();
+  });
+  $$("#dlg-inhalt [data-wenn-weg]").forEach((el) => el.onclick = () => {
+    sammleDialog();
+    const [i, j] = el.dataset.wennWeg.split(":").map(Number);
+    ENTWURF.zeitplan[i].wenn.splice(j, 1);
+    neuZeichnen();
+  });
+  $$("#dlg-inhalt select[name$='_ausloeser']").forEach((el) =>
+    el.onchange = () => { sammleDialog(); neuZeichnen(); });
+  $$("#dlg-inhalt select[name*='_w'][name$='_entity']").forEach((el) =>
+    el.onchange = () => { sammleDialog(); neuZeichnen(); });
+  const vorlage = $("#dlg-inhalt select[name=vorlage]");
+  if (vorlage) vorlage.onchange = () => {
+    if (!vorlage.value) return;
+    sammleDialog();
+    ENTWURF.zeitplan = VORLAGEN[vorlage.value].map((p) => ({...p}));
+    neuZeichnen();
+  };
+}
+
+/* Die Schaltpunkte aus dem Formular zurücklesen. Die Bedingungen stehen in
+   eigenen Zeilen und müssen mit eingesammelt werden – sonst wäre jedes
+   Speichern ein stiller Verlust. */
+function punkteSammeln(wurzel){
   const wert = (name) => { const el = wurzel.querySelector(`[name="${name}"]`);
                            return el ? el.value : ""; };
-  const haken = (name) => { const el = wurzel.querySelector(`[name="${name}"]`);
-                            return el ? el.checked : false; };
-  const mehrfach = (name) => $$(`[name="${name}"]:checked`, wurzel).map((el) => el.value);
-
-  r.name = wert("name");
-  r.aktiv = haken("aktiv");
-  r.betriebsart = wert("betriebsart");
-  r.rollos = mehrfach("rollos");
-  r.fenster = mehrfach("fenster");
-  r.freigabe_entity = wert("freigabe_entity");
-  r.ausrichtung = wert("ausrichtung") === "" ? null : Number(wert("ausrichtung"));
-  r.oeffnungswinkel = Number(wert("oeffnungswinkel")) || 90;
-  r.beschattung = haken("beschattung");
-  r.beschattung_position = wert("beschattung_position") === "" ? null
-    : lies(Number(wert("beschattung_position")));
-  r.raumtemp = wert("raumtemp");
-  r.raumtemp_ab = wert("raumtemp_ab") === "" ? null : Number(wert("raumtemp_ab"));
-  r.urlaub_simulation = haken("urlaub_simulation");
-  r.position_offen = lies(Number(wert("position_offen")));
-  r.position_zu = lies(Number(wert("position_zu")));
-  r.bildart = wert("bildart") || "auto";
-
-  r.zeitplan = $$("#punktliste .punkt-zeile", wurzel).map((zeile) => {
+  return $$("#punktliste .punkt-zeile", wurzel).map((zeile) => {
     const i = zeile.dataset.punkt;
     const ausloeser = wert(`p${i}_ausloeser`);
     const rohstart = wert(`p${i}_start`);
-    // Die Bedingungen stehen in eigenen Zeilen und müssen mit eingesammelt
-    // werden – sonst wäre jedes Speichern in der Oberfläche ein stiller
-    // Verlust: Der Auswahlhelfer der Terrassentür verschwände, und das Rollo
-    // führe fortan in jeder Stellung zu.
     const wenn = $$(`.wennzeile [name^="p${i}_w"]`, zeile)
       .filter((el) => el.name.endsWith("_entity"))
       .map((el) => ({entity: el.value,
@@ -903,23 +819,299 @@ function sammleDialog(){
       frueh: wert(`p${i}_frueh`), spaet: wert(`p${i}_spaet`),
       position: lies(Number(wert(`p${i}_position`))),
       gilt: wert(`p${i}_gilt`),
-      tage: mehrfach(`p${i}_tage`), name: "",
+      tage: $$(`[name="p${i}_tage"]:checked`, wurzel).map((el) => el.value),
+      name: "",
     };
   });
 }
 
-async function raumSpeichern(){
+/* ─────────────────────────────────────────────────────────────── Rollos ─── */
+
+function zeichneRollos(){
+  const rollos = CONFIG?.rollos || [];
+  const plaene = new Map((CONFIG?.plaene || []).map((p) => [p.id, p]));
+  const artName = new Map(ARTEN);
+
+  if (!rollos.length) {
+    $("#rolloliste").innerHTML = `<div class="leerhinweis">Noch kein Rollo eingerichtet.</div>`;
+    return;
+  }
+  const nachRaum = new Map();
+  rollos.forEach((r) => {
+    const raum = r.raum || "Ohne Bereich";
+    if (!nachRaum.has(raum)) nachRaum.set(raum, []);
+    nachRaum.get(raum).push(r);
+  });
+  $("#rolloliste").innerHTML = [...nachRaum].map(([raum, liste]) => `
+    <div class="raumtitel">${esc(raum)}</div>
+    <table><thead><tr><th>Rollo</th><th>was</th><th>Zeitplan</th><th>Hitzeschutz</th>
+      <th></th></tr></thead><tbody>
+    ${liste.map((r) => {
+      const plan = plaene.get(r.plan);
+      return `<tr>
+        <td><b>${esc(rolloName(r))}</b>
+          ${r.aktiv ? "" : ' <span class="hinweis">(aus)</span>'}
+          <div class="hinweis">${esc(r.entity_id)}</div></td>
+        <td>${esc(artName.get(r.art) || r.art)}</td>
+        <td>${plan ? `<span class="planschild">${esc(plan.name)}</span>`
+              : `<span class="planschild eigen">${r.zeitplan.length} eigene Punkte</span>`}</td>
+        <td class="hinweis">${r.beschattung && r.ausrichtung !== null
+              ? (RICHTUNGEN.find(([g]) => Number(g) === r.ausrichtung)?.[1] || r.ausrichtung + "°")
+              : "–"}</td>
+        <td class="knopfspalte"><button class="leise" data-rollo="${esc(r.entity_id)}">Bearbeiten</button></td>
+      </tr>`;
+    }).join("")}</tbody></table>`).join("");
+
+  $$("#rolloliste [data-rollo]").forEach((el) =>
+    el.onclick = () => rolloDialog(rollos.find((r) => r.entity_id === el.dataset.rollo)));
+}
+
+function rolloDialog(rollo){
+  DIALOGART = "rollo";
+  const neu = !rollo;
+  ENTWURF = rollo ? JSON.parse(JSON.stringify(rollo)) : {
+    entity_id: "", name: "", raum: "", art: "fenster", aktiv: true,
+    betriebsart: "plan", plan: "", zeitplan: [], ausrichtung: null,
+    oeffnungswinkel: 90, beschattung: false, beschattung_position: null,
+    raumtemp: "", raumtemp_ab: null, fenster: [], praesenz: [], personen: [],
+    urlaub_simulation: true, position_offen: 100, position_zu: 0,
+  };
+  $("#dlg-titel").textContent = neu ? "Rollo hinzufügen" : rolloName(ENTWURF);
+  $("#btn-dlg-loeschen").hidden = neu;
+  zeichneRolloDialog();
+  $("#dialog").showModal();
+}
+
+function zeichneRolloDialog(){
+  const r = ENTWURF;
+  const e = ENTITAETEN || {};
+  const plaene = CONFIG?.plaene || [];
+  const schonDa = new Set((CONFIG?.rollos || []).map((x) => x.entity_id));
+  const frei = (e.rollos || []).filter((k) => !schonDa.has(k.entity_id)
+                                              || k.entity_id === r.entity_id);
+  const tuer = TUERARTEN.includes(r.art);
+
+  $("#dlg-inhalt").innerHTML = werteListe() + `
+    <div id="dlg-fehler"></div>
+    <div class="abschnitt">
+      <div class="gitter g2">
+        ${r.entity_id ? `<label class="feld"><span>Entität</span>
+            <input type="text" value="${esc(r.entity_id)}" disabled></label>`
+          : `<label class="feld"><span>Welches Rollo?</span>
+            ${auswahl("entity_id", frei.map((k) => [k.entity_id, `${k.name} (${k.entity_id})`]),
+                      r.entity_id, "bitte wählen")}</label>`}
+        <label class="feld"><span>Was steckt dahinter</span>
+          ${auswahl("art", ARTEN, r.art)}
+          <span class="hinweis">Eine Tür geht bis zum Boden – das ändert die Anzeige
+            und legt nahe, einen Kontakt zu hinterlegen.</span></label>
+      </div>
+      <div class="gitter g2">
+        <label class="feld"><span>Name (leer = aus Home Assistant)</span>
+          <input type="text" name="name" value="${esc(r.name)}" maxlength="60"></label>
+        <label class="feld"><span>Raum (nur zum Ordnen)</span>
+          <input type="text" name="raum" value="${esc(r.raum)}" maxlength="60"></label>
+      </div>
+      <label class="haken"><input type="checkbox" name="aktiv" ${r.aktiv ? "checked" : ""}>
+        Rollo ist eingeschaltet</label>
+      <label class="feld"><span>Betriebsart</span>
+        ${auswahl("betriebsart", [["plan","Plan – auf und zu"],
+                                  ["nur_schliessen","nur schließen"],
+                                  ["beobachten","beobachten, nicht fahren"]], r.betriebsart)}</label>
+    </div>
+
+    <div class="abschnitt"><h3>Zeitplan</h3>
+      <label class="feld"><span>Welchem Zeitplan folgt dieses Rollo?</span>
+        ${auswahl("plan", plaene.map((p) => [p.id, p.name]), r.plan,
+                  "einem eigenen")}</label>
+      ${r.plan
+        ? `<p class="hinweis">Die Schaltpunkte stehen unter <b>Zeitpläne</b> –
+             was dort geändert wird, gilt für alle Rollos, die diesem Plan folgen.</p>`
+        : punktliste(r.zeitplan || [])}
+    </div>
+
+    <div class="abschnitt"><h3>Hitzeschutz</h3>
+      <div class="gitter g3">
+        <label class="feld"><span>Zeigt nach</span>
+          ${auswahl("ausrichtung", RICHTUNGEN, r.ausrichtung, "unbekannt")}</label>
+        <label class="feld"><span>Öffnungswinkel</span>
+          <input type="number" name="oeffnungswinkel" value="${r.oeffnungswinkel}"
+                 min="10" max="180" step="10"></label>
+        <label class="feld"><span>Stellung (leer = Vorgabe)</span>
+          <input type="number" name="beschattung_position" min="0" max="100" step="5"
+                 value="${r.beschattung_position === null || r.beschattung_position === undefined
+                          ? "" : zeige(r.beschattung_position)}"></label>
+      </div>
+      <label class="haken"><input type="checkbox" name="beschattung" ${r.beschattung ? "checked" : ""}>
+        Hitzeschutz für dieses Rollo</label>
+      <p class="hinweis">Ohne Ausrichtung bleibt er wirkungslos – der Planer kann nicht
+        raten, wohin ein Fenster zeigt.</p>
+      <div class="gitter g2" style="margin-top:var(--l3)">
+        <label class="feld"><span>Raumfühler (freiwillig)</span>
+          ${auswahl("raumtemp", (e.raumtemp || []).map((k) => [k.entity_id, k.name]),
+                    r.raumtemp, "keiner")}</label>
+        <label class="feld"><span>… erst ab dieser Raumtemperatur</span>
+          <input type="number" name="raumtemp_ab" step="0.5" min="10" max="40"
+                 value="${r.raumtemp_ab ?? ""}"></label>
+      </div>
+    </div>
+
+    <div class="abschnitt"><h3>Kontakte</h3>
+      <label class="feld"><span>Solange einer offen ist, wird nicht zugefahren</span></label>
+      ${hakenliste("fenster", e.fenster || [], r.fenster)}
+      ${tuer && !(r.fenster || []).length ? `<p class="hinweis art-warnung">
+        Bei einer Tür ist das kein Zubehör: Ohne Kontakt merkt der Planer nicht,
+        ob jemand draußen steht, wenn er zufährt.</p>` : ""}
+      <label class="haken" style="margin-top:var(--l3)">
+        <input type="checkbox" name="urlaub_simulation" ${r.urlaub_simulation ? "checked" : ""}>
+        Im Urlaub mitsimulieren</label>
+    </div>
+
+    <div class="abschnitt"><h3>Stellungen</h3>
+      <div class="gitter g2">
+        <label class="feld"><span>„offen“ heißt</span>
+          <input type="number" name="position_offen" value="${zeige(r.position_offen)}"
+                 min="0" max="100" step="5"></label>
+        <label class="feld"><span>„zu“ heißt</span>
+          <input type="number" name="position_zu" value="${zeige(r.position_zu)}"
+                 min="0" max="100" step="5"></label>
+      </div>
+    </div>`;
+
+  punktKnoepfe(zeichneRolloDialog);
+  const planwahl = $("#dlg-inhalt select[name=plan]");
+  if (planwahl) planwahl.onchange = () => { sammleDialog(); zeichneRolloDialog(); };
+  const artwahl = $("#dlg-inhalt select[name=art]");
+  if (artwahl) artwahl.onchange = () => { sammleDialog(); zeichneRolloDialog(); };
+}
+
+/* ──────────────────────────────────────────────────────────── Zeitpläne ─── */
+
+function zeichnePlaene(){
+  const plaene = CONFIG?.plaene || [];
+  const rollos = CONFIG?.rollos || [];
+  $("#planliste").innerHTML = plaene.length ? `<table>
+    <thead><tr><th>Zeitplan</th><th>Schaltpunkte</th><th>Rollos</th><th></th></tr></thead>
+    <tbody>${plaene.map((p) => {
+      const folger = rollos.filter((r) => r.plan === p.id);
+      return `<tr>
+        <td><b>${esc(p.name)}</b>${p.aktiv ? "" : ' <span class="hinweis">(aus)</span>'}</td>
+        <td>${p.zeitplan.length}</td>
+        <td class="hinweis">${folger.length
+          ? folger.map((r) => esc(rolloName(r))).join(", ")
+          : "– niemand folgt ihm –"}</td>
+        <td class="knopfspalte"><button class="leise" data-plan="${p.id}">Bearbeiten</button></td>
+      </tr>`;
+    }).join("")}</tbody></table>`
+    : `<div class="leerhinweis">Noch kein gemeinsamer Zeitplan.</div>`;
+  $$("#planliste [data-plan]").forEach((el) =>
+    el.onclick = () => planDialog(plaene.find((p) => p.id === el.dataset.plan)));
+}
+
+function planDialog(plan){
+  DIALOGART = "plan";
+  const neu = !plan;
+  ENTWURF = plan ? JSON.parse(JSON.stringify(plan))
+                 : {name: "Neuer Zeitplan", aktiv: true, zeitplan: []};
+  $("#dlg-titel").textContent = neu ? "Zeitplan anlegen" : ENTWURF.name;
+  $("#btn-dlg-loeschen").hidden = neu;
+  zeichnePlanDialog();
+  $("#dialog").showModal();
+}
+
+function zeichnePlanDialog(){
+  const p = ENTWURF;
+  const folger = (CONFIG?.rollos || []).filter((r) => r.plan === p.id);
+  $("#dlg-inhalt").innerHTML = werteListe() + `
+    <div id="dlg-fehler"></div>
+    <div class="abschnitt">
+      <label class="feld"><span>Name</span>
+        <input type="text" name="name" value="${esc(p.name)}" required maxlength="60"></label>
+      <label class="haken"><input type="checkbox" name="aktiv" ${p.aktiv ? "checked" : ""}>
+        Zeitplan ist eingeschaltet</label>
+      ${folger.length ? `<p class="hinweis">Diesem Plan folgen:
+        <b>${folger.map((r) => esc(rolloName(r))).join(", ")}</b>.
+        Was hier geändert wird, gilt für alle.</p>`
+        : `<p class="hinweis art-warnung">Diesem Plan folgt noch kein Rollo –
+           zuzuordnen ist er unter <b>Rollos</b>.</p>`}
+    </div>
+    <div class="abschnitt"><h3>Schaltpunkte</h3>
+      ${punktliste(p.zeitplan || [])}
+    </div>`;
+  punktKnoepfe(zeichnePlanDialog);
+}
+
+/* ───────────────────────────────────────────────── Dialog: gemeinsam ─── */
+
+function sammleDialog(){
+  const wurzel = $("#dlg-inhalt");
+  const r = ENTWURF;
+  const wert = (name) => { const el = wurzel.querySelector(`[name="${name}"]`);
+                           return el ? el.value : ""; };
+  const haken = (name) => { const el = wurzel.querySelector(`[name="${name}"]`);
+                            return el ? el.checked : false; };
+  const mehrfach = (name) => $$(`[name="${name}"]:checked`, wurzel).map((el) => el.value);
+
+  r.name = wert("name");
+  r.aktiv = haken("aktiv");
+
+  if (DIALOGART === "plan") {
+    r.zeitplan = punkteSammeln(wurzel);
+    return;
+  }
+
+  if (!r.entity_id) r.entity_id = wert("entity_id");
+  r.raum = wert("raum");
+  r.art = wert("art");
+  r.betriebsart = wert("betriebsart");
+  r.plan = wert("plan");
+  r.zeitplan = r.plan ? [] : punkteSammeln(wurzel);
+  r.ausrichtung = wert("ausrichtung") === "" ? null : Number(wert("ausrichtung"));
+  r.oeffnungswinkel = Number(wert("oeffnungswinkel")) || 90;
+  r.beschattung = haken("beschattung");
+  r.beschattung_position = wert("beschattung_position") === "" ? null
+    : lies(Number(wert("beschattung_position")));
+  r.raumtemp = wert("raumtemp");
+  r.raumtemp_ab = wert("raumtemp_ab") === "" ? null : Number(wert("raumtemp_ab"));
+  r.fenster = mehrfach("fenster");
+  r.urlaub_simulation = haken("urlaub_simulation");
+  r.position_offen = lies(Number(wert("position_offen")));
+  r.position_zu = lies(Number(wert("position_zu")));
+}
+
+async function dialogSpeichern(){
   sammleDialog();
-  const r = AKTUELLER_RAUM;
+  const r = ENTWURF;
   try {
-    if (r.id) await holeJSON(`api/raeume/${r.id}`, "PUT", r);
-    else await holeJSON("api/raeume", "POST", r);
-    $("#raum-dialog").close();
+    if (DIALOGART === "plan") {
+      if (r.id) await holeJSON(`api/plaene/${r.id}`, "PUT", r);
+      else await holeJSON("api/plaene", "POST", r);
+    } else {
+      if (!r.entity_id) throw new Error("Bitte ein Rollo auswählen");
+      const vorhanden = (CONFIG?.rollos || []).some((x) => x.entity_id === r.entity_id);
+      if (vorhanden) await holeJSON(`api/rollos/${encodeURIComponent(r.entity_id)}`, "PUT", r);
+      else await holeJSON("api/rollos", "PUT",
+                          {rollos: [...(CONFIG?.rollos || []), r]});
+    }
+    $("#dialog").close();
     melden("gespeichert");
     await aktualisieren();
   } catch (err) {
     $("#dlg-fehler").innerHTML = `<div class="fehler">${esc(err.message)}</div>`;
     $("#dlg-inhalt").scrollTop = 0;
+  }
+}
+
+async function dialogLoeschen(){
+  const r = ENTWURF;
+  const was = DIALOGART === "plan" ? `den Zeitplan „${r.name}“`
+                                   : `das Rollo „${rolloName(r)}“`;
+  if (!confirm(`Wirklich ${was} löschen?`)) return;
+  try {
+    if (DIALOGART === "plan") await holeJSON(`api/plaene/${r.id}`, "DELETE");
+    else await holeJSON(`api/rollos/${encodeURIComponent(r.entity_id)}`, "DELETE");
+    $("#dialog").close(); melden("gelöscht"); await aktualisieren();
+  } catch (err) {
+    $("#dlg-fehler").innerHTML = `<div class="fehler">${esc(err.message)}</div>`;
   }
 }
 
@@ -983,15 +1175,15 @@ async function ladeSchalter(){
 /* Welche fremden Helfer stecken noch in den Zeitplänen? */
 function zeichneFremde(){
   const fremde = new Map();
-  for (const raum of (CONFIG?.raeume || [])) {
+  const quellen = [...(CONFIG?.rollos || []).map((r) => [r.name || r.entity_id, r.zeitplan]),
+                   ...(CONFIG?.plaene || []).map((p) => [`Zeitplan ${p.name}`, p.zeitplan])];
+  for (const [wo, punkte] of quellen) {
     const merken = (e) => {
       if (!e || e.startsWith("rolloplaner:")) return;
       if (!fremde.has(e)) fremde.set(e, []);
-      if (!fremde.get(e).includes(raum.name)) fremde.get(e).push(raum.name);
+      if (!fremde.get(e).includes(wo)) fremde.get(e).push(wo);
     };
-    merken(raum.freigabe_entity);
-    (raum.zeitplan || []).forEach((p) =>
-      (p.wenn || []).forEach((b) => merken(b.entity)));
+    (punkte || []).forEach((p) => (p.wenn || []).forEach((b) => merken(b.entity)));
   }
   if (!fremde.size) {
     $("#fremde").innerHTML = `<div class="leerhinweis">Alle Zeitpläne hängen an
@@ -1003,9 +1195,9 @@ function zeichneFremde(){
       eigene ersetzen: gleicher Name, gleiche Stellungen, übernommener Stand.
       Die alten Helfer bleiben liegen – sie werden danach nur nicht mehr
       gebraucht.</p>
-    <table><tbody>${[...fremde].map(([e, raeume]) => `<tr>
+    <table><tbody>${[...fremde].map(([e, wo]) => `<tr>
       <td><code>${esc(e)}</code></td>
-      <td class="hinweis">${esc(raeume.join(", "))}</td>
+      <td class="hinweis">${esc(wo.join(", "))}</td>
     </tr>`).join("")}</tbody></table>
     <div style="margin-top:var(--l4)">
       <button id="btn-fremde-ersetzen">Durch eigene Schalter ersetzen</button>
@@ -1021,6 +1213,7 @@ function zeichneFremde(){
     } catch (err) { melden(err.message, true); }
   };
 }
+
 
 /* ───────────────────────────────────────────────────────── Einstellungen ─── */
 
@@ -1171,6 +1364,7 @@ async function einstellungenSpeichern(){
   } catch (err) { melden(err.message, true); }
 }
 
+
 /* ───────────────────────────────────────────────────────────── Protokoll ─── */
 
 async function ladeProtokoll(){
@@ -1183,6 +1377,7 @@ async function ladeProtokoll(){
   </tr>`).join("") : `<tr><td colspan="4" class="leerhinweis">Noch nichts geschehen.</td></tr>`;
 }
 
+
 /* ──────────────────────────────────────────────────────────── Einrichtung ─── */
 
 let VORSCHLAG = null;
@@ -1190,57 +1385,107 @@ let VORSCHLAG = null;
 async function ladeVorschlag(){
   try { VORSCHLAG = await hole("api/uebernahme"); }
   catch (err) { $("#vorschlag").innerHTML = `<div class="fehler">${esc(err.message)}</div>`; return; }
-  const alle = [...(VORSCHLAG.raeume || []), ...(VORSCHLAG.ohne_automation || [])];
-  const zaehler = $("#z-einrichtung");
-  zaehler.hidden = alle.length === 0;
-  zaehler.textContent = alle.length;
 
-  if (!alle.length) {
-    $("#vorschlag").innerHTML = `<div class="leerhinweis">Nichts zu übernehmen –
-      alle Rollos sind bereits einem Raum zugeordnet.</div>`;
+  const rollos = VORSCHLAG.rollos || [];
+  const plaene = new Map((VORSCHLAG.plaene || []).map((p) => [p.id, p]));
+  const offen = rollos.filter((r) => !r.schon_da);
+  const zaehler = $("#z-einrichtung");
+  zaehler.hidden = offen.length === 0;
+  zaehler.textContent = offen.length;
+
+  if (!rollos.length) {
+    $("#vorschlag").innerHTML = `<div class="leerhinweis">Keine Rollos gefunden.</div>`;
     return;
   }
-  $("#vorschlag").innerHTML = alle.map((raum, i) => `
-    <div class="abschnitt">
-      <h3><label class="haken" style="margin:0">
-        <input type="checkbox" name="v" value="${i}" checked> ${esc(raum.name)}</label></h3>
-      <div class="hinweis" style="margin-bottom:var(--l2)">
-        ${raum.rollos.map(esc).join(", ")}
-        ${raum.freigabe_entity ? `<br>Freigabe: ${esc(raum.freigabe_entity)}` : ""}
-        ${raum.quellen?.length ? `<br>aus: ${raum.quellen.map(esc).join("; ")}` : ""}
-      </div>
-      ${raum.zeitplan.length ? `<table><tbody>${raum.zeitplan.map((p) => `<tr>
-        <td class="zeit">${p.ausloeser === "uhrzeit" ? esc(p.start) + " Uhr"
-          : esc(AUSLOESER.find(([w]) => w === p.ausloeser)?.[1] || p.ausloeser)
-            + (p.versatz_min ? ` ${p.versatz_min > 0 ? "+" : ""}${p.versatz_min} min` : "")
-            + (p.frueh ? `, ab ${esc(p.frueh)}` : "") + (p.spaet ? `, bis ${esc(p.spaet)}` : "")}</td>
-        <td>${stellungstext(p.position)}</td>
-        <td>${esc(GELTUNG.find(([w]) => w === p.gilt)?.[1] || p.gilt)}</td>
-        <td class="hinweis">${p.tage.length === 7 ? "täglich"
-          : p.tage.map((t) => TAGE.find(([w]) => w === t)?.[1]).join(" ")}</td>
-      </tr>`).join("")}</tbody></table>`
-        : `<div class="hinweis">Kein Schaltpunkt gefunden – Zeitplan bitte selbst anlegen.</div>`}
-      ${(raum.hinweise || []).map((h) => `<div class="hinweis art-warnung">${esc(h)}</div>`).join("")}
-    </div>`).join("") + `
-    <div style="display:flex; gap:var(--l2); flex-wrap:wrap; margin-top:var(--l4)">
-      <button id="btn-uebernehmen">Ausgewählte Räume anlegen</button>
+
+  const artName = new Map(ARTEN);
+  const zeile = (p) => {
+    const wann = p.ausloeser === "uhrzeit" ? esc(p.start) + " Uhr"
+      : esc(AUSLOESER.find(([w]) => w === p.ausloeser)?.[1] || p.ausloeser)
+        + (p.versatz_min ? ` ${p.versatz_min > 0 ? "+" : ""}${p.versatz_min} min` : "")
+        + (p.frueh ? `, ab ${esc(p.frueh)}` : "") + (p.spaet ? `, bis ${esc(p.spaet)}` : "");
+    const wenn = (p.wenn || []).map((b) =>
+      `${esc(b.entity.split(".").at(-1))} = ${esc(b.wert)}`).join(", ");
+    return `<tr><td class="zeit">${wann}</td>
+      <td>${stellungstext(p.position)}</td>
+      <td>${esc(GELTUNG.find(([w]) => w === p.gilt)?.[1] || p.gilt)}</td>
+      <td class="hinweis">${p.tage.length === 7 ? "täglich"
+        : p.tage.map((t) => TAGE.find(([w]) => w === t)?.[1]).join(" ")}</td>
+      <td class="hinweis">${wenn}</td></tr>`;
+  };
+
+  // Nach Raum ordnen – so, wie man ein Rollo sucht.
+  const nachRaum = new Map();
+  rollos.forEach((r) => {
+    const raum = r.raum || "Ohne Bereich";
+    if (!nachRaum.has(raum)) nachRaum.set(raum, []);
+    nachRaum.get(raum).push(r);
+  });
+
+  $("#vorschlag").innerHTML = `
+    <div class="abschnitt"><h3>Rollos</h3>
+      ${[...nachRaum].map(([raum, liste]) => `
+        <div class="raumtitel">${esc(raum)}</div>
+        <table><tbody>${liste.map((r) => {
+          const plan = plaene.get(r.plan);
+          return `<tr>
+            <td style="width:1%"><label class="haken" style="margin:0">
+              <input type="checkbox" name="v" value="${esc(r.entity_id)}"
+                     ${r.schon_da ? "" : "checked"}></label></td>
+            <td><b>${esc(r.anzeige)}</b>
+              <div class="hinweis">${esc(r.entity_id)}</div>
+              ${(r.hinweise || []).map((h) =>
+                `<div class="hinweis art-warnung">${esc(h)}</div>`).join("")}</td>
+            <td>${esc(artName.get(r.art) || r.art)}</td>
+            <td>${plan ? `<span class="planschild">${esc(plan.name)}</span>`
+                  : r.zeitplan.length ? `<span class="planschild eigen">${r.zeitplan.length} eigene Punkte</span>`
+                  : `<span class="hinweis">kein Zeitplan</span>`}</td>
+            <td class="hinweis">${(r.quellen || []).join("; ")}</td>
+          </tr>${!plan && r.zeitplan.length ? `<tr><td></td><td colspan="4">
+            <table><tbody>${r.zeitplan.map(zeile).join("")}</tbody></table></td></tr>` : ""}`;
+        }).join("")}</tbody></table>`).join("")}
     </div>
+
+    ${VORSCHLAG.plaene?.length ? `<div class="abschnitt"><h3>Gemeinsame Zeitpläne</h3>
+      <p class="hinweis" style="margin-bottom:var(--l3)">Rollos mit gleichem
+        Schaltmuster teilen sich einen Zeitplan – was dort geändert wird, gilt für
+        alle davon.</p>
+      ${VORSCHLAG.plaene.map((p) => {
+        const folger = rollos.filter((r) => r.plan === p.id).map((r) => r.anzeige);
+        return `<div style="margin-bottom:var(--l4)">
+          <b>${esc(p.name)}</b> <span class="hinweis">— ${folger.map(esc).join(", ")}</span>
+          <table><tbody>${p.zeitplan.map(zeile).join("")}</tbody></table></div>`;
+      }).join("")}</div>` : ""}
+
+    <div style="display:flex; gap:var(--l2); flex-wrap:wrap; margin-top:var(--l4);
+                align-items:center">
+      <button id="btn-uebernehmen">Ausgewählte übernehmen</button>
+      <label class="haken" style="margin:0">
+        <input type="checkbox" id="eigene-schalter" checked>
+        Eigene Schalter anlegen statt fremde Helfer zu benutzen</label>
+    </div>
+
     ${VORSCHLAG.ungedeutet?.length ? `<div class="abschnitt" style="margin-top:var(--l5)">
       <h3>Bleibt bei den Automationen</h3>
       ${VORSCHLAG.ungedeutet.map((u) => `<div class="hinweis">
         <b>${esc(u.alias)}</b> – ${esc(u.grund)}</div>`).join("")}
-      <p class="hinweis" style="margin-top:var(--l2)">Diese Automationen löst der Planer
-        nicht ab; sie sollen weiterlaufen.</p></div>` : ""}`;
+      <p class="hinweis" style="margin-top:var(--l2)">Diese Automationen löst der
+        Planer nicht ab; sie sollen weiterlaufen.</p></div>` : ""}`;
 
-  const knopf = $("#btn-uebernehmen");
-  if (knopf) knopf.onclick = async () => {
-    const gewaehlt = $$("#vorschlag [name=v]:checked").map((el) => alle[Number(el.value)]);
+  $("#btn-uebernehmen").onclick = async () => {
+    const gewaehlt = new Set($$("#vorschlag [name=v]:checked").map((el) => el.value));
+    const auswahl = rollos.filter((r) => gewaehlt.has(r.entity_id));
+    if (!auswahl.length) { melden("Nichts ausgewählt", true); return; }
+    if (!confirm(`${auswahl.length} Rollos übernehmen? Die bisherige Einrichtung `
+               + `wird dabei ersetzt.`)) return;
     try {
-      const ergebnis = await holeJSON("api/uebernahme", "POST", {raeume: gewaehlt});
-      melden(`${ergebnis.angelegt.length} Räume angelegt`);
-      if (ergebnis.fehler.length) melden(ergebnis.fehler[0].fehler, true);
+      const r = await holeJSON("api/uebernahme", "POST", {
+        rollos: auswahl, plaene: VORSCHLAG.plaene,
+        eigene_schalter: $("#eigene-schalter").checked});
+      melden(`${r.rollos} Rollos, ${r.plaene} Zeitpläne, ${r.schalter} Schalter`);
       await aktualisieren();
       await ladeVorschlag();
+      await ladeGesundheit();
     } catch (err) { melden(err.message, true); }
   };
 }
@@ -1250,8 +1495,7 @@ async function ladeGesundheit(){
   const z = g.zaehler;
   $("#gesundheit").innerHTML = `
     <div class="sonne-zeile" style="margin-bottom:var(--l3)">
-      <span><b>${z.raeume}</b> Räume</span><span><b>${z.rollos}</b> Rollos</span>
-      <span><b>${z.nicht_zugeordnet}</b> nicht zugeordnet</span>
+      <span><b>${z.rollos}</b> Rollos</span><span><b>${z.plaene}</b> Zeitpläne</span>
       <span class="${z.fehler ? "art-fehler" : ""}"><b>${z.fehler}</b> Fehler</span>
       <span class="${z.warnungen ? "art-warnung" : ""}"><b>${z.warnungen}</b> Warnungen</span>
     </div>
@@ -1276,7 +1520,8 @@ async function aktualisieren(){
           : BERICHT.trockenlauf ? "Trockenlauf"
           : BERICHT.urlaub ? "Urlaub" : "läuft");
     zeichneUebersicht();
-    zeichneRaeume();
+    zeichneRollos();
+    zeichnePlaene();
     zeichneEinstellungen();
   } catch (err) {
     $("#kopfstatus").textContent = err.message;
@@ -1300,41 +1545,16 @@ $("#btn-takt").onclick = async () => {
   finally { $("#btn-takt").disabled = false; }
 };
 $("#btn-durchsetzen").onclick = async () => {
-  if (!confirm("Der Planer vergisst, was er zuletzt getan hat, und fährt alle Räume "
+  if (!confirm("Der Planer vergisst, was er zuletzt getan hat, und fährt alle Rollos "
              + "auf den Stand, der jetzt gilt. Fortfahren?")) return;
   try { await holeJSON("api/durchsetzen", "POST"); melden("wird durchgesetzt");
         setTimeout(aktualisieren, 1500); }
   catch (err) { melden(err.message, true); }
 };
-$("#btn-raum-neu").onclick = () => raumDialog(null);
-$("#btn-raum-speichern").onclick = raumSpeichern;
-$("#btn-raum-loeschen").onclick = async () => {
-  if (!AKTUELLER_RAUM?.id) return;
-  if (!confirm(`„${AKTUELLER_RAUM.name}“ wirklich löschen?`)) return;
-  try {
-    await holeJSON(`api/raeume/${AKTUELLER_RAUM.id}`, "DELETE");
-    $("#raum-dialog").close(); melden("gelöscht"); await aktualisieren();
-  } catch (err) { melden(err.message, true); }
-};
-$("#btn-schalter-neu").onclick = () => {
-  (SCHALTER = SCHALTER || []).push({name: "Neuer Schalter", art: "schalter",
-                                    optionen: [], vorgabe: "on", icon: ""});
-  zeichneSchalter();
-};
-$("#btn-auswahl-neu").onclick = () => {
-  (SCHALTER = SCHALTER || []).push({name: "Neue Auswahl", art: "auswahl",
-                                    optionen: ["normal", "aus"], vorgabe: "normal",
-                                    icon: ""});
-  zeichneSchalter();
-};
-$("#btn-schalter-speichern").onclick = async () => {
-  try {
-    SCHALTER = await holeJSON("api/schalter", "PUT", {schalter: SCHALTER});
-    melden("gespeichert");
-    await aktualisieren();
-    await ladeSchalter();
-  } catch (err) { melden(err.message, true); }
-};
+$("#btn-rollo-neu").onclick = () => rolloDialog(null);
+$("#btn-plan-neu").onclick = () => planDialog(null);
+$("#btn-dlg-speichern").onclick = dialogSpeichern;
+$("#btn-dlg-loeschen").onclick = dialogLoeschen;
 $("#btn-einst-speichern").onclick = einstellungenSpeichern;
 $("#btn-probe").onclick = async () => {
   try { const r = await holeJSON("api/wachhund/probe", "POST");
@@ -1354,6 +1574,7 @@ $("#btn-gesundheit").onclick = ladeGesundheit;
     try { BERICHT = await hole("api/status"); zeichneUebersicht(); } catch {}
   }, 20000);
 })();
+
 </script>
 </body>
 </html>

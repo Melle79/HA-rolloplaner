@@ -57,44 +57,46 @@ def pruefen(config: dict, index: dict, jetzt: datetime,
     hindernis_melden = bool(wachhund.get("hindernis_melden", True))
     stoerungen = []
 
-    for raum in config["raeume"]:
-        if not raum.get("aktiv", True):
+    for rollo in config.get("rollos") or []:
+        if not rollo.get("aktiv", True):
             continue
-        for eid in raum.get("rollos") or []:
-            zustand = index.get(eid)
-            name = ((zustand.get("attributes") or {}).get("friendly_name")
-                    if zustand else None) or eid
+        eid = rollo["entity_id"]
+        zustand = index.get(eid)
+        name = (rollo.get("name")
+                or ((zustand.get("attributes") or {}).get("friendly_name")
+                    if zustand else None) or eid)
+        ort = rollo.get("raum") or ""
 
-            if zustand is None:
-                stoerungen.append(_bauen(eid, name, raum, "weg",
-                                         "in Home Assistant nicht gefunden"))
-                continue
-            if zustand.get("state") == "unavailable":
-                stoerungen.append(_bauen(eid, name, raum, "weg", ""))
-                continue
+        if zustand is None:
+            stoerungen.append(_bauen(eid, name, ort, "weg",
+                                     "in Home Assistant nicht gefunden"))
+            continue
+        if zustand.get("state") == "unavailable":
+            stoerungen.append(_bauen(eid, name, ort, "weg", ""))
+            continue
 
-            if hindernis_melden:
-                for art, endung in DIAGNOSE.items():
-                    melder = index.get(eid.replace("cover.", "binary_sensor.") + endung)
-                    if melder is not None and melder.get("state") == "on":
-                        stoerungen.append(_bauen(eid, name, raum, art, ""))
+        if hindernis_melden:
+            for art, endung in DIAGNOSE.items():
+                melder = index.get(eid.replace("cover.", "binary_sensor.") + endung)
+                if melder is not None and melder.get("state") == "on":
+                    stoerungen.append(_bauen(eid, name, ort, art, ""))
 
-            # Schweigen zählt erst, wenn das Gerät auch fahren sollte. Ein
-            # Rollo in einem abgeschalteten Raum meldet zu Recht nichts.
-            gesehen = _zeit(zustand.get("last_reported") or zustand.get("last_updated"))
-            if gesehen is not None and jetzt.astimezone() - gesehen > stumm_grenze:
-                stunden = (jetzt.astimezone() - gesehen).total_seconds() / 3600
-                stoerungen.append(_bauen(eid, name, raum, "stumm",
-                                         f"seit {stunden:.0f} Stunden"))
+        # Schweigen zählt erst, wenn das Gerät auch fahren sollte. Ein
+        # abgeschaltetes Rollo meldet zu Recht nichts.
+        gesehen = _zeit(zustand.get("last_reported") or zustand.get("last_updated"))
+        if gesehen is not None and jetzt.astimezone() - gesehen > stumm_grenze:
+            stunden = (jetzt.astimezone() - gesehen).total_seconds() / 3600
+            stoerungen.append(_bauen(eid, name, ort, "stumm",
+                                     f"seit {stunden:.0f} Stunden"))
     return stoerungen
 
 
-def _bauen(entity_id: str, name: str, raum: dict, art: str, zusatz: str) -> dict:
+def _bauen(entity_id: str, name: str, ort: str, art: str, zusatz: str) -> dict:
     beschreibung, schwere = ARTEN[art]
-    text = f"{name} ({raum['name']}) {beschreibung}"
+    text = f"{name} ({ort}) {beschreibung}" if ort else f"{name} {beschreibung}"
     if zusatz:
         text += f" – {zusatz}"
-    return {"entity_id": entity_id, "name": name, "raum": raum["name"],
+    return {"entity_id": entity_id, "name": name, "raum": ort,
             "art": art, "schwere": schwere, "text": text}
 
 

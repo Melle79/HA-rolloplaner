@@ -1,5 +1,53 @@
 # Änderungen
 
+## 2.0.0 – 26.08.2026
+
+**Die Steuereinheit ist jetzt das Rollo, nicht der Raum.**
+
+Bis hierher war der Raum die Einheit, und das war von Anfang an falsch: Das
+Modell stammte aus den vorhandenen Automationen statt aus der Frage, wie ein
+Rollladenplaner aussehen muss. Die Folgen zogen sich durch alles – Luna hat ein
+Fenster *und* eine Balkontür, und der Planer konnte sie nicht unterschiedlich
+fahren. Für die Terrassentür musste ein Kunstraum „Wohnzimmer – Terrassentür“
+erfunden werden, weil sie einem anderen Regime folgt. Ob Fenster oder Tür hing
+am Raum, obwohl im Schlafzimmer beides hängt.
+
+Jetzt führt **jedes Rollo seine eigenen Angaben**: was dahintersteckt (Fenster,
+Balkontür, Terrassentür, Dachfenster, Haustür), wohin es zeigt, welcher Kontakt
+es sperrt, was „offen“ und „zu“ heißen. Und es folgt einem **benannten
+Zeitplan**, den sich mehrere Rollos teilen – oder einem eigenen. Ein Zeitplan
+gehört keinem Raum, sondern allen, die ihm folgen; jeder hat einen eigenen
+Schalter in Home Assistant.
+
+Der **Raum** kommt aus Home Assistant und steuert nichts mehr. Er ordnet die
+Anzeige – er ist der Ort, an dem man ein Rollo sucht.
+
+**Die Übernahme sammelt jetzt je Rollo** und fasst erst danach zusammen, was
+identisch fährt. Das ist die Reihenfolge, auf die es ankommt: Wer zuerst
+gruppiert und dann die Zeiten sucht, muss für jedes Rollo mit eigenem Regime
+eine Ausnahme erfinden. Ein gemeinsamer Zeitplan entsteht nur, wenn ihm
+mehrere Rollos folgen.
+
+Die Art wird beim Übernehmen aus dem Namen geraten – und der **Anzeigename
+gewinnt gegen die entity_id**: In dieser Anlage heißt die Schlafzimmer-
+Balkontür `cover.rollo_terrassentur`, weil das Gerät im alten Haus woanders
+hing. Der Name wurde gepflegt, die ID nicht.
+
+**Weiteres:**
+
+* Neue Reiter **Rollos** und **Zeitpläne**; die Übersicht ordnet nach Raum.
+* Die Selbstauskunft meldet **Türen ohne Kontakt** – an einer Balkontür ist der
+  kein Zubehör, sondern der Unterschied zwischen „zu“ und „ausgesperrt“.
+* Als „geteilt“ gilt ein Schalter, der über **einen Raum hinaus** wirkt. Dass
+  einer beide Rollos in Lunas Zimmer betrifft, überrascht niemanden.
+* Die Urlaubssimulation streut je Rollo, nicht je Zeitplan – sonst führen zwei
+  Rollos am selben Plan wieder im Gleichtakt.
+
+**Umstieg**: Eine Konfiguration aus 1.x lässt sich nicht weiterverwenden – ein
+Raum mit drei Rollos wusste nicht, welches davon eine Terrassentür ist. Sie
+wird unter `/data/config-vor-umbau.json` beiseitegelegt; eingerichtet wird neu
+über den Reiter *Einrichtung*.
+
 ## 1.6.0 – 26.08.2026
 
 **Geteilte Schalter stehen jetzt oben, nicht in jeder Kachel.** „Obergeschoss

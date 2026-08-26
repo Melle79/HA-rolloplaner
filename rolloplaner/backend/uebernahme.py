@@ -23,6 +23,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import uuid
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -286,26 +287,23 @@ ALLE_TAGE = list(TAGE_KURZ)
 
 
 def vorschlag(bereiche: dict, schulfrei_entity: str, schulfrei_morgen_entity: str,
-              vorhandene: list[dict] | None = None, namen: dict | None = None) -> dict:
+              cover: list[dict] | None = None) -> dict:
     """Aus den vorhandenen Automationen einen Einrichtungsvorschlag bauen.
 
-    Gesammelt wird **je Rollo**, gruppiert erst danach – und zwar nach Bereich
-    *und* Schaltmuster. Der Grund steht im Wohnzimmer dieses Hauses: Drei
-    Rollos, ein Bereich, aber die Terrassentür folgt einem eigenen Regime
-    (einem Auswahlhelfer mit den Stellungen normal / 24 Uhr / aus), während
-    die beiden Fensterrollos schlicht bei Sonnenuntergang zufahren. Wer nur
-    nach Bereich gruppiert, wirft beides in einen Topf und legt der
-    Terrassentür Schaltpunkte auf, die sie nie hatte.
+    Gesammelt wird **je Rollo** – so, wie der Planer auch regelt. Erst danach
+    werden Rollos mit **identischem Schaltmuster** zu einem benannten Zeitplan
+    zusammengefasst. Das ist die Reihenfolge, auf die es ankommt: Wer zuerst
+    gruppiert und dann die Zeiten sucht, muss für jedes Rollo mit eigenem
+    Regime eine Ausnahme erfinden.
+
+    Rollos, für die sich gar keine Automation findet, kommen ohne Zeitplan mit
+    – sichtbar, damit sie nicht stillschweigend fehlen.
     """
-    schon_verplant = {eid for raum in (vorhandene or []) for eid in raum.get("rollos", [])}
-    namen = namen or {}
     je_rollo: dict[str, dict] = {}
     ungedeutet: list[dict] = []
 
     def eintrag_fuer(eid: str) -> dict:
-        return je_rollo.setdefault(eid, {
-            "rollos": [eid], "zeitplan": [], "freigabe_entity": "",
-            "quellen": [], "hinweise": []})
+        return je_rollo.setdefault(eid, {"zeitplan": [], "quellen": [], "hinweise": []})
 
     for automation in automationen_lesen():
         if not isinstance(automation, dict):
@@ -340,8 +338,6 @@ def vorschlag(bereiche: dict, schulfrei_entity: str, schulfrei_morgen_entity: st
                 continue
             for eid in ziele:
                 daten = eintrag_fuer(eid)
-                if bedingungen["freigabe"] and not daten["freigabe_entity"]:
-                    daten["freigabe_entity"] = bedingungen["freigabe"]
                 if automation.get("alias") not in daten["quellen"]:
                     daten["quellen"].append(automation.get("alias", "?"))
                 for teil in passende:
@@ -369,92 +365,123 @@ def vorschlag(bereiche: dict, schulfrei_entity: str, schulfrei_morgen_entity: st
 
     for daten in je_rollo.values():
         daten["zeitplan"] = _falten(daten["zeitplan"])
-        _freigabe_hochziehen(daten)
         daten["zeitplan"].sort(key=lambda p: (p.get("start") or "", p["ausloeser"]))
 
-    return {"raeume": _gruppieren(je_rollo, bereiche, namen, schon_verplant),
-            "ungedeutet": ungedeutet}
+    rollos, plaene = _zu_plaenen(je_rollo, bereiche, cover or [])
+    return {"rollos": rollos, "plaene": plaene, "ungedeutet": ungedeutet}
 
 
-def _freigabe_hochziehen(daten: dict) -> None:
-    """Eine Bedingung, die an **jedem** Punkt hängt, wird zum Raumschalter.
+def art_raten(name: str, entity_id: str) -> str:
+    """Fenster oder Tür? Der Name verrät es.
 
-    Beim Bürorollo steht `rollosteuerung_buero` in der einen Automation, die
-    alles regelt – daraus wird der Freigabeschalter des Raumes, und die Punkte
-    bleiben sauber. Wo sich Öffnen und Schließen verschiedene Schalter teilen,
-    bleibt es bei den Bedingungen am Punkt: Dort *gibt* es keinen gemeinsamen
-    Schalter, und einen zu erfinden hieße, das Verhalten zu ändern.
+    Ein Rollladen vor einer Balkontür geht bis zum Boden und braucht eine
+    Fenstersperre; eines vor einem Fenster nicht. Geraten wird nur die
+    Vorgabe – ändern lässt es sich in der Oberfläche.
+
+    **Der Anzeigename gewinnt gegen die entity_id.** In dieser Anlage heißt
+    die Schlafzimmer-Balkontür `cover.rollo_terrassentur`: Das Gerät hing im
+    alten Haus woanders, und die ID ist beim Umzug geblieben. Der Name wurde
+    gepflegt, die ID nicht – wer der ID glaubt, macht aus jeder zweiten
+    Balkontür eine Terrassentür.
     """
-    zeitplan = daten["zeitplan"]
-    if not zeitplan:
-        return
-    gemeinsam = None
-    for punkt in zeitplan:
-        schalter = {(w["entity"], w["wert"]) for w in (punkt.get("wenn") or [])
-                    if w["entity"].startswith("input_boolean.") and w["wert"] == "on"}
-        gemeinsam = schalter if gemeinsam is None else (gemeinsam & schalter)
-        if not gemeinsam:
-            return
-    entity, _ = sorted(gemeinsam)[0]
-    daten["freigabe_entity"] = entity
-    for punkt in zeitplan:
-        punkt["wenn"] = [w for w in punkt["wenn"] if w["entity"] != entity]
+    def deuten(text: str) -> str | None:
+        text = text.lower()
+        if "terrasse" in text:
+            return "terrassentuer"
+        if "balkon" in text:
+            return "balkontuer"
+        if "haustür" in text or "haustuer" in text:
+            return "haustuer"
+        if "dach" in text:
+            return "dachfenster"
+        if "fenster" in text:
+            return "fenster"
+        return None
+
+    return deuten(name) or deuten(entity_id) or "fenster"
+
+
+def _plan_name(rollos: list[dict], bereiche: dict) -> str:
+    """Ein Name für einen Zeitplan, dem mehrere Rollos folgen.
+
+    Kommen sie alle aus demselben Bereich, heißt der Plan wie der Bereich.
+    Sonst wird aus den Bereichen einer gemacht – „Küche + Wohnzimmer“ sagt
+    mehr als „Zeitplan 2“.
+    """
+    orte = []
+    for eid in rollos:
+        ort = bereiche.get(eid) or ""
+        if ort and ort not in orte:
+            orte.append(ort)
+    if len(orte) == 1:
+        return orte[0]
+    if 2 <= len(orte) <= 3:
+        return " + ".join(orte)
+    return "Zeitplan"
+
+
+def _zu_plaenen(je_rollo: dict, bereiche: dict, cover: list[dict]) -> tuple[list, list]:
+    """Rollos mit gleichem Schaltmuster teilen sich einen benannten Zeitplan.
+
+    Ein Plan entsteht nur, wenn ihm **mehrere** Rollos folgen. Ein einzelnes
+    behält seinen eigenen – ein benannter Plan mit einem Folger wäre nur ein
+    Umweg.
+    """
+    namen = {e["entity_id"]: e.get("name") or e["entity_id"] for e in cover}
+    nach_muster: dict[tuple, list[str]] = {}
+    for eid, daten in je_rollo.items():
+        nach_muster.setdefault(_plan_schluessel(daten["zeitplan"]), []).append(eid)
+
+    plaene, zuordnung = [], {}
+    vergeben: set[str] = set()
+    for muster, eids in nach_muster.items():
+        if len(eids) < 2 or not muster:
+            continue
+        name = _plan_name(eids, bereiche)
+        while name in vergeben:
+            name += " 2"
+        vergeben.add(name)
+        plan = {"id": uuid.uuid4().hex[:8], "name": name, "aktiv": True,
+                "zeitplan": je_rollo[eids[0]]["zeitplan"]}
+        plaene.append(plan)
+        for eid in eids:
+            zuordnung[eid] = plan["id"]
+
+    rollos = []
+    # Erst die mit Automation, dann die ohne – in der Reihenfolge der Bereiche.
+    alle = list(je_rollo) + [e["entity_id"] for e in cover if e["entity_id"] not in je_rollo]
+    for eid in alle:
+        daten = je_rollo.get(eid) or {"zeitplan": [], "quellen": [],
+                                      "hinweise": ["Für dieses Rollo gibt es heute "
+                                                   "keine Zeitautomation"]}
+        name = namen.get(eid, eid)
+        rollos.append({
+            "entity_id": eid,
+            "name": "",
+            "raum": bereiche.get(eid, ""),
+            "art": art_raten(name, eid),
+            "anzeige": name,
+            "plan": zuordnung.get(eid, ""),
+            "zeitplan": [] if eid in zuordnung else daten["zeitplan"],
+            "quellen": daten["quellen"],
+            "hinweise": daten["hinweise"],
+        })
+    rollos.sort(key=lambda r: (r["raum"], r["anzeige"]))
+    return rollos, plaene
 
 
 def _plan_schluessel(zeitplan: list[dict]) -> tuple:
-    """Die Kennung eines Schaltmusters – zwei gleiche Pläne, eine Kennung."""
+    """Die Kennung eines Schaltmusters – zwei gleiche Pläne, eine Kennung.
+
+    Daran erkennt die Übernahme, welche Rollos sich einen Zeitplan teilen
+    können: Wohnzimmer links und rechts fahren identisch, die Terrassentür
+    daneben nicht.
+    """
     return tuple(sorted(
         (p["ausloeser"], p.get("start", ""), p.get("versatz_min", 0), p.get("frueh", ""),
          p.get("spaet", ""), p["position"], p["gilt"], tuple(sorted(p["tage"])),
          _wenn_schluessel(p))
         for p in zeitplan))
-
-
-def _gruppieren(je_rollo: dict, bereiche: dict, namen: dict,
-                schon_verplant: set) -> list[dict]:
-    """Rollos zu Räumen zusammenfassen: gleicher Bereich, gleiches Schaltmuster."""
-    gruppen: dict[tuple, dict] = {}
-    for eid, daten in je_rollo.items():
-        schluessel = (bereiche.get(eid) or "Ohne Bereich",
-                      _plan_schluessel(daten["zeitplan"]),
-                      daten["freigabe_entity"])
-        gruppe = gruppen.get(schluessel)
-        if gruppe is None:
-            gruppen[schluessel] = {**daten, "rollos": list(daten["rollos"])}
-            continue
-        gruppe["rollos"].extend(daten["rollos"])
-        for schluessel_liste in ("quellen", "hinweise"):
-            for wert in daten[schluessel_liste]:
-                if wert not in gruppe[schluessel_liste]:
-                    gruppe[schluessel_liste].append(wert)
-
-    # Benennen: Die größte Gruppe eines Bereichs bekommt dessen Namen, die
-    # übrigen einen Zusatz. Ohne Zusatz gäbe es zwei Räume „Wohnzimmer“, und
-    # die MQTT-Entitäten beider hießen gleich.
-    je_bereich: dict[str, list[dict]] = {}
-    for (bereich, _, _), gruppe in gruppen.items():
-        je_bereich.setdefault(bereich, []).append(gruppe)
-
-    raeume = []
-    for bereich, liste in je_bereich.items():
-        liste.sort(key=lambda g: (-len(g["rollos"]), g["rollos"][0]))
-        for i, gruppe in enumerate(liste):
-            if i == 0:
-                gruppe["name"] = bereich
-            else:
-                erstes = gruppe["rollos"][0]
-                kurz = (namen.get(erstes) or erstes.split(".", 1)[-1]).strip()
-                # „Rollo Terrassentür“ im Bereich Wohnzimmer wird zu
-                # „Wohnzimmer – Terrassentür“: der Bereich bleibt vorn, damit
-                # die Räume in der Liste beieinanderstehen.
-                kurz = kurz.removeprefix("Rollo ").strip() or erstes
-                gruppe["name"] = f"{bereich} – {kurz}"
-                gruppe["hinweise"] = list(gruppe["hinweise"]) + [
-                    f"Eigener Raum, weil dieses Rollo im Bereich „{bereich}“ nach "
-                    "einem anderen Muster fährt als die übrigen"]
-            gruppe["schon_verplant"] = [e for e in gruppe["rollos"] if e in schon_verplant]
-            raeume.append(gruppe)
-    return raeume
 
 
 def _wenn_schluessel(punkt: dict) -> tuple:
@@ -501,27 +528,3 @@ def _falten(zeitplan: list[dict]) -> list[dict]:
         if not gefaltet:
             uebrig.append(punkt)
     return uebrig
-
-
-def raeume_ohne_automation(bereiche: dict, cover: list[dict],
-                           vorschlag_raeume: list[dict]) -> list[dict]:
-    """Rollos, für die sich gar keine Automation gefunden hat.
-
-    In diesem Haus sind das die beiden Schlafzimmer-Rollos: Sie fahren heute
-    nur bei Rauch und im Urlaub – nie nach der Uhr. Ohne diesen Abgleich
-    fielen sie bei der Einrichtung schlicht unter den Tisch.
-    """
-    erfasst = {eid for raum in vorschlag_raeume for eid in raum.get("rollos", [])}
-    fehlend: dict[str, dict] = {}
-    for eintrag in cover:
-        eid = eintrag["entity_id"]
-        if eid in erfasst:
-            continue
-        bereich = bereiche.get(eid) or eintrag.get("bereich") or "Ohne Bereich"
-        raum = fehlend.setdefault(bereich, {"name": bereich, "rollos": [],
-                                            "zeitplan": [], "freigabe_entity": "",
-                                            "quellen": [], "hinweise": [
-                                                "Für diese Rollos gibt es heute keine "
-                                                "Zeitautomation"]})
-        raum["rollos"].append(eid)
-    return list(fehlend.values())

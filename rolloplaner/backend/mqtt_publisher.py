@@ -29,7 +29,8 @@ BASE_TOPIC = "rolloplaner"
 AVAILABILITY_TOPIC = f"{BASE_TOPIC}/availability"
 COMMAND_TOPIC = f"{BASE_TOPIC}/cmd"
 SCHALTER_TOPIC = f"{BASE_TOPIC}/schalter"      # …/<key>/set
-RAUM_TOPIC = f"{BASE_TOPIC}/raum"              # …/<key>/set
+ROLLO_TOPIC = f"{BASE_TOPIC}/rollo"            # …/<entity_id>/set
+PLAN_TOPIC = f"{BASE_TOPIC}/plan"              # …/<id>/set
 EIGEN_TOPIC = f"{BASE_TOPIC}/eigen"            # …/<id>/set – die eigenen Schalter
 DEVICE_ID = "rolloplaner"
 
@@ -71,10 +72,12 @@ class Publisher:
         self.on_ready = None
         self.on_command = None
         self.on_schalter = None      # (key, an: bool)
-        self.on_raum = None          # (raum_key, an: bool)
+        self.on_rollo = None         # (entity_id, an: bool)
+        self.on_plan = None          # (plan_id, an: bool)
         self.on_eigen = None         # (schalter_id, wert: str)
         self._bekannte_eigene: set[str] = set()
-        self._bekannte_raeume: set[str] = set()
+        self._bekannte_rollos: set[str] = set()
+        self._bekannte_plaene: set[str] = set()
         self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2,
                                    client_id="rolloplaner")
         if username:
@@ -110,7 +113,8 @@ class Publisher:
             client.publish(AVAILABILITY_TOPIC, "online", qos=1, retain=True)
             client.subscribe(COMMAND_TOPIC, qos=1)
             client.subscribe(f"{SCHALTER_TOPIC}/+/set", qos=1)
-            client.subscribe(f"{RAUM_TOPIC}/+/set", qos=1)
+            client.subscribe(f"{ROLLO_TOPIC}/+/set", qos=1)
+            client.subscribe(f"{PLAN_TOPIC}/+/set", qos=1)
             client.subscribe(f"{EIGEN_TOPIC}/+/set", qos=1)
             self.connected.set()
             if self.on_ready is not None:
@@ -135,8 +139,11 @@ class Publisher:
         if msg.topic.startswith(f"{SCHALTER_TOPIC}/") and self.on_schalter is not None:
             self._sicher(self.on_schalter, teile[-2], nutzlast.upper() == "ON")
             return
-        if msg.topic.startswith(f"{RAUM_TOPIC}/") and self.on_raum is not None:
-            self._sicher(self.on_raum, teile[-2], nutzlast.upper() == "ON")
+        if msg.topic.startswith(f"{ROLLO_TOPIC}/") and self.on_rollo is not None:
+            self._sicher(self.on_rollo, teile[-2], nutzlast.upper() == "ON")
+            return
+        if msg.topic.startswith(f"{PLAN_TOPIC}/") and self.on_plan is not None:
+            self._sicher(self.on_plan, teile[-2], nutzlast.upper() == "ON")
             return
         if msg.topic.startswith(f"{EIGEN_TOPIC}/") and self.on_eigen is not None:
             # Die Nutzlast bleibt, wie sie kommt: Bei einem Schalter ist es
@@ -170,24 +177,36 @@ class Publisher:
             "sw_version": VERSION,
         }
 
-    def raum_schluessel(self, raeume: list[dict] | None) -> list[str]:
-        return [f"raum_{_slug(r['name'])}" for r in raeume or []]
+    def rollo_schluessel(self, rollos: list[dict] | None) -> list[str]:
+        return [_slug(r["entity_id"].split(".", 1)[-1]) for r in rollos or []]
 
-    def entferne_raeume(self, schluessel: list[str]) -> None:
-        """Entitäten weggefallener oder umbenannter Räume aus HA nehmen.
+    def plan_schluessel(self, plaene: list[dict] | None) -> list[str]:
+        return [p["id"] for p in plaene or []]
 
-        Ohne das bliebe nach jedem Umbenennen ein Geisterraum stehen: Die
+    def entferne_rollos(self, schluessel: list[str]) -> None:
+        """Entitäten weggefallener Rollos aus Home Assistant nehmen.
+
+        Ohne das bliebe nach jedem Entfernen eine Karteileiche stehen: Die
         Discovery-Nachricht ist „retained“, also überlebt sie das Add-on und
         wird beim nächsten Start von Home Assistant wieder eingelesen.
         """
         for key in schluessel:
-            for component in ("sensor", "switch"):
-                self._publish(f"{DISCOVERY_PREFIX}/{component}/{DEVICE_ID}/{key}/config", "")
-            self._publish(f"{BASE_TOPIC}/{key}/state", "")
-            self._publish(f"{BASE_TOPIC}/{key}/attributes", "")
-            self._bekannte_raeume.discard(key)
+            self._publish(f"{DISCOVERY_PREFIX}/sensor/{DEVICE_ID}/rollo_{key}/config", "")
+            self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/rollo_{key}_an/config", "")
+            self._publish(f"{BASE_TOPIC}/rollo_{key}/state", "")
+            self._publish(f"{BASE_TOPIC}/rollo_{key}/attributes", "")
+            self._publish(f"{BASE_TOPIC}/rollo_{key}_an/state", "")
+            self._bekannte_rollos.discard(key)
         if schluessel:
-            _LOGGER.info("Entfernt: %s", ", ".join(schluessel))
+            _LOGGER.info("Rollos entfernt: %s", ", ".join(schluessel))
+
+    def entferne_plaene(self, ids: list[str]) -> None:
+        for kennung in ids:
+            self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/plan_{kennung}/config", "")
+            self._publish(f"{BASE_TOPIC}/plan_{kennung}/state", "")
+            self._bekannte_plaene.discard(kennung)
+        if ids:
+            _LOGGER.info("Zeitpläne entfernt: %s", ", ".join(ids))
 
     def eigene_schluessel(self, schalter: list[dict] | None) -> list[str]:
         return [s["id"] for s in schalter or []]
@@ -252,8 +271,11 @@ class Publisher:
     def publish_eigenen_zustand(self, kennung: str, wert: str) -> None:
         self._publish(f"{BASE_TOPIC}/schalter_{kennung}/state", str(wert))
 
-    def publish_discovery(self, raeume: list[dict] | None = None) -> None:
+    def publish_discovery(self, rollos: list[dict] | None = None,
+                          plaene: list[dict] | None = None,
+                          namen: dict | None = None) -> None:
         device = self._device()
+        namen = namen or {}
         for component, key, name, icon, einheit, klasse in GRUND_ENTITAETEN:
             payload = {
                 "name": name,
@@ -282,16 +304,22 @@ class Publisher:
                               "command_topic": f"{SCHALTER_TOPIC}/{key}/set",
                               "json_attributes_topic": f"{BASE_TOPIC}/{key}/attributes",
                               "availability_topic": AVAILABILITY_TOPIC,
+                              "payload_on": "ON", "payload_off": "OFF",
                               "icon": icon,
                               "device": device,
                           }))
 
-        for raum in raeume or []:
-            key = f"raum_{_slug(raum['name'])}"
-            self._bekannte_raeume.add(key)
+        # Je Rollo ein Sensor mit der Zielstellung und ein Schalter für seine
+        # Automatik. Beides hängt an der Entität, nicht am Namen: Wer das Rollo
+        # in Home Assistant umbenennt, hat immer noch dasselbe Rollo.
+        for rollo in rollos or []:
+            kurz = _slug(rollo["entity_id"].split(".", 1)[-1])
+            key = f"rollo_{kurz}"
+            self._bekannte_rollos.add(kurz)
+            anzeige = namen.get(rollo["entity_id"]) or rollo.get("name") or kurz
             self._publish(f"{DISCOVERY_PREFIX}/sensor/{DEVICE_ID}/{key}/config",
                           json.dumps({
-                              "name": f"Rollo {raum['name']}",
+                              "name": anzeige,
                               "unique_id": f"{DEVICE_ID}_{key}",
                               "default_entity_id": f"sensor.{DEVICE_ID}_{key}",
                               "state_topic": f"{BASE_TOPIC}/{key}/state",
@@ -301,19 +329,39 @@ class Publisher:
                               "icon": "mdi:window-shutter",
                               "device": device,
                           }))
-            # Der Raumschalter: an die Stelle von input_boolean.rollosteuerung_*
             self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/{key}_an/config",
                           json.dumps({
-                              "name": f"Rollo {raum['name']} Automatik",
+                              "name": f"{anzeige} Automatik",
                               "unique_id": f"{DEVICE_ID}_{key}_an",
                               "default_entity_id": f"switch.{DEVICE_ID}_{key}_an",
                               "state_topic": f"{BASE_TOPIC}/{key}_an/state",
-                              "command_topic": f"{RAUM_TOPIC}/{raum['id']}/set",
+                              "command_topic": f"{ROLLO_TOPIC}/{rollo['entity_id']}/set",
                               "availability_topic": AVAILABILITY_TOPIC,
+                              "payload_on": "ON", "payload_off": "OFF",
                               "icon": "mdi:window-shutter-auto",
                               "device": device,
                           }))
-        _LOGGER.info("Discovery veröffentlicht (%d Räume)", len(raeume or []))
+
+        # Je Zeitplan ein Schalter – damit lässt sich „Erdgeschoss“ auf einmal
+        # stilllegen, ohne jedes Rollo einzeln anzufassen.
+        for plan in plaene or []:
+            kennung = plan["id"]
+            self._bekannte_plaene.add(kennung)
+            self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/plan_{kennung}/config",
+                          json.dumps({
+                              "name": f"Zeitplan {plan['name']}",
+                              "unique_id": f"{DEVICE_ID}_plan_{kennung}",
+                              "default_entity_id":
+                                  f"switch.{DEVICE_ID}_plan_{_slug(plan['name'])}",
+                              "state_topic": f"{BASE_TOPIC}/plan_{kennung}/state",
+                              "command_topic": f"{PLAN_TOPIC}/{kennung}/set",
+                              "availability_topic": AVAILABILITY_TOPIC,
+                              "payload_on": "ON", "payload_off": "OFF",
+                              "icon": "mdi:calendar-clock",
+                              "device": device,
+                          }))
+        _LOGGER.info("Discovery veröffentlicht (%d Rollos, %d Zeitpläne)",
+                     len(rollos or []), len(plaene or []))
 
     # ------------------------------------------------------------ Zustand ----
 
@@ -321,13 +369,18 @@ class Publisher:
         """Den Bericht eines Regeltakts nach MQTT spiegeln."""
         if not self.connected.is_set():
             return
-        raeume = bericht.get("raeume") or []
+        rollos = bericht.get("rollos") or []
         einstellungen = (config or {}).get("einstellungen") or {}
         # Ist die Zählweise umgedreht, gilt das auch für den Sensorwert – sonst
         # zeigte die Karte etwas anderes als die Entität dahinter. Der Wert in
         # der Zählweise von Home Assistant kommt als Attribut mit, damit
         # Automationen eine verlässliche Größe haben.
         invertiert = bool(einstellungen.get("prozent_invertiert"))
+
+        def zeige(wert):
+            if wert is None:
+                return None
+            return 100 - int(wert) if invertiert else int(wert)
 
         if bericht.get("rauch"):
             status = "Rauchsperre"
@@ -338,10 +391,10 @@ class Publisher:
         elif bericht.get("urlaub"):
             status = "Urlaub"
         else:
-            beschattet = [r for r in raeume if r.get("zustand") == "beschattung"]
-            aktive = [r for r in raeume if r.get("zustand") not in ("aus", "gesperrt")]
-            status = (f"{len(beschattet)} Räume beschattet" if beschattet
-                      else f"{len(aktive)} von {len(raeume)} Räumen aktiv")
+            beschattet = [r for r in rollos if r.get("zustand") == "beschattung"]
+            aktive = [r for r in rollos if r.get("zustand") not in ("aus", "gesperrt")]
+            status = (f"{len(beschattet)} Rollos beschattet" if beschattet
+                      else f"{len(aktive)} von {len(rollos)} Rollos aktiv")
 
         sonne = bericht.get("sonne") or {}
         self._zustand("status", status, {
@@ -352,15 +405,16 @@ class Publisher:
             "schulfrei": bericht.get("schulfrei"),
             "schulfrei_morgen": bericht.get("schulfrei_morgen"),
             "aussentemperatur": bericht.get("aussen"),
-            "prozent_invertiert": invertiert,
-            # Die Schalter, die mehr als einen Raum betreffen – sie gehören in
-            # der Karte nach oben und nicht in jede Kachel einzeln.
-            "freigaben": [e for e in (bericht.get("freigaben") or []) if e["geteilt"]],
             "sonnenaufgang": sonne.get("aufgang"),
             "sonnenuntergang": sonne.get("untergang"),
             "sonnenhoehe": sonne.get("elevation"),
             "sonnenrichtung": sonne.get("azimut"),
-            "raeume": {r["name"]: r.get("zustand") for r in raeume},
+            "prozent_invertiert": invertiert,
+            # Die Schalter, die mehr als ein Rollo betreffen – sie gehören in
+            # der Karte nach oben und nicht in jede Kachel einzeln.
+            "freigaben": [e for e in (bericht.get("freigaben") or []) if e["geteilt"]],
+            "plaene": bericht.get("plaene") or [],
+            "rollos": {r["name"]: r.get("zustand") for r in rollos},
         })
         self._zustand("trockenlauf", "ON" if bericht.get("trockenlauf") else "OFF", {})
         self._zustand("rauchsperre", "ON" if bericht.get("rauch") else "OFF",
@@ -376,24 +430,25 @@ class Publisher:
                        "meldungen": [s["text"] for s in stoerungen]})
 
         # Der nächste Wechsel im ganzen Haus – als fertiger Anzeigetext. In
-        # Lovelace-Templates gibt es kein `strftime`, und Zeitrechnerei dort
-        # ist eine Fehlerquelle, die im Zweifel die ganze Karte lahmlegt.
-        naechste = [r for r in raeume if r.get("naechster_zeitpunkt")]
+        # Lovelace-Templates gibt es kein `strftime`, und die Zeitrechnerei
+        # dort ist eine Fehlerquelle, die im Zweifel die Karte lahmlegt.
+        naechste = [r for r in rollos if r.get("naechster_zeitpunkt")]
         naechste.sort(key=lambda r: r["naechster_zeitpunkt"])
         if naechste:
             erster = naechste[0]
             stellung = erster.get("naechste_stellung")
             was = ("auf" if stellung is not None and stellung >= 100
                    else "zu" if stellung == 0
-                   else f"{100 - stellung if invertiert else stellung} %")
+                   else f"{zeige(stellung)} %")
             self._zustand("naechster_wechsel",
                           f"{erster['name']} {was} um {erster.get('naechste_uhrzeit')} Uhr",
-                          {"raum": erster["name"], "uhrzeit": erster.get("naechste_uhrzeit"),
+                          {"rollo": erster["name"],
+                           "uhrzeit": erster.get("naechste_uhrzeit"),
                            "zeitpunkt": erster.get("naechster_zeitpunkt"),
-                           "stellung": stellung,
-                           "alle": [{"raum": r["name"], "uhrzeit": r.get("naechste_uhrzeit"),
-                                     "stellung": r.get("naechste_stellung")}
-                                    for r in naechste[:12]]})
+                           "stellung": zeige(stellung),
+                           "alle": [{"rollo": r["name"], "uhrzeit": r.get("naechste_uhrzeit"),
+                                     "stellung": zeige(r.get("naechste_stellung"))}
+                                    for r in naechste[:14]]})
         else:
             self._zustand("naechster_wechsel", "kein Wechsel geplant", {})
 
@@ -401,7 +456,7 @@ class Publisher:
         self._zustand("automatik", "ON" if einstellungen.get("automatik") else "OFF", {})
         self._zustand("beschattung",
                       "ON" if (einstellungen.get("beschattung") or {}).get("aktiv") else "OFF",
-                      {"beschattete_raeume": [r["name"] for r in raeume
+                      {"beschattete_rollos": [r["name"] for r in rollos
                                               if r.get("beschattet")]})
         self._zustand("urlaubssimulation",
                       "ON" if (einstellungen.get("urlaub") or {}).get("modus") == "simulation"
@@ -410,45 +465,38 @@ class Publisher:
         self._zustand("trockenlauf_schalter",
                       "ON" if einstellungen.get("trockenlauf") else "OFF", {})
 
-        for raum in raeume:
-            key = f"raum_{_slug(raum['name'])}"
-            ziel = raum.get("ziel")
-            angezeigt = (None if ziel is None
-                         else (100 - int(ziel) if invertiert else int(ziel)))
+        for rollo in rollos:
+            kurz = _slug(rollo["entity_id"].split(".", 1)[-1])
+            key = f"rollo_{kurz}"
+            ziel = rollo.get("ziel")
+            angezeigt = zeige(ziel)
             self._zustand(key, str(angezeigt) if angezeigt is not None else "unknown", {
+                "cover": rollo["entity_id"],
+                "raum": rollo.get("raum") or "",
+                "art": rollo.get("art") or "fenster",
                 "stellung_ha": ziel,
+                "ist": rollo.get("ist"),
                 "prozent_invertiert": invertiert,
-            # Die Schalter, die mehr als einen Raum betreffen – sie gehören in
-            # der Karte nach oben und nicht in jede Kachel einzeln.
-            "freigaben": [e for e in (bericht.get("freigaben") or []) if e["geteilt"]],
-                # Die ID gehört mit in die Attribute: Die Karte spricht Räume
-                # darüber an, nicht über den Namen – ein umbenannter Raum
-                # behält seine ID.
-                "raum_id": raum.get("id"),
-                "zustand": raum.get("zustand"),
-                "begruendung": raum.get("begruendung"),
-                "beschattet": raum.get("beschattet", False),
-                "fenster_offen": raum.get("fenster_offen") or [],
-                # Die Helfer, an denen die Schaltpunkte hängen – die Karte
-                # macht daraus Schalter und Auswahllisten.
-                # Nur die Schalter, die allein diesem Raum gehören. Die
+                "zustand": rollo.get("zustand"),
+                "begruendung": rollo.get("begruendung"),
+                "beschattet": rollo.get("beschattet", False),
+                "fenster_offen": rollo.get("fenster_offen") or [],
+                "zeitplan": rollo.get("plan") or "",
+                "naechste_uhrzeit": rollo.get("naechste_uhrzeit"),
+                "naechste_stellung": zeige(rollo.get("naechste_stellung")),
+                "naechste_stellung_ha": rollo.get("naechste_stellung"),
+                "naechster_punkt": rollo.get("naechster_punkt"),
+                # Nur die Schalter, die allein dieses Rollo betreffen. Die
                 # geteilten stehen einmal oben, im Status.
-                "helfer": [h for h in (raum.get("helfer") or [])
+                "helfer": [h for h in (rollo.get("helfer") or [])
                            if not h.get("geteilt")],
-                # „fenster“ oder „tuer“ – die Karte zeichnet danach.
-                "bildart": raum.get("bildart") or "fenster",
-                "naechste_uhrzeit": raum.get("naechste_uhrzeit"),
-                "naechste_stellung": (
-                    None if raum.get("naechste_stellung") is None
-                    else (100 - int(raum["naechste_stellung"]) if invertiert
-                          else int(raum["naechste_stellung"]))),
-                "naechster_punkt": raum.get("naechster_punkt"),
-                "rollos": [r["entity_id"] for r in raum.get("rollos", [])],
-                "stellungen": {r["entity_id"]: r.get("ist")
-                               for r in raum.get("rollos", [])},
-                "naechste_stellung_ha": raum.get("naechste_stellung"),
+                "hinweis": rollo.get("hinweis") or "",
             })
-            self._zustand(f"{key}_an", "ON" if raum.get("zustand") != "aus" else "OFF", {})
+            self._zustand(f"{key}_an",
+                          "OFF" if rollo.get("zustand") == "aus" else "ON", {})
+
+        for plan in bericht.get("plaene") or []:
+            self._zustand(f"plan_{plan['id']}", "ON" if plan.get("aktiv") else "OFF", {})
 
     def _zustand(self, key: str, state: str, attributes: dict) -> None:
         self._publish(f"{BASE_TOPIC}/{key}/state", state)
@@ -463,9 +511,7 @@ class Publisher:
         for key, *_ in SCHALTER:
             self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/{key}/config", "")
             self._publish(f"{BASE_TOPIC}/{key}/state", "")
-        for key in list(self._bekannte_raeume):
-            self._publish(f"{DISCOVERY_PREFIX}/sensor/{DEVICE_ID}/{key}/config", "")
-            self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/{key}_an/config", "")
-            self._publish(f"{BASE_TOPIC}/{key}/state", "")
+        self.entferne_rollos(list(self._bekannte_rollos))
+        self.entferne_plaene(list(self._bekannte_plaene))
         self.entferne_eigene(list(self._bekannte_eigene))
         _LOGGER.info("Entitäten aus MQTT entfernt")

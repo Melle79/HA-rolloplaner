@@ -43,7 +43,7 @@ app = Flask(__name__, static_folder=None)
 
 _takt_lock = threading.Lock()
 _wecker = threading.Event()
-_letzter_bericht: dict = {"zeit": None, "raeume": [], "hinweis": "Noch kein Durchlauf"}
+_letzter_bericht: dict = {"zeit": None, "rollos": [], "hinweis": "Noch kein Durchlauf"}
 _publisher = None
 
 
@@ -86,7 +86,7 @@ def _takt_ausfuehren() -> dict:
             bericht = regelung.takt(config, state, logbuch.eintragen, wachhund_haken)
         except Exception as err:  # noqa: BLE001
             _LOGGER.exception("Regeltakt fehlgeschlagen")
-            bericht = {"zeit": None, "raeume": [], "fehler": str(err)}
+            bericht = {"zeit": None, "rollos": [], "fehler": str(err)}
         else:
             store.save_state(state)
         bericht["version"] = VERSION
@@ -136,14 +136,14 @@ def _stoerungen_melden(stoerungen: list, state: dict, einstellungen: dict) -> No
 def _takt_schleife() -> None:
     while True:
         bericht = _takt_ausfuehren()
-        raeume = len(bericht.get("raeume") or [])
+        anzahl = len(bericht.get("rollos") or [])
         if bericht.get("fehler"):
             _LOGGER.warning("Takt mit Fehler: %s", bericht["fehler"])
         elif bericht.get("hinweis"):
             _LOGGER.info("Takt ausgesetzt: %s", bericht["hinweis"])
         else:
-            gefahren = sum(1 for r in bericht.get("raeume") or [] if r.get("schaltet"))
-            _LOGGER.info("Takt: %d Räume%s%s", raeume,
+            gefahren = sum(1 for r in bericht.get("rollos") or [] if r.get("gefahren"))
+            _LOGGER.info("Takt: %d Rollos%s%s", anzahl,
                          f", {gefahren} gefahren" if gefahren else "",
                          " (Trockenlauf)" if bericht.get("trockenlauf") else "")
         pause = int(store.load_config()["einstellungen"].get("takt_sekunden", 120))
@@ -176,7 +176,8 @@ def _mqtt_starten() -> None:
 
     _publisher.on_ready = bereit
     _publisher.on_schalter = _schalter_setzen
-    _publisher.on_raum = _raum_schalten
+    _publisher.on_rollo = _rollo_schalten
+    _publisher.on_plan = _plan_schalten
     _publisher.on_eigen = _eigenen_schalter_setzen
     _publisher.on_command = _befehl
     _publisher.start()
@@ -188,14 +189,22 @@ def _discovery_auffrischen() -> None:
         return
     try:
         config = store.load_config()
-        raeume = config["raeume"]
+        rollos = config["rollos"]
+        plaene = config["plaene"]
         eigene = config["einstellungen"].get("eigene_schalter") or []
-        aktuell = _publisher.raum_schluessel(raeume)
         zustand = store.load_state()
-        veraltet = [k for k in (zustand.get("veroeffentlichte_raeume") or [])
+
+        aktuell = _publisher.rollo_schluessel(rollos)
+        veraltet = [k for k in (zustand.get("veroeffentlichte_rollos") or [])
                     if k not in aktuell]
         if veraltet:
-            _publisher.entferne_raeume(veraltet)
+            _publisher.entferne_rollos(veraltet)
+
+        plan_aktuell = _publisher.plan_schluessel(plaene)
+        plan_veraltet = [k for k in (zustand.get("veroeffentlichte_plaene") or [])
+                         if k not in plan_aktuell]
+        if plan_veraltet:
+            _publisher.entferne_plaene(plan_veraltet)
 
         # Dasselbe für die eigenen Schalter: Ein gelöschter muss aus Home
         # Assistant verschwinden, sonst bleibt er als Karteileiche stehen –
@@ -206,9 +215,16 @@ def _discovery_auffrischen() -> None:
         if eigen_veraltet:
             _publisher.entferne_eigene(eigen_veraltet)
 
-        _publisher.publish_discovery(raeume)
+        namen = {}
+        try:
+            namen = {e["entity_id"]: e["name"]
+                     for e in ha_api.cover_entities()}
+        except Exception:  # noqa: BLE001 – ohne Namen tut es auch die Kurzform
+            pass
+        _publisher.publish_discovery(rollos, plaene, namen)
         _publisher.publish_eigene(eigene, zustand.get("schalter") or {})
-        zustand["veroeffentlichte_raeume"] = aktuell
+        zustand["veroeffentlichte_rollos"] = aktuell
+        zustand["veroeffentlichte_plaene"] = plan_aktuell
         zustand["veroeffentlichte_schalter"] = eigen_aktuell
         store.save_state(zustand)
     except Exception as err:  # noqa: BLE001
@@ -262,58 +278,69 @@ def _schalter_setzen(key: str, an: bool) -> None:
     _sofort_rechnen()
 
 
-def _raum_schalten(raum_id: str, an: bool) -> None:
+def _rollo_schalten(entity_id: str, an: bool) -> None:
     config = store.load_config()
-    for raum in config["raeume"]:
-        if raum["id"] == raum_id:
-            store.update_raum(raum_id, {**raum, "aktiv": an})
-            _LOGGER.info("Raum %s → %s", raum["name"], "an" if an else "aus")
+    for rollo in config["rollos"]:
+        if rollo["entity_id"] == entity_id:
+            store.update_rollo(entity_id, {**rollo, "aktiv": an})
+            _LOGGER.info("Rollo %s → %s", entity_id, "an" if an else "aus")
             _sofort_rechnen()
             return
-    _LOGGER.warning("Raum %s nicht gefunden", raum_id)
+    _LOGGER.warning("Rollo %s nicht eingerichtet", entity_id)
+
+
+def _plan_schalten(plan_id: str, an: bool) -> None:
+    config = store.load_config()
+    for plan in config["plaene"]:
+        if plan["id"] == plan_id:
+            store.update_plan(plan_id, {**plan, "aktiv": an})
+            _LOGGER.info("Zeitplan %s → %s", plan["name"], "an" if an else "aus")
+            _sofort_rechnen()
+            return
+    _LOGGER.warning("Zeitplan %s nicht gefunden", plan_id)
 
 
 def _befehl(payload: dict) -> None:
     """Sonderbefehle aus der Lovelace-Karte."""
     was = payload.get("befehl")
     if was == "fahren":
-        _raum_fahren(payload.get("raum"), payload.get("position"))
+        _rollo_fahren(payload.get("rollo"), payload.get("position"))
     elif was == "takt":
         _sofort_rechnen()
     elif was == "handbetrieb_aufheben":
-        _handbetrieb_aufheben(payload.get("raum"))
+        _handbetrieb_aufheben(payload.get("rollo"))
     elif was == "durchsetzen":
         _durchsetzen()
     else:
         _LOGGER.warning("Unbekannter Befehl: %s", payload)
 
 
-def _raum_fahren(raum_id: str | None, position) -> dict:
-    """Alle Rollos eines Raumes von Hand auf eine Stellung fahren."""
+def _rollo_fahren(entity_id: str | None, position) -> dict:
+    """Ein Rollo von Hand auf eine Stellung fahren."""
     config = store.load_config()
-    raum = next((r for r in config["raeume"] if r["id"] == raum_id), None)
-    if raum is None:
-        raise store.ValidationError("Raum nicht gefunden")
+    rollo = next((r for r in config["rollos"] if r["entity_id"] == entity_id), None)
+    if rollo is None:
+        raise store.ValidationError("Rollo nicht eingerichtet")
     try:
         ziel = max(0, min(100, int(position)))
     except (TypeError, ValueError) as err:
         raise store.ValidationError("Stellung: Zahl von 0 bis 100 erwartet") from err
 
-    gefahren = []
     with _takt_lock:
         state = store.load_state()
-        for eid in raum.get("rollos") or []:
-            zustand = ha_api.get_state(eid)
-            if ha_api.set_position(eid, ziel, zustand):
-                gefahren.append(eid)
-                # Von Hand gefahren heißt: Der Planer hält sich hier zurück,
-                # bis der nächste Schaltpunkt fällig wird.
-                state["rollos"].setdefault(eid, {}).update(
-                    ziel=ziel, gesetzt_am=datetime.now().isoformat(timespec="seconds"),
-                    grund="von Hand über die Karte", manuell_bis=None)
-        store.save_state(state)
-    logbuch.eintragen(raum["name"], f"{ziel} %", "von Hand gestellt", ", ".join(gefahren))
-    return {"gefahren": gefahren, "position": ziel}
+        zustand = ha_api.get_state(entity_id)
+        erfolg = ha_api.set_position(entity_id, ziel, zustand)
+        if erfolg:
+            # Von Hand gefahren heißt: Der Planer hält sich hier zurück, bis
+            # der nächste Schaltpunkt fällig wird.
+            state["rollos"].setdefault(entity_id, {}).update(
+                ziel=ziel, gesetzt_am=datetime.now().isoformat(timespec="seconds"),
+                grund="von Hand über die Karte", manuell_bis=None)
+            store.save_state(state)
+    if erfolg:
+        logbuch.eintragen(rollo.get("name") or entity_id, f"{ziel} %",
+                          "von Hand gestellt", entity_id)
+    return {"gefahren": erfolg, "position": ziel}
 
 
 def _durchsetzen() -> None:
@@ -333,151 +360,42 @@ def _durchsetzen() -> None:
     # das Verwerfen wäre spurlos verschwunden.
     with _takt_lock:
         state = store.load_state()
-        for daten in (state.get("raeume") or {}).values():
+        for daten in (state.get("rollos") or {}).values():
             daten["letzter_punkt"] = None
             daten["beschattet"] = False
-        for daten in (state.get("rollos") or {}).values():
             daten["manuell_bis"] = None
         store.save_state(state)
     _LOGGER.info("Gemerkter Stand verworfen – der Plan wird neu durchgesetzt")
     _sofort_rechnen()
 
 
-def _handbetrieb_aufheben(raum_id: str | None) -> int:
+def _handbetrieb_aufheben(entity_id: str | None) -> int:
     """Die Schonfrist nach Handbetrieb vorzeitig beenden."""
     config = store.load_config()
     anzahl = 0
     with _takt_lock:
         state = store.load_state()
-        betroffen = [eid for raum in config["raeume"]
-                     if raum_id in (None, raum["id"])
-                     for eid in raum.get("rollos") or []]
-        for eid in betroffen:
-            if state["rollos"].get(eid, {}).get("manuell_bis"):
-                state["rollos"][eid]["manuell_bis"] = None
+        for rollo in config["rollos"]:
+            eid = rollo["entity_id"]
+            if entity_id not in (None, eid):
+                continue
+            daten = state["rollos"].get(eid) or {}
+            if daten.get("manuell_bis"):
+                daten["manuell_bis"] = None
                 anzahl += 1
-        # Damit der Plan sofort wieder greift, muss auch der zuletzt
-        # ausgeführte Schaltpunkt vergessen werden – sonst wartet der Raum
-        # auf den nächsten.
-        for raum in config["raeume"]:
-            if raum_id in (None, raum["id"]):
-                state["raeume"].setdefault(raum["id"], {})["letzter_punkt"] = None
+            # Damit der Plan sofort wieder greift, muss auch der zuletzt
+            # ausgeführte Schaltpunkt vergessen werden – sonst wartet das
+            # Rollo auf den nächsten.
+            daten["letzter_punkt"] = None
+            state["rollos"][eid] = daten
         store.save_state(state)
     _sofort_rechnen()
     return anzahl
 
 
-# ------------------------------------------------------------ Oberfläche ----
-
-@app.route("/")
-def index():
-    return send_from_directory(FRONTEND, "index.html")
-
-
-@app.route("/<path:datei>")
-def statisch(datei: str):
-    return send_from_directory(FRONTEND, datei)
-
-
-# ------------------------------------------------------------------ API ----
-
-@app.route("/api/status")
-def api_status():
-    return jsonify(_letzter_bericht)
-
-
-@app.route("/api/takt", methods=["POST"])
-def api_takt():
-    return jsonify(_takt_ausfuehren())
-
-
-@app.route("/api/config")
-def api_config():
-    config = store.load_config()
-    config["version"] = VERSION
-    return jsonify(config)
-
-
-@app.route("/api/raeume", methods=["GET", "POST"])
-def api_raeume():
-    if request.method == "GET":
-        return jsonify(store.load_config()["raeume"])
-    try:
-        neu = store.add_raum(request.get_json(force=True) or {})
-    except store.ValidationError as err:
-        return jsonify({"fehler": str(err)}), 400
-    _discovery_auffrischen()
-    _sofort_rechnen()
-    return jsonify(neu), 201
-
-
-@app.route("/api/raeume/<raum_id>", methods=["PUT", "DELETE"])
-def api_raum(raum_id: str):
-    if request.method == "DELETE":
-        if not store.delete_raum(raum_id):
-            return jsonify({"fehler": "Raum nicht gefunden"}), 404
-        _discovery_auffrischen()
-        _sofort_rechnen()
-        return jsonify({"geloescht": raum_id})
-    try:
-        neu = store.update_raum(raum_id, request.get_json(force=True) or {})
-    except store.ValidationError as err:
-        return jsonify({"fehler": str(err)}), 400
-    _discovery_auffrischen()
-    _sofort_rechnen()
-    return jsonify(neu)
-
-
-@app.route("/api/einstellungen", methods=["GET", "PUT"])
-def api_einstellungen():
-    if request.method == "GET":
-        return jsonify(store.load_config()["einstellungen"])
-    vorher = store.load_config()["einstellungen"].get("trockenlauf")
-    try:
-        neu = store.update_einstellungen(request.get_json(force=True) or {})
-    except store.ValidationError as err:
-        return jsonify({"fehler": str(err)}), 400
-    if vorher and not neu.get("trockenlauf"):
-        _durchsetzen()
-    else:
-        _sofort_rechnen()
-    return jsonify(neu)
-
-
-@app.route("/api/schalter", methods=["GET", "PUT"])
-def api_schalter():
-    """Die eigenen Schalter des Planers verwalten."""
-    config = store.load_config()
-    if request.method == "GET":
-        state = store.load_state()
-        gemerkt = state.get("schalter") or {}
-        return jsonify([{**e, "zustand": gemerkt.get(e["id"], e["vorgabe"])}
-                        for e in config["einstellungen"].get("eigene_schalter") or []])
-    try:
-        liste = store.validate_schalter((request.get_json(force=True) or {}).get("schalter"))
-    except store.ValidationError as err:
-        return jsonify({"fehler": str(err)}), 400
-
-    # Wird ein Schalter gelöscht, der noch als Bedingung in Gebrauch ist, wäre
-    # der betroffene Schaltpunkt stumm: Eine Bedingung auf einen Schalter, den
-    # es nicht gibt, trifft nie zu. Das muss auffallen.
-    vorhanden = {e["id"] for e in liste}
-    benutzt = _benutzte_schalter(config["raeume"])
-    fehlend = sorted(benutzt - vorhanden)
-    if fehlend:
-        namen = {e["id"]: e["name"]
-                 for e in config["einstellungen"].get("eigene_schalter") or []}
-        return jsonify({"fehler": "Noch in Gebrauch: "
-                        + ", ".join(namen.get(i, i) for i in fehlend)}), 400
-
-    store.update_einstellungen({"eigene_schalter": liste})
-    _discovery_auffrischen()
-    _sofort_rechnen()
-    return jsonify(liste)
-
-
-def _in_eigene_umwandeln(raeume: list[dict], einstellungen: dict,
-                         index: dict) -> tuple[list[dict], list[dict], dict]:
+def _in_eigene_umwandeln(rollos: list[dict], plaene: list[dict],
+                         einstellungen: dict,
+                         index: dict) -> tuple[list[dict], list[dict], list[dict], dict]:
     """Fremde Helfer durch eigene Schalter des Planers ersetzen.
 
     Aus der Übernahme kommen Bedingungen auf fremde `input_boolean` und
@@ -489,7 +407,7 @@ def _in_eigene_umwandeln(raeume: list[dict], einstellungen: dict,
     übernommener Stand. Danach zeigen alle Bedingungen auf ihn selbst, und die
     alten Helfer können weg.
 
-    Liefert (Räume, Schalterliste, Anfangszustände).
+    Liefert (Rollos, Zeitpläne, Schalterliste, Anfangszustände).
     """
     schalter = list(einstellungen.get("eigene_schalter") or [])
     # Zugeordnet wird über die **Quell-Entität**, nicht über den Namen: Zwei
@@ -552,21 +470,163 @@ def _in_eigene_umwandeln(raeume: list[dict], einstellungen: dict,
         zustaende[vorhanden["id"]] = str(zustand.get("state"))
         return vorhanden["id"]
 
-    neue_raeume = []
-    for raum in raeume:
-        raum = json.loads(json.dumps(raum))
-        freigabe = raum.get("freigabe_entity") or ""
-        if freigabe:
-            kennung = eigenen_finden(freigabe)
-            if kennung:
-                raum["freigabe_entity"] = store.EIGEN_PREFIX + kennung
-        for punkt in raum.get("zeitplan") or []:
+    def punkte_umbiegen(punkte: list) -> None:
+        for punkt in punkte or []:
             for bedingung in punkt.get("wenn") or []:
                 kennung = eigenen_finden(bedingung.get("entity") or "")
                 if kennung:
                     bedingung["entity"] = store.EIGEN_PREFIX + kennung
-        neue_raeume.append(raum)
-    return neue_raeume, schalter, zustaende
+
+    neue_rollos = json.loads(json.dumps(rollos))
+    neue_plaene = json.loads(json.dumps(plaene))
+    for rollo in neue_rollos:
+        punkte_umbiegen(rollo.get("zeitplan"))
+    for plan in neue_plaene:
+        punkte_umbiegen(plan.get("zeitplan"))
+    return neue_rollos, neue_plaene, schalter, zustaende
+
+
+# ------------------------------------------------------------ Oberfläche ----
+
+@app.route("/")
+def index():
+    return send_from_directory(FRONTEND, "index.html")
+
+
+@app.route("/<path:datei>")
+def statisch(datei: str):
+    return send_from_directory(FRONTEND, datei)
+
+
+# ------------------------------------------------------------------ API ----
+
+@app.route("/api/status")
+def api_status():
+    return jsonify(_letzter_bericht)
+
+
+@app.route("/api/takt", methods=["POST"])
+def api_takt():
+    return jsonify(_takt_ausfuehren())
+
+
+@app.route("/api/config")
+def api_config():
+    config = store.load_config()
+    config["version"] = VERSION
+    return jsonify(config)
+
+
+@app.route("/api/rollos", methods=["GET", "PUT"])
+def api_rollos():
+    if request.method == "GET":
+        return jsonify(store.load_config()["rollos"])
+    try:
+        ergebnis = store.rollos_setzen((request.get_json(force=True) or {}).get("rollos"))
+    except store.ValidationError as err:
+        return jsonify({"fehler": str(err)}), 400
+    _discovery_auffrischen()
+    _sofort_rechnen()
+    return jsonify(ergebnis)
+
+
+@app.route("/api/rollos/<path:entity_id>", methods=["PUT", "DELETE"])
+def api_rollo(entity_id: str):
+    if request.method == "DELETE":
+        if not store.delete_rollo(entity_id):
+            return jsonify({"fehler": "Rollo nicht eingerichtet"}), 404
+        _discovery_auffrischen()
+        _sofort_rechnen()
+        return jsonify({"geloescht": entity_id})
+    try:
+        ergebnis = store.update_rollo(entity_id, request.get_json(force=True) or {})
+    except store.ValidationError as err:
+        return jsonify({"fehler": str(err)}), 400
+    _discovery_auffrischen()
+    _sofort_rechnen()
+    return jsonify(ergebnis)
+
+
+@app.route("/api/plaene", methods=["GET", "POST", "PUT"])
+def api_plaene():
+    if request.method == "GET":
+        return jsonify(store.load_config()["plaene"])
+    try:
+        if request.method == "POST":
+            ergebnis = store.add_plan(request.get_json(force=True) or {})
+        else:
+            ergebnis = store.plaene_setzen(
+                (request.get_json(force=True) or {}).get("plaene"))
+    except store.ValidationError as err:
+        return jsonify({"fehler": str(err)}), 400
+    _discovery_auffrischen()
+    _sofort_rechnen()
+    return jsonify(ergebnis), 201 if request.method == "POST" else 200
+
+
+@app.route("/api/plaene/<plan_id>", methods=["PUT", "DELETE"])
+def api_plan(plan_id: str):
+    try:
+        if request.method == "DELETE":
+            if not store.delete_plan(plan_id):
+                return jsonify({"fehler": "Zeitplan nicht gefunden"}), 404
+            _discovery_auffrischen()
+            _sofort_rechnen()
+            return jsonify({"geloescht": plan_id})
+        ergebnis = store.update_plan(plan_id, request.get_json(force=True) or {})
+    except store.ValidationError as err:
+        return jsonify({"fehler": str(err)}), 400
+    _discovery_auffrischen()
+    _sofort_rechnen()
+    return jsonify(ergebnis)
+
+
+@app.route("/api/einstellungen", methods=["GET", "PUT"])
+def api_einstellungen():
+    if request.method == "GET":
+        return jsonify(store.load_config()["einstellungen"])
+    vorher = store.load_config()["einstellungen"].get("trockenlauf")
+    try:
+        neu = store.update_einstellungen(request.get_json(force=True) or {})
+    except store.ValidationError as err:
+        return jsonify({"fehler": str(err)}), 400
+    if vorher and not neu.get("trockenlauf"):
+        _durchsetzen()
+    else:
+        _sofort_rechnen()
+    return jsonify(neu)
+
+
+@app.route("/api/schalter", methods=["GET", "PUT"])
+def api_schalter():
+    """Die eigenen Schalter des Planers verwalten."""
+    config = store.load_config()
+    if request.method == "GET":
+        state = store.load_state()
+        gemerkt = state.get("schalter") or {}
+        return jsonify([{**e, "zustand": gemerkt.get(e["id"], e["vorgabe"])}
+                        for e in config["einstellungen"].get("eigene_schalter") or []])
+    try:
+        liste = store.validate_schalter((request.get_json(force=True) or {}).get("schalter"))
+    except store.ValidationError as err:
+        return jsonify({"fehler": str(err)}), 400
+
+    # Wird ein Schalter gelöscht, der noch als Bedingung in Gebrauch ist, wäre
+    # der betroffene Schaltpunkt stumm: Eine Bedingung auf einen Schalter, den
+    # es nicht gibt, trifft nie zu. Das muss auffallen.
+    vorhanden = {e["id"] for e in liste}
+    benutzt = _benutzte_schalter(config)
+    fehlend = sorted(benutzt - vorhanden)
+    if fehlend:
+        namen = {e["id"]: e["name"]
+                 for e in config["einstellungen"].get("eigene_schalter") or []}
+        return jsonify({"fehler": "Noch in Gebrauch: "
+                        + ", ".join(namen.get(i, i) for i in fehlend)}), 400
+
+    store.update_einstellungen({"eigene_schalter": liste})
+    _discovery_auffrischen()
+    _sofort_rechnen()
+    return jsonify(liste)
 
 
 @app.route("/api/schalter/uebernehmen", methods=["POST"])
@@ -577,15 +637,15 @@ def api_schalter_uebernehmen():
     if not index:
         return jsonify({"fehler": "Keine Zustände von Home Assistant erhalten"}), 503
 
-    raeume, schalter, zustaende = _in_eigene_umwandeln(
-        config["raeume"], config["einstellungen"], index)
+    rollos, plaene, schalter, zustaende = _in_eigene_umwandeln(
+        config["rollos"], config["plaene"], config["einstellungen"], index)
     neu = len(schalter) - len(config["einstellungen"].get("eigene_schalter") or [])
-    if not neu and raeume == config["raeume"]:
+    if not neu and rollos == config["rollos"] and plaene == config["plaene"]:
         return jsonify({"angelegt": 0, "hinweis": "Es gab nichts umzustellen"})
 
     store.update_einstellungen({"eigene_schalter": schalter})
-    for raum in raeume:
-        store.update_raum(raum["id"], raum)
+    store.plaene_setzen(plaene)
+    store.rollos_setzen(rollos)
     with _takt_lock:
         state = store.load_state()
         state.setdefault("schalter", {}).update(zustaende)
@@ -600,14 +660,12 @@ def api_schalter_uebernehmen():
                     "schalter": [{"name": e["name"], "art": e["art"]} for e in schalter]})
 
 
-def _benutzte_schalter(raeume: list[dict]) -> set:
-    """Welche eigenen Schalter in Räumen als Bedingung oder Freigabe stehen."""
+def _benutzte_schalter(config: dict) -> set:
+    """Welche eigenen Schalter als Bedingung in einem Zeitplan stehen."""
     benutzt = set()
-    for raum in raeume:
-        kennung = store.eigener_schalter(raum.get("freigabe_entity") or "")
-        if kennung:
-            benutzt.add(kennung)
-        for punkt in raum.get("zeitplan") or []:
+    for punkte in ([r.get("zeitplan") for r in config.get("rollos") or []]
+                   + [p.get("zeitplan") for p in config.get("plaene") or []]):
+        for punkt in punkte or []:
             for bedingung in punkt.get("wenn") or []:
                 kennung = store.eigener_schalter(bedingung.get("entity") or "")
                 if kennung:
@@ -636,53 +694,58 @@ def api_uebernahme():
     bereiche = ha_api.bereiche_je_entitaet(("cover",))
     states = ha_api.get_states()
     cover = ha_api.cover_entities(states, bereiche)
-    namen = {e["entity_id"]: e["name"] for e in cover}
     vorschlag = uebernahme.vorschlag(
         bereiche, einstellungen.get("schulfrei_entity"),
-        einstellungen.get("schulfrei_morgen_entity"), config["raeume"], namen)
+        einstellungen.get("schulfrei_morgen_entity"), cover)
 
     if request.method == "GET":
-        vorschlag["ohne_automation"] = uebernahme.raeume_ohne_automation(
-            bereiche, cover, vorschlag["raeume"])
-        ignoriert = set(einstellungen.get("ignorierte_vorschlaege") or [])
-        vorschlag["raeume"] = [r for r in vorschlag["raeume"]
-                               if r["name"] not in ignoriert]
-        vorschlag["ohne_automation"] = [r for r in vorschlag["ohne_automation"]
-                                        if r["name"] not in ignoriert]
+        eingerichtet = {r["entity_id"] for r in config["rollos"]}
+        for rollo in vorschlag["rollos"]:
+            rollo["schon_da"] = rollo["entity_id"] in eingerichtet
         return jsonify(vorschlag)
 
     nutzlast = request.get_json(force=True) or {}
-    gewuenscht = nutzlast.get("raeume") or []
+    gewuenscht = nutzlast.get("rollos")
+    if gewuenscht is None:
+        gewuenscht = vorschlag["rollos"]
+    plaene = nutzlast.get("plaene")
+    if plaene is None:
+        plaene = vorschlag["plaene"]
+
+    # Nur Zeitpläne behalten, denen auch jemand folgt – sonst bleiben nach
+    # einer Auswahl leere Pläne stehen.
+    gebraucht = {r.get("plan") for r in gewuenscht if r.get("plan")}
+    plaene = [p for p in plaene if p["id"] in gebraucht]
+
     # Vorgabe: gleich auf eigene Schalter umstellen. Ein übernommener Zeitplan
     # soll nicht davon abhängen, dass jemand vorher von Hand die passenden
-    # Helfer angelegt hat.
-    eigene = nutzlast.get("eigene_schalter", True)
+    # Helfer angelegt hat – nach einer Neuinstallation gibt es die nicht.
     schalter, zustaende = None, {}
-    if eigene:
+    if nutzlast.get("eigene_schalter", True):
         index = {s["entity_id"]: s for s in states}
-        gewuenscht, schalter, zustaende = _in_eigene_umwandeln(
-            gewuenscht, einstellungen, index)
+        gewuenscht, plaene, schalter, zustaende = _in_eigene_umwandeln(
+            gewuenscht, plaene, einstellungen, index)
 
-    angelegt, fehler = [], []
-    if schalter:
-        try:
+    try:
+        if schalter:
             store.update_einstellungen({"eigene_schalter": schalter})
-        except store.ValidationError as err:
-            return jsonify({"fehler": str(err)}), 400
-        with _takt_lock:
-            state = store.load_state()
-            state.setdefault("schalter", {}).update(zustaende)
-            store.save_state(state)
+            with _takt_lock:
+                state = store.load_state()
+                state.setdefault("schalter", {}).update(zustaende)
+                store.save_state(state)
+        store.plaene_setzen(plaene)
+        # Die Felder aus dem Vorschlag, die nicht ins Modell gehören, fallen
+        # bei der Prüfung von selbst weg.
+        store.rollos_setzen(gewuenscht)
+    except store.ValidationError as err:
+        return jsonify({"fehler": str(err)}), 400
 
-    for entwurf in gewuenscht:
-        try:
-            angelegt.append(store.add_raum(entwurf))
-        except store.ValidationError as err:
-            fehler.append({"raum": entwurf.get("name"), "fehler": str(err)})
-    if angelegt or schalter:
-        _discovery_auffrischen()
-        _sofort_rechnen()
-    return jsonify({"angelegt": angelegt, "fehler": fehler,
+    _discovery_auffrischen()
+    _sofort_rechnen()
+    logbuch.eintragen("Einrichtung", "übernommen",
+                      f"{len(gewuenscht)} Rollos, {len(plaene)} gemeinsame Zeitpläne, "
+                      f"{len(schalter or [])} eigene Schalter")
+    return jsonify({"rollos": len(gewuenscht), "plaene": len(plaene),
                     "schalter": len(schalter or [])})
 
 
@@ -702,7 +765,7 @@ def api_vorschlag_abweisen():
 def api_fahren():
     nutzlast = request.get_json(force=True) or {}
     try:
-        ergebnis = _raum_fahren(nutzlast.get("raum"), nutzlast.get("position"))
+        ergebnis = _rollo_fahren(nutzlast.get("rollo"), nutzlast.get("position"))
     except store.ValidationError as err:
         return jsonify({"fehler": str(err)}), 400
     return jsonify(ergebnis)
@@ -710,8 +773,7 @@ def api_fahren():
 
 @app.route("/api/handbetrieb", methods=["DELETE"])
 def api_handbetrieb():
-    raum_id = request.args.get("raum")
-    return jsonify({"aufgehoben": _handbetrieb_aufheben(raum_id)})
+    return jsonify({"aufgehoben": _handbetrieb_aufheben(request.args.get("rollo"))})
 
 
 @app.route("/api/durchsetzen", methods=["POST"])
@@ -726,7 +788,6 @@ def api_zustand():
     state = store.load_state()
     return jsonify({
         "rollos": state.get("rollos") or {},
-        "raeume": state.get("raeume") or {},
         "rauch_bis": state.get("rauch_bis"),
         "simulation": state.get("simulation") or {},
         "schulfrei_verlauf": state.get("schulfrei_verlauf") or {},
@@ -760,7 +821,7 @@ def api_gesundheit():
     """Eine Selbstauskunft: Was steht, was fehlt, was ist verdächtig.
 
     Gedacht für den Blick nach der Einrichtung – und für die Frage „warum
-    fährt der Raum nicht?“, die sich fast immer mit einer dieser Auskünfte
+    fährt das Rollo nicht?“, die sich fast immer mit einer dieser Auskünfte
     beantworten lässt.
     """
     config = store.load_config()
@@ -768,11 +829,21 @@ def api_gesundheit():
     states = ha_api.get_states()
     index = {s["entity_id"]: s for s in states}
     state = store.load_state()
+    plaene = {p["id"]: p for p in config["plaene"]}
+    eigene_ids = {e["id"] for e in einstellungen.get("eigene_schalter") or []}
 
     befunde = []
 
-    def melden(schwere: str, text: str, raum: str = "") -> None:
-        befunde.append({"schwere": schwere, "text": text, "raum": raum})
+    def melden(schwere: str, text: str, wo: str = "") -> None:
+        befunde.append({"schwere": schwere, "text": text, "raum": wo})
+
+    def pruefe_entitaet(eid: str, was: str, wo: str) -> None:
+        kennung = store.eigener_schalter(eid)
+        if kennung is not None:
+            if kennung not in eigene_ids:
+                melden("fehler", f"{was}: diesen eigenen Schalter gibt es nicht mehr", wo)
+        elif eid not in index:
+            melden("fehler", f"{was} {eid} fehlt", wo)
 
     if not ha_api.available():
         melden("fehler", "Kein SUPERVISOR_TOKEN – der Planer kann nichts fahren")
@@ -790,59 +861,47 @@ def api_gesundheit():
         if eid and eid not in index:
             melden("fehler", f"{beschreibung}: {eid} gibt es in Home Assistant nicht")
 
-    verplant: dict[str, list[str]] = {}
-    for raum in config["raeume"]:
-        if not raum.get("rollos"):
-            melden("warnung", "Dem Raum ist kein Rollo zugeordnet", raum["name"])
-        if not raum.get("zeitplan"):
-            melden("warnung", "Der Raum hat keinen Schaltpunkt", raum["name"])
-        if raum.get("beschattung") and raum.get("ausrichtung") is None:
-            melden("warnung", "Hitzeschutz ohne Ausrichtung – er bleibt wirkungslos",
-                   raum["name"])
-        # Eigene Schalter stehen nicht im Zustandsverzeichnis von Home
-        # Assistant, sondern in der Konfiguration – sie sind dort zu suchen.
-        eigene_ids = {e["id"] for e in einstellungen.get("eigene_schalter") or []}
-
-        def pruefe_entitaet(eid: str, was: str, raum_name: str) -> None:
-            kennung = store.eigener_schalter(eid)
-            if kennung is not None:
-                if kennung not in eigene_ids:
-                    melden("fehler", f"{was}: der eigene Schalter gibt es nicht mehr",
-                           raum_name)
-            elif eid not in index:
-                melden("fehler", f"{was} {eid} fehlt", raum_name)
-
-        freigabe = raum.get("freigabe_entity")
-        if freigabe:
-            pruefe_entitaet(freigabe, "Freigabeschalter", raum["name"])
-        for punkt in raum.get("zeitplan") or []:
+    for rollo in config["rollos"]:
+        eid = rollo["entity_id"]
+        name = regelung.anzeigename(rollo, index)
+        punkte = (plaene[rollo["plan"]]["zeitplan"] if rollo.get("plan") in plaene
+                  else rollo.get("zeitplan") or [])
+        if rollo.get("plan") and rollo["plan"] not in plaene:
+            melden("fehler", "Folgt einem Zeitplan, den es nicht mehr gibt", name)
+        elif not punkte:
+            melden("warnung", "Kein Schaltpunkt – dieses Rollo fährt nie", name)
+        if rollo.get("beschattung") and rollo.get("ausrichtung") is None:
+            melden("warnung", "Hitzeschutz ohne Ausrichtung – er bleibt wirkungslos", name)
+        if rollo.get("art") in store.TUERARTEN and not rollo.get("fenster"):
+            melden("hinweis",
+                   "Tür ohne Kontakt: Der Planer kann nicht merken, ob jemand "
+                   "draußen steht, wenn er zufährt", name)
+        for kontakt in rollo.get("fenster") or []:
+            pruefe_entitaet(kontakt, "Fensterkontakt", name)
+        for punkt in punkte:
             for bedingung in punkt.get("wenn") or []:
-                pruefe_entitaet(bedingung.get("entity") or "", "Bedingung", raum["name"])
-        for eid in raum.get("fenster") or []:
-            if eid not in index:
-                melden("fehler", f"Fensterkontakt {eid} fehlt", raum["name"])
-        for eid in raum.get("rollos") or []:
-            verplant.setdefault(eid, []).append(raum["name"])
-            zustand = index.get(eid)
-            if zustand is None:
-                melden("fehler", f"{eid} gibt es in Home Assistant nicht", raum["name"])
-            elif zustand.get("state") == "unavailable":
-                melden("fehler", f"{eid} ist nicht erreichbar", raum["name"])
-            elif not ha_api.kann_position(zustand):
-                melden("hinweis",
-                       f"{eid} kennt keine Zwischenstellung – Hitzeschutz fährt ganz zu",
-                       raum["name"])
+                pruefe_entitaet(bedingung.get("entity") or "", "Bedingung", name)
 
-    for eid, raeume in verplant.items():
-        if len(raeume) > 1:
-            melden("fehler", f"{eid} steht in mehreren Räumen: " + ", ".join(raeume))
+        zustand = index.get(eid)
+        if zustand is None:
+            melden("fehler", f"{eid} gibt es in Home Assistant nicht", name)
+        elif zustand.get("state") == "unavailable":
+            melden("fehler", "Nicht erreichbar", name)
+        elif not ha_api.kann_position(zustand):
+            melden("hinweis",
+                   "Kennt keine Zwischenstellung – der Hitzeschutz fährt ganz zu", name)
 
-    # Rollos, die es gibt, die aber in keinem Raum stehen.
-    alle = {e["entity_id"] for e in ha_api.cover_entities(states)}
-    fehlend = sorted(alle - set(verplant))
-    for eid in fehlend:
-        name = (index.get(eid, {}).get("attributes") or {}).get("friendly_name") or eid
-        melden("hinweis", f"{name} ({eid}) ist keinem Raum zugeordnet")
+    # Rollos, die es gibt, die aber nicht eingerichtet sind.
+    eingerichtet = {r["entity_id"] for r in config["rollos"]}
+    for eintrag in ha_api.cover_entities(states):
+        if eintrag["entity_id"] not in eingerichtet:
+            melden("hinweis", f"{eintrag['name']} ({eintrag['entity_id']}) "
+                              "ist nicht eingerichtet")
+
+    # Zeitpläne ohne Folger legen eine Entität an, die nichts tut.
+    for plan in config["plaene"]:
+        if not any(r.get("plan") == plan["id"] for r in config["rollos"]):
+            melden("hinweis", f"Dem Zeitplan „{plan['name']}“ folgt kein Rollo")
 
     # Läuft noch eine der alten Automationen mit? Gemeint sind nur die, die der
     # Planer ersetzt – also die zeitgesteuerten. „RM Alarm öffnet alle Rollos“
@@ -866,7 +925,7 @@ def api_gesundheit():
                if s["entity_id"].startswith("automation.")
                and s.get("state") == "on"
                and (s.get("attributes") or {}).get("friendly_name") in ersetzbar]
-    if doppelt and config["raeume"]:
+    if doppelt and config["rollos"]:
         namen = [(s.get("attributes") or {}).get("friendly_name") for s in doppelt]
         melden("warnung",
                f"{len(doppelt)} Rollo-Automationen sind noch aktiv – sie fahren gegen "
@@ -881,14 +940,14 @@ def api_gesundheit():
     # Hängt noch ein Zeitplan an einem fremden Helfer? Das läuft hier, aber
     # nach einer Neuinstallation anderswo nicht – dort gibt es den Helfer nicht.
     fremde = sorted({
-        eid for raum in config["raeume"]
-        for eid in ([raum.get("freigabe_entity")]
-                    + [b.get("entity") for p in raum.get("zeitplan") or []
-                       for b in p.get("wenn") or []])
-        if eid and not store.eigener_schalter(eid)})
+        b.get("entity") for punkte in
+        ([r.get("zeitplan") for r in config["rollos"]]
+         + [p.get("zeitplan") for p in config["plaene"]])
+        for punkt in punkte or [] for b in punkt.get("wenn") or []
+        if b.get("entity") and not store.eigener_schalter(b["entity"])})
     if fremde:
         melden("hinweis",
-               f"{len(fremde)} Zeitpläne hängen an fremden Helfern – der Planer kann "
+               f"{len(fremde)} Bedingungen hängen an fremden Helfern – der Planer kann "
                "sie unter „Schalter“ durch eigene ersetzen: " + ", ".join(fremde[:4])
                + (" …" if len(fremde) > 4 else ""))
 
@@ -899,14 +958,16 @@ def api_gesundheit():
     schalterstand = {e["id"]: e for e in einstellungen.get("eigene_schalter") or []}
     laufzeit = state.get("schalter") or {}
     zaehler: dict[str, int] = {}
-    for raum in config["raeume"]:
-        for punkt in raum.get("zeitplan") or []:
+    quellen = ([(regelung.anzeigename(r, index), r.get("zeitplan")) for r in config["rollos"]]
+               + [(f"Zeitplan {p['name']}", p.get("zeitplan")) for p in config["plaene"]])
+    for _, punkte in quellen:
+        for punkt in punkte or []:
             for bedingung in punkt.get("wenn") or []:
                 kennung = store.eigener_schalter(bedingung.get("entity") or "")
                 if kennung:
                     zaehler[kennung] = zaehler.get(kennung, 0) + 1
-    for raum in config["raeume"]:
-        for punkt in raum.get("zeitplan") or []:
+    for wo, punkte in quellen:
+        for punkt in punkte or []:
             for bedingung in punkt.get("wenn") or []:
                 kennung = store.eigener_schalter(bedingung.get("entity") or "")
                 eintrag = schalterstand.get(kennung or "")
@@ -917,12 +978,10 @@ def api_gesundheit():
                     melden("hinweis",
                            f"„{zeitplan.beschreibung(punkt)}“ ist stillgelegt: "
                            f"„{eintrag['name']}“ steht auf {jetzt}, gebraucht würde "
-                           f"{bedingung.get('wert')}", raum["name"])
+                           f"{bedingung.get('wert')}", wo)
 
-    # Ein eigener Schalter, den niemand benutzt, legt eine Entität in Home
-    # Assistant an, die nichts tut.
     unbenutzt = [e["name"] for e in einstellungen.get("eigene_schalter") or []
-                 if e["id"] not in _benutzte_schalter(config["raeume"])]
+                 if e["id"] not in _benutzte_schalter(config)]
     for name in unbenutzt:
         melden("hinweis", f"Der eigene Schalter „{name}“ wird nirgends verwendet")
 
@@ -930,9 +989,8 @@ def api_gesundheit():
         "version": VERSION,
         "befunde": befunde,
         "zaehler": {
-            "raeume": len(config["raeume"]),
-            "rollos": len(verplant),
-            "nicht_zugeordnet": len(fehlend),
+            "rollos": len(config["rollos"]),
+            "plaene": len(config["plaene"]),
             "fehler": sum(1 for b in befunde if b["schwere"] == "fehler"),
             "warnungen": sum(1 for b in befunde if b["schwere"] == "warnung"),
         },
@@ -943,6 +1001,18 @@ def api_gesundheit():
 
 def main() -> None:
     _zeitzone_uebernehmen()
+    # Eine Konfiguration aus 1.x lässt sich nicht weiterverwenden: Ein Raum mit
+    # drei Rollos wusste nicht, welches davon eine Terrassentür ist. Sie wird
+    # beiseitegelegt, nicht gelöscht – wer nachsehen will, was vorher galt,
+    # findet sie unter /data.
+    if store.ist_alte_konfiguration():
+        ziel = store.alte_konfiguration_sichern()
+        store.save_config({"einstellungen": store.load_config()["einstellungen"],
+                           "plaene": [], "rollos": []})
+        _LOGGER.warning(
+            "Die Einrichtung stammt aus einer älteren Fassung und wurde nach %s "
+            "gesichert. Der Planer steuert vorerst nichts – bitte im Reiter "
+            "„Einrichtung“ neu übernehmen.", ziel)
     if not ha_api.available():
         _LOGGER.error("Kein SUPERVISOR_TOKEN – der Planer kann nichts fahren")
     cardsync.sync()
