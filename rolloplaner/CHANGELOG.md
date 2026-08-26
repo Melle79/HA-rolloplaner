@@ -1,5 +1,27 @@
 # Änderungen
 
+## 2.1.1 – 26.08.2026
+
+**Rollos ohne Zeitplan standen in Home Assistant als „nicht verfügbar“ da.**
+Ihr Sensor bekam den Textwert „unknown“, und damit legt Home Assistant einen
+Sensor mit Einheit gar nicht erst an – die Entität blieb leer, obwohl mit dem
+Rollo nichts war.
+
+Jetzt zeigt der Sensor in dem Fall, **wo das Rollo steht**. Bei einem Rollo
+ohne Plan ist das ohnehin die einzige sinnvolle Auskunft.
+
+**Die Rolloliste im Add-on ist eine Tabelle statt vieler.** Vorher stand über
+jedem Raum eine eigene Kopfzeile, und weil jede Tabelle ihre Spalten selbst
+ausmisst, sprangen die Spaltenbreiten von Raum zu Raum. Jetzt gibt es eine
+Kopfzeile und Raum-Zwischenzeilen.
+
+**Die Zeilendarstellung der Karte fluchtet.** Sie war als Flexbox gebaut, in
+der sich der Textteil über den ganzen freien Platz dehnte und alles Übrige an
+den rechten Rand drückte – dazwischen klaffte ein Loch von tausend Pixeln.
+Jetzt ist es ein Raster mit festen Spalten, in dem nur die Textspalte wächst.
+Name und Begründung stehen nebeneinander statt untereinander, was die Zeile
+halb so hoch macht.
+
 ## 2.1.0 – 26.08.2026
 
 **Die Karte richtet sich nach ihrer Breite.** In einer Ansicht über die volle

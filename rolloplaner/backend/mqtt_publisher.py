@@ -469,7 +469,12 @@ class Publisher:
             kurz = _slug(rollo["entity_id"].split(".", 1)[-1])
             key = f"rollo_{kurz}"
             ziel = rollo.get("ziel")
-            angezeigt = zeige(ziel)
+            # Ohne Ziel zeigt der Sensor, **wo das Rollo steht**. Das ist bei
+            # einem Rollo ohne Zeitplan die einzige sinnvolle Auskunft – und es
+            # vermeidet den Textwert „unknown“, mit dem Home Assistant einen
+            # Sensor mit Einheit gar nicht erst anlegt: Er stand dann als
+            # „nicht verfügbar“ da, obwohl mit ihm nichts war.
+            angezeigt = zeige(ziel if ziel is not None else rollo.get("ist"))
             self._zustand(key, str(angezeigt) if angezeigt is not None else "unknown", {
                 "cover": rollo["entity_id"],
                 "raum": rollo.get("raum") or "",

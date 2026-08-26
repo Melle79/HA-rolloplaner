@@ -624,29 +624,48 @@ class RolloplanerCard extends HTMLElement {
       }
       @container (min-width: 880px){
         /* Ab hier: eine Zeile je Rollo über die ganze Breite.
-           Die Zeile ist eine Flexbox, und display:contents auf .z1 hebt nur
-           die eine Verschachtelung auf, die im Weg steht – damit Bild, Text
-           und Zahl direkte Geschwister der Schalter und Knöpfe werden und sich
-           mit „order“ anordnen lassen. */
+
+           Als Raster mit festen Spalten, nicht als Flexbox: In einer Flexbox
+           dehnte sich der Textteil über den ganzen freien Platz und drückte
+           alles Übrige an den rechten Rand – dazwischen klaffte ein Loch von
+           tausend Pixeln. Ein Raster verteilt den Platz stattdessen auf
+           Spalten, die untereinander fluchten, und genau das macht eine Liste
+           lesbar.
+
+           display:contents auf .z1 hebt die eine Verschachtelung auf, die im
+           Weg steht: So werden Bild, Text und Zahl Geschwister der Schalter
+           und Knöpfe und lassen sich einzeln in Spalten legen. */
         .raeume{grid-template-columns:1fr; gap:0}
-        .raum{display:flex; flex-direction:row; align-items:center; gap:14px;
+        /* Der Platz gehört dem Text: Nur seine Spalte wächst, alles Übrige
+           ist so breit wie sein Inhalt. Damit rückt die rechte Seite als Block
+           zusammen, statt sich über die halbe Karte zu verteilen. */
+        .raum{display:grid; align-items:center; gap:6px 16px;
+          grid-template-columns:auto minmax(200px, 1fr) auto auto auto auto;
           border:none; border-bottom:1px solid var(--divider-color);
-          border-radius:0; padding:8px 6px}
+          border-radius:0; padding:7px 6px}
         .raum:last-child{border-bottom:none}
         .z1{display:contents}
-        .bild{order:1}
-        .z1-text{order:2; flex:1 1 220px; min-width:0}
-        .grund{-webkit-line-clamp:1}
-        .chipzeile{order:3; flex:0 1 auto; margin-top:0; flex-wrap:nowrap;
-          min-width:0; justify-content:flex-end}
-        .c-titel{display:none}
-        .z3{order:4; flex:0 0 auto; margin-top:0; padding-top:0;
-          justify-content:flex-end}
-        .dann{flex:0 0 auto; text-align:right; min-width:118px}
-        .z1-wert{order:5; flex:none; flex-direction:row; align-items:baseline;
-          gap:5px; min-width:96px; justify-content:flex-end}
+        /* Jedes Feld nennt Spalte **und** Zeile. Ohne die Zeile setzt das
+           Raster automatisch weiter – und weil die Stellung im HTML vor den
+           Schaltern steht, aber in die letzte Spalte gehört, landete alles
+           Nachfolgende in einer zweiten Zeile. */
+        .bild{grid-column:1; grid-row:1}
+        .z1-text{grid-column:2; grid-row:1; min-width:0; display:flex;
+          align-items:baseline; gap:10px; flex-wrap:wrap}
+        /* Name und Begründung nebeneinander statt untereinander: Eine Zeile,
+           die halb so hoch ist, lässt sich als Liste überfliegen. */
+        .grund{-webkit-line-clamp:1; margin-top:0; flex:1 1 auto}
+        .chipzeile{grid-column:3; grid-row:1; margin-top:0; min-width:0;
+          flex-wrap:nowrap}
+        /* Die Fußzeile wird aufgelöst: Im Kachelmodus gehören Zeit und
+           Knöpfe zusammen in eine Zeile, hier in zwei Spalten. */
+        .z3{display:contents}
+        .dann{grid-column:4; grid-row:1; text-align:right; white-space:nowrap}
+        .knoepfe{grid-column:5; grid-row:1}
+        .z1-wert{grid-column:6; grid-row:1; flex-direction:row;
+          align-items:baseline; gap:5px; justify-content:flex-end; min-width:92px}
         .wert{font-size:1.2rem}
-        .raumtitel{padding-top:12px}
+        .raumtitel{padding-top:14px}
       }
 
       .leer{padding:14px 0; color:var(--secondary-text-color); font-size:.85rem;

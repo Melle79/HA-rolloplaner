@@ -257,6 +257,10 @@
     background:var(--flaeche3); color:var(--leise)}
   .planschild.eigen{background:transparent; border:1px dashed var(--linie)}
   td.knopfspalte{text-align:right; white-space:nowrap}
+  tr.raumzeile td{font-size:.72rem; text-transform:uppercase; letter-spacing:.13em;
+    color:var(--leise); font-weight:600; padding-top:var(--l4);
+    border-bottom:1px solid var(--linie)}
+  tr.raumzeile:first-child td{padding-top:var(--l1)}
 </style>
 </head>
 <body>
@@ -843,27 +847,31 @@ function zeichneRollos(){
     if (!nachRaum.has(raum)) nachRaum.set(raum, []);
     nachRaum.get(raum).push(r);
   });
-  $("#rolloliste").innerHTML = [...nachRaum].map(([raum, liste]) => `
-    <div class="raumtitel">${esc(raum)}</div>
-    <table><thead><tr><th>Rollo</th><th>was</th><th>Zeitplan</th><th>Hitzeschutz</th>
-      <th></th></tr></thead><tbody>
-    ${liste.map((r) => {
-      const plan = plaene.get(r.plan);
-      return `<tr>
-        <td><b>${esc(rolloName(r))}</b>
-          ${r.aktiv ? "" : ' <span class="hinweis">(aus)</span>'}
-          <div class="hinweis">${esc(r.entity_id)}</div></td>
-        <td>${esc(artName.get(r.art) || r.art)}</td>
-        <td>${r.betriebsart === "von_hand"
-              ? `<span class="planschild eigen">nur von Hand</span>`
-              : plan ? `<span class="planschild">${esc(plan.name)}</span>`
-              : `<span class="planschild eigen">${r.zeitplan.length} eigene Punkte</span>`}</td>
-        <td class="hinweis">${r.beschattung && r.ausrichtung !== null
-              ? (RICHTUNGEN.find(([g]) => Number(g) === r.ausrichtung)?.[1] || r.ausrichtung + "°")
-              : "–"}</td>
-        <td class="knopfspalte"><button class="leise" data-rollo="${esc(r.entity_id)}">Bearbeiten</button></td>
-      </tr>`;
-    }).join("")}</tbody></table>`).join("");
+  // **Eine** Tabelle mit Raum-Zwischenzeilen, nicht eine Tabelle je Raum: Sonst
+  // wiederholt sich die Kopfzeile bei jedem Raum, und weil jede Tabelle ihre
+  // Spalten selbst ausmisst, springen die Spaltenbreiten von Raum zu Raum.
+  $("#rolloliste").innerHTML = `<table>
+    <thead><tr><th>Rollo</th><th>was</th><th>Zeitplan</th><th>Hitzeschutz</th>
+      <th></th></tr></thead>
+    <tbody>${[...nachRaum].map(([raum, liste]) => `
+      <tr class="raumzeile"><td colspan="5">${esc(raum)}</td></tr>
+      ${liste.map((r) => {
+        const plan = plaene.get(r.plan);
+        return `<tr>
+          <td><b>${esc(rolloName(r))}</b>
+            ${r.aktiv ? "" : ' <span class="hinweis">(aus)</span>'}
+            <div class="hinweis">${esc(r.entity_id)}</div></td>
+          <td>${esc(artName.get(r.art) || r.art)}</td>
+          <td>${r.betriebsart === "von_hand"
+                ? `<span class="planschild eigen">nur von Hand</span>`
+                : plan ? `<span class="planschild">${esc(plan.name)}</span>`
+                : `<span class="planschild eigen">${r.zeitplan.length} eigene Punkte</span>`}</td>
+          <td class="hinweis">${r.beschattung && r.ausrichtung !== null
+                ? (RICHTUNGEN.find(([g]) => Number(g) === r.ausrichtung)?.[1] || r.ausrichtung + "°")
+                : "–"}</td>
+          <td class="knopfspalte"><button class="leise" data-rollo="${esc(r.entity_id)}">Bearbeiten</button></td>
+        </tr>`;
+      }).join("")}`).join("")}</tbody></table>`;
 
   $$("#rolloliste [data-rollo]").forEach((el) =>
     el.onclick = () => rolloDialog(rollos.find((r) => r.entity_id === el.dataset.rollo)));
