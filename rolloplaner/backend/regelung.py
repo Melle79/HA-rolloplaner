@@ -6,8 +6,12 @@ Balkontür nicht offen lassen, während das Fenster zufährt.
 
 Rangfolge – der erste Treffer gewinnt:
 
-    aus → Rauch → Rollo aus → Zeitplan aus → Fenster → Urlaub → Hitzeschutz
+    Rauch → aus → Rollo aus → Zeitplan aus → Fenster → Urlaub → Hitzeschutz
     → Handbetrieb → Zeitplan
+
+Rauch steht ganz oben, und zwar seit der Fluchtweg-Freigabe: Ein Rollo, das
+„von Hand“ gefahren wird oder dessen Zeitplan abgeschaltet ist, gehört im
+Brandfall genauso auf wie jedes andere.
 
 Zwei Grundsätze ziehen sich durch:
 
@@ -91,8 +95,14 @@ def _sonnenstand_justieren(sonnenstand, sun: dict | None) -> None:
 
 
 def _rauchsperre(einstellungen: dict, index: dict, state: dict,
-                 jetzt: datetime) -> tuple[bool, str]:
+                 jetzt: datetime) -> tuple[bool, str, bool]:
     """Schlägt gerade ein Rauchmelder an – oder hat er es eben noch getan?
+
+    Zurück kommen drei Dinge: ob die Sperre gilt, warum, und ob der Alarm
+    **akut** ist. Der Unterschied zählt: Die Sperre gilt auch im Nachlauf nach
+    der Entwarnung, der Fluchtweg wird dort aber nicht mehr aufgefahren – sonst
+    führe der Planer eine halbe Stunde lang gegen jeden an, der hinter dem
+    abgezogenen Alarm wieder zumachen will.
 
     Der wichtigste Griff im ganzen Planer. In diesem Haus fährt die Automation
     „RM Alarm öffnet alle Rollos“ bei Rauch **alle** Rollläden hoch. Ein
@@ -103,7 +113,7 @@ def _rauchsperre(einstellungen: dict, index: dict, state: dict,
     """
     sperre = einstellungen.get("rauchsperre") or {}
     if not sperre.get("aktiv", True):
-        return False, ""
+        return False, "", False
 
     melder = sperre.get("melder") or []
     if melder:
@@ -123,14 +133,116 @@ def _rauchsperre(einstellungen: dict, index: dict, state: dict,
         for eid in ausgeloest[:3]:
             zustand = index.get(eid) or {}
             namen.append((zustand.get("attributes") or {}).get("friendly_name") or eid)
-        return True, "Rauchmelder: " + ", ".join(namen)
+        return True, "Rauchmelder: " + ", ".join(namen), True
 
     bis = _aus_iso(state.get("rauch_bis"))
     if bis and jetzt < bis:
-        return True, f"Nachlauf der Rauchsperre bis {bis.strftime('%H:%M')} Uhr"
+        return True, f"Nachlauf der Rauchsperre bis {bis.strftime('%H:%M')} Uhr", False
     if bis:
         state["rauch_bis"] = None
-    return False, ""
+    return False, "", False
+
+
+def _fluchtweg(config: dict, einstellungen: dict, index: dict, state: dict,
+               jetzt: datetime, rauch: bool, akut: bool = True) -> dict:
+    """Bei Rauchalarm jedes Rollo aufmachen.
+
+    Der Gegenpol zur Rauchsperre: Die sorgt dafür, dass der Planer nichts mehr
+    zufährt, diese hier dafür, dass überhaupt etwas aufgeht. Beides zusammen
+    ersetzt die Automation „RM Alarm öffnet alle Rollos“.
+
+    Drei Dinge unterscheiden das vom gewöhnlichen Fahren:
+
+    **Es steht über allem.** Nicht über der Automatik, nicht über einem
+    abgeschalteten Zeitplan, nicht über „von Hand“ – über allem. Wer im
+    Schlafzimmer keinen Zeitplan will, will trotzdem aus dem Fenster kommen.
+    Einzig ein Rollo, an dem ``fluchtweg`` ausgeschaltet ist, bleibt in Ruhe.
+
+    **Es fasst nach.** Ein Fahrbefehl kann verlorengehen, ein Funkmotor kann
+    ihn verschlucken. Ein Rollo, das nach der Fahrzeit immer noch zu ist,
+    bekommt den Befehl erneut – aber nur ``fluchtweg_versuche`` mal. Ein
+    blockierter Antrieb, der im Minutentakt gegen ein Hindernis fährt, ist im
+    Brandfall kein Rettungsweg, sondern ein zweiter Schaden.
+
+    **Es hält den Trockenlauf ein.** Der Trockenlauf ist der Schalter, mit dem
+    man dem Planer sagt: Fass nichts an. Ihn ausgerechnet hier zu übergehen,
+    hieße, dass ein Add-on im Probebetrieb nachts das Haus aufmacht.
+    """
+    sperre = einstellungen.get("rauchsperre") or {}
+    stand = state.setdefault("fluchtweg", {"seit": None, "versuche": {}})
+    bericht: dict = {"aktiv": False, "neu": False, "akut": bool(akut), "seit": None,
+                     "offen": [], "gefahren": [], "unterwegs": [], "aufgegeben": [],
+                     "fehlt": [], "uebergangen": [], "nachlauf": []}
+
+    # Entwarnung: Sobald der Alarm samt Nachlauf vorbei ist, zählt der nächste
+    # von vorn. Sonst hätte ein Rollo, das im Frühjahr dreimal vergeblich
+    # angefahren wurde, im Herbst keinen Versuch mehr frei.
+    if not rauch:
+        if stand.get("seit"):
+            stand["seit"] = None
+            stand["versuche"] = {}
+        return bericht
+    if not sperre.get("aktiv", True) or not sperre.get("fluchtweg", True):
+        return bericht
+
+    bericht["aktiv"] = True
+    if not stand.get("seit"):
+        stand["seit"] = _iso(jetzt)
+        stand["versuche"] = {}
+        bericht["neu"] = True
+    bericht["seit"] = stand["seit"]
+
+    trockenlauf = bool(einstellungen.get("trockenlauf"))
+    grenze = int(sperre.get("fluchtweg_versuche", 3))
+    versuche = stand.setdefault("versuche", {})
+
+    for rollo in config.get("rollos") or []:
+        eid = rollo["entity_id"]
+        name = anzeigename(rollo, index)
+        if not rollo.get("aktiv", True):
+            continue
+        if not rollo.get("fluchtweg", True):
+            bericht["uebergangen"].append(name)
+            continue
+
+        zustand = index.get(eid)
+        if zustand is None or zustand.get("state") == "unavailable":
+            bericht["fehlt"].append(name)
+            continue
+
+        ziel = int(rollo.get("position_offen", 100))
+        ist = ha_api.position_von(zustand)
+        if ist is not None and ist >= ziel - TOLERANZ:
+            bericht["offen"].append(name)
+            continue
+
+        # Nach der Entwarnung wird nur noch berichtet, nicht mehr gefahren.
+        if not akut:
+            bericht["nachlauf"].append(name)
+            continue
+
+        eintrag = versuche.setdefault(eid, {"n": 0, "am": None})
+        letzte = _aus_iso(eintrag.get("am"))
+        if letzte is not None and jetzt - letzte < timedelta(minutes=FAHRZEIT_MIN):
+            bericht["unterwegs"].append(name)
+            continue
+        if eintrag["n"] >= grenze:
+            bericht["aufgegeben"].append(name)
+            continue
+
+        eintrag["n"] += 1
+        eintrag["am"] = _iso(jetzt)
+        if trockenlauf:
+            bericht["gefahren"].append(name)
+            _LOGGER.warning("Fluchtweg: %s bliebe im Trockenlauf zu", eid)
+            continue
+        if ha_api.set_position(eid, ziel, zustand):
+            bericht["gefahren"].append(name)
+            state.setdefault("rollos", {}).setdefault(eid, {}).update(
+                ziel=ziel, gesetzt_am=_iso(jetzt), grund="Fluchtweg", manuell_bis=None)
+        else:
+            bericht["fehlt"].append(name)
+    return bericht
 
 
 def _versatz_wuerfeln(state: dict, jetzt: datetime, streuung: int) -> dict:
@@ -317,7 +429,21 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
                                      lage["zustaende"]),
     }
 
-    # 1. aus ------------------------------------------------------------------
+    # 1. Rauch ----------------------------------------------------------------
+    # Ganz oben, weil die Fluchtweg-Freigabe über allem steht. Gefahren wird
+    # hier nicht: Das erledigt ``_fluchtweg`` einmal zentral, damit der
+    # Fluchtweg nicht an der Automatik hängt. Hier steht nur, was gilt.
+    if lage["rauch"]:
+        freigabe = lage.get("fluchtweg") or {}
+        if (freigabe.get("aktiv") and rollo.get("aktiv", True)
+                and rollo.get("fluchtweg", True)):
+            ergebnis.update(zustand="fluchtweg",
+                            begruendung="Fluchtweg offen – " + lage["rauch_grund"])
+        else:
+            ergebnis.update(zustand="rauch", begruendung=lage["rauch_grund"])
+        return ergebnis
+
+    # 2. aus ------------------------------------------------------------------
     if not rollo.get("aktiv", True):
         ergebnis.update(zustand="aus", begruendung="Rollo ist abgeschaltet")
         return ergebnis
@@ -331,11 +457,6 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
     if plan is not None and not plan.get("aktiv", True):
         ergebnis.update(zustand="gesperrt",
                         begruendung=f"Zeitplan „{plan['name']}“ ist abgeschaltet")
-        return ergebnis
-
-    # 2. Rauch ----------------------------------------------------------------
-    if lage["rauch"]:
-        ergebnis.update(zustand="rauch", begruendung=lage["rauch_grund"])
         return ergebnis
 
     if zustand is None:
@@ -534,8 +655,8 @@ def _rollo_stellen(rollo: dict, ergebnis: dict, einstellungen: dict, index: dict
     trockenlauf = bool(einstellungen.get("trockenlauf"))
     beobachten = rollo.get("betriebsart") == "beobachten"
 
-    if ziel is None or ergebnis["zustand"] in ("aus", "rauch", "gesperrt",
-                                               "ohne_plan", "fehlt"):
+    if ziel is None or ergebnis["zustand"] in ("aus", "rauch", "fluchtweg",
+                                               "gesperrt", "ohne_plan", "fehlt"):
         return
 
     punkt_zeit = _aus_iso(ergebnis.get("punkt_zeit"))
@@ -681,7 +802,8 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
     elif not urlaub:
         state["urlaub_seit"] = None
 
-    rauch, rauch_grund = _rauchsperre(einstellungen, index, state, jetzt)
+    rauch, rauch_grund, akut = _rauchsperre(einstellungen, index, state, jetzt)
+    fluchtweg = _fluchtweg(config, einstellungen, index, state, jetzt, rauch, akut)
 
     elevation, azimut = sonnenstand.stand(jetzt)
     lage = {
@@ -690,6 +812,7 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         "urlaub_seit": _aus_iso(state.get("urlaub_seit")),
         "rauch": rauch,
         "rauch_grund": rauch_grund,
+        "fluchtweg": fluchtweg,
         "simulation": _versatz_wuerfeln(
             state, jetzt, int((einstellungen.get("urlaub") or {}).get("streuung_min", 20))),
         # Für die Bedingungen an Schaltpunkten: entity_id → Zustand als Text.
@@ -765,6 +888,7 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         "schulfrei_morgen": schulfrei_morgen,
         "rauch": rauch,
         "rauch_grund": rauch_grund,
+        "fluchtweg": fluchtweg,
         "sonne": {"elevation": elevation, "azimut": azimut,
                   "aufgang": _iso(sonnenstand.aufgang(jetzt.date())),
                   "untergang": _iso(sonnenstand.untergang(jetzt.date()))},

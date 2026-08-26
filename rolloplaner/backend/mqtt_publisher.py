@@ -40,6 +40,8 @@ GRUND_ENTITAETEN = [
     ("binary_sensor", "trockenlauf", "Rollos Trockenlauf", "mdi:test-tube", None, None),
     ("binary_sensor", "rauchsperre", "Rollos Rauchsperre", "mdi:smoke-detector-variant-alert",
      None, "safety"),
+    ("binary_sensor", "fluchtweg_offen", "Rollos Fluchtweg offen", "mdi:fire-alert",
+     None, "safety"),
     ("binary_sensor", "stoerung", "Rollos Störung", "mdi:window-shutter-alert",
      None, "problem"),
     ("sensor", "stoerungen", "Rollos mit Störung", "mdi:alert-circle", None, None),
@@ -53,6 +55,7 @@ SCHALTER = [
     ("automatik", "Rollos Automatik", "mdi:home-automation"),
     ("beschattung", "Rollos Hitzeschutz", "mdi:sun-thermometer"),
     ("urlaubssimulation", "Rollos Urlaubssimulation", "mdi:shield-home"),
+    ("fluchtweg", "Rollos Fluchtweg-Freigabe", "mdi:fire-alert"),
     ("trockenlauf_schalter", "Rollos Trockenlauf schalten", "mdi:test-tube"),
 ]
 
@@ -383,7 +386,10 @@ class Publisher:
             return 100 - int(wert) if invertiert else int(wert)
 
         if bericht.get("rauch"):
-            status = "Rauchsperre"
+            # Im Alarm ist die Auskunft, die zählt, nicht „der Planer hält
+            # still“, sondern ob der Fluchtweg offen ist.
+            status = ("Fluchtweg offen" if (bericht.get("fluchtweg") or {}).get("aktiv")
+                      else "Rauchsperre")
         elif not bericht.get("automatik"):
             status = "Automatik aus"
         elif bericht.get("trockenlauf"):
@@ -419,6 +425,16 @@ class Publisher:
         self._zustand("trockenlauf", "ON" if bericht.get("trockenlauf") else "OFF", {})
         self._zustand("rauchsperre", "ON" if bericht.get("rauch") else "OFF",
                       {"grund": bericht.get("rauch_grund") or ""})
+        freigabe = bericht.get("fluchtweg") or {}
+        self._zustand("fluchtweg_offen", "ON" if freigabe.get("aktiv") else "OFF",
+                      {"grund": bericht.get("rauch_grund") or "",
+                       "akut": bool(freigabe.get("akut")),
+                       "seit": freigabe.get("seit") or "",
+                       "geoeffnet": freigabe.get("gefahren") or [],
+                       "stand_schon_offen": freigabe.get("offen") or [],
+                       "nicht_erreichbar": freigabe.get("fehlt") or [],
+                       "aufgegeben": freigabe.get("aufgegeben") or [],
+                       "ausgenommen": freigabe.get("uebergangen") or []})
 
         stoerungen = bericht.get("stoerungen") or []
         schwer = [s for s in stoerungen if s.get("schwere") == "fehler"]
@@ -464,6 +480,9 @@ class Publisher:
                       {"modus": (einstellungen.get("urlaub") or {}).get("modus")})
         self._zustand("trockenlauf_schalter",
                       "ON" if einstellungen.get("trockenlauf") else "OFF", {})
+        self._zustand("fluchtweg",
+                      "ON" if (einstellungen.get("rauchsperre") or {}).get("fluchtweg", True)
+                      else "OFF", {})
 
         for rollo in rollos:
             kurz = _slug(rollo["entity_id"].split(".", 1)[-1])

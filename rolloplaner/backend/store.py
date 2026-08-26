@@ -144,12 +144,22 @@ STANDARD_EINSTELLUNGEN = {
     "eigene_schalter": [],
 
     # Der Not-Aus. Solange ein Melder anschlägt, fasst der Planer **kein**
-    # Rollo mehr an. Ohne das führe er einer Notöffnung beim nächsten Takt
-    # hinterher und machte den Fluchtweg wieder zu.
+    # Rollo mehr nach Plan an. Ohne das führe er einer Notöffnung beim nächsten
+    # Takt hinterher und machte den Fluchtweg wieder zu.
     "rauchsperre": {
         "aktiv": True,
         "melder": [],             # leer = alle binary_sensor mit device_class „smoke“
         "nachlauf_min": 30,       # so lange nach der Entwarnung bleibt es dabei
+        # Die Fluchtweg-Freigabe: Bei Alarm fährt der Planer **jedes** Rollo
+        # auf. Das steht über allem anderen – über der Automatik, über
+        # „von Hand“, über einem abgeschalteten Zeitplan. Wer das für ein
+        # einzelnes Rollo nicht will, schaltet es dort einzeln ab.
+        "fluchtweg": True,
+        # Ein Rollo, das trotz Befehl zu bleibt, wird erneut angefahren – aber
+        # nicht endlos. Ein blockierter Antrieb, der im Minutentakt gegen ein
+        # Hindernis fährt, ist im Brandfall keine Hilfe, sondern ein zweiter
+        # Schaden.
+        "fluchtweg_versuche": 3,
     },
 
     # Hitzeschutz: Rollo teilweise zufahren, wenn die Sonne aufs Fenster steht
@@ -220,6 +230,9 @@ STANDARD_ROLLO = {
     "urlaub_simulation": True,
     "position_offen": 100,
     "position_zu": 0,
+    # Fährt bei Rauchalarm auf. Aus nur für ein Rollo, das nicht fahren darf –
+    # eines vor einem Regal etwa, das gegen das Brett läuft.
+    "fluchtweg": True,
 }
 
 
@@ -499,6 +512,7 @@ def validate_rollo(rollo: dict) -> dict:
         "urlaub_simulation": bool(rollo.get("urlaub_simulation", True)),
         "position_offen": offen,
         "position_zu": zu,
+        "fluchtweg": bool(rollo.get("fluchtweg", True)),
     }
 
 
@@ -521,6 +535,9 @@ def validate_einstellungen(roh: dict) -> dict:
     r["aktiv"] = bool(r["aktiv"])
     r["melder"] = [str(m).strip() for m in (r.get("melder") or []) if str(m).strip()]
     r["nachlauf_min"] = int(_zahl(r["nachlauf_min"], "Nachlauf der Rauchsperre", 0, 720))
+    r["fluchtweg"] = bool(r.get("fluchtweg", True))
+    r["fluchtweg_versuche"] = int(_zahl(r.get("fluchtweg_versuche", 3),
+                                        "Versuche der Fluchtweg-Freigabe", 1, 10))
 
     b = e["beschattung"]
     b["aktiv"] = bool(b["aktiv"])
@@ -735,6 +752,10 @@ def load_state() -> dict:
     state.setdefault("veroeffentlichte_plaene", [])
     state.setdefault("stoerungen", {})
     state.setdefault("rauch_bis", None)
+    # Der Stand der laufenden Fluchtweg-Freigabe: seit wann sie läuft und wie
+    # oft welches Rollo schon angefahren wurde. Ohne diesen Zähler schickte
+    # der Planer bei jedem Takt einen neuen Fahrbefehl.
+    state.setdefault("fluchtweg", {"seit": None, "versuche": {}})
     # Tagesversatz der Urlaubssimulation: je Raum und Schaltpunkt eine Zahl,
     # die einmal am Tag neu gewürfelt wird.
     state.setdefault("simulation", {"tag": None, "versatz": {}})

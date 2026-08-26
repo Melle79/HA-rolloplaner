@@ -1,5 +1,33 @@
 # Änderungen
 
+## 2.4.0 – 27.08.2026
+
+**Die Fluchtweg-Freigabe: Bei Rauchalarm fährt der Planer jedes Rollo auf.**
+
+Bisher tat er bei Rauch das Richtige, aber nur die Hälfte – er hielt still,
+damit eine fremde Automation den Fluchtweg öffnen konnte. Jetzt öffnet er ihn
+selbst.
+
+* **Sie steht über allem.** Über der Automatik, über einem abgeschalteten
+  Zeitplan, über „nur schließen“, „von Hand“ und „beobachten“. Ein Schlafzimmer
+  ohne Zeitplan ist kein Zimmer, aus dem man nicht herauskommen soll. Wer ein
+  einzelnes Rollo ausnehmen will – eines vor einem Regal etwa –, schaltet
+  *Bei Rauchalarm auffahren* an diesem Rollo ab.
+* **Sie fasst nach.** Ein Rollo, das nach der Fahrzeit immer noch zu ist,
+  bekommt den Befehl erneut, bis zu dreimal. Danach gilt es als blockiert und
+  wird in Ruhe gelassen, statt im Minutentakt gegen ein Hindernis zu fahren.
+* **Der Trockenlauf gilt auch hier.** Solange er an ist, wird nur gemeldet.
+* **Eine Meldung je Alarm**, nicht je Takt – mit dem, was *nicht* erreichbar
+  war, an erster Stelle.
+* Neu: `switch.rolloplaner_fluchtweg` und
+  `binary_sensor.rolloplaner_fluchtweg_offen`. In der Karte ein vierter Knopf,
+  ein Alarmbanner und – falls die Freigabe ausgeschaltet ist – eine Warnung,
+  damit ein Fehlgriff nicht bis zum Ernstfall unbemerkt bleibt.
+
+Die Rauchsperre bleibt, was sie war: Sie verhindert, dass ein fälliger
+Schaltpunkt den gerade geöffneten Fluchtweg wieder zumacht. Eine eigene
+Automation „bei Rauch alle Rollos hoch“ kann jetzt entfallen.
+
 ## 2.3.0 – 26.08.2026
 
 **Alle Kacheln sind gleich hoch, und ein Schalter, der an ist, ist grün.**

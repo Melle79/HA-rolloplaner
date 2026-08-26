@@ -126,14 +126,14 @@ Gerechnet wird **je Rollo**:
 
 **Betriebsarten** je Rollo: *Plan* (auf und zu), *nur schließen* (öffnet nie von
 selbst), *nur von Hand* (kein Zeitplan, und das ist Absicht – der Planer zeigt
-es an, überwacht es und hält bei Rauch die Finger davon, fährt es aber nicht
-nach der Uhr) und *beobachten* (rechnet mit, schaltet nichts – für den Probelauf
+es an, überwacht es und fährt es bei Rauchalarm auf, aber nicht nach der Uhr) und *beobachten* (rechnet mit, schaltet nichts – für den Probelauf
 eines einzelnen Rollos).
 
 | Rang | Zustand | Was er bedeutet |
 | --- | --- | --- |
-| 1 | **aus** | Das Rollo oder die Automatik ist abgeschaltet |
-| 2 | **Rauchsperre** | Ein Melder schlägt an – der Planer fasst nichts an |
+| 1 | **Fluchtweg** | Ein Melder schlägt an – das Rollo fährt auf |
+| 1 | **Rauchsperre** | Alarm, aber dieses Rollo ist von der Freigabe ausgenommen |
+| 2 | **aus** | Das Rollo oder die Automatik ist abgeschaltet |
 | 3 | **gesperrt** | Der Zeitplan, dem es folgt, ist stillgelegt |
 | 4 | **Fenster offen** | Ein Kontakt ist offen – es wird nicht zugefahren |
 | 5 | **Urlaub** | Urlaubsprogramm statt Zeitplan |
@@ -149,16 +149,54 @@ denselben Sollwert zum zehnten Mal schickt, tut nichts – ein Rollladen fährt.
 Jedes Rollo wird **einzeln** angefahren. Ein Sammelaufruf scheitert an einem
 nicht erreichbaren Funkmotor und reißt die übrigen mit.
 
-## Rauchsperre
+## Rauchalarm: Fluchtweg und Sperre
 
-Schlägt ein Rauchmelder an, fasst der Planer **kein** Rollo mehr an – auch
+Zwei Dinge, die zusammengehören. Die **Sperre** sorgt dafür, dass der Planer
+nichts mehr zufährt, die **Fluchtweg-Freigabe** dafür, dass überhaupt etwas
+aufgeht.
+
+### Die Sperre
+
+Schlägt ein Rauchmelder an, führt der Planer **keinen Zeitplan** mehr aus – auch
 nicht, wenn ein Schaltpunkt fällig wird. Nach der Entwarnung bleibt es dabei,
-solange der eingestellte Nachlauf läuft.
-
-Das ist der wichtigste Griff im ganzen Add-on. Wer eine Automation hat, die bei
-Rauch alle Rollläden hochfährt, hätte sonst einen Planer, der ihr beim nächsten
-Takt hinterherfährt und den Fluchtweg wieder zumacht. **Diese Sperre nicht
+solange der eingestellte Nachlauf läuft. Ohne sie führe der Planer beim nächsten
+Takt seinen Abendplan durch und machte den Fluchtweg wieder zu. **Nicht
 abschalten.**
+
+Ohne Melderauswahl gelten alle `binary_sensor` der Geräteklasse *smoke* – auch
+CO-Melder, die als solche eingetragen sind.
+
+### Die Freigabe
+
+Schlägt ein Melder an, fährt der Planer **jedes** Rollo auf. Drei Dinge
+unterscheiden das vom gewöhnlichen Fahren:
+
+**Es steht über allem.** Über der Automatik, über einem abgeschalteten
+Zeitplan, über „nur schließen“, über „von Hand“, über „beobachten“. Ein
+Schlafzimmer ohne Zeitplan ist kein Zimmer, aus dem man nicht herauskommen
+soll. Einzig ein Rollo, an dem *Bei Rauchalarm auffahren* ausgeschaltet ist,
+bleibt zu – gedacht für eines, das nicht fahren darf, etwa weil ein Möbelstück
+im Weg steht.
+
+**Es fasst nach.** Ein Fahrbefehl kann verlorengehen, ein Funkmotor kann ihn
+verschlucken. Ein Rollo, das nach der Fahrzeit immer noch zu ist, bekommt den
+Befehl erneut – so oft, wie unter *Versuche je Rollo* steht (Vorgabe: 3).
+Danach gilt es als blockiert und wird in Ruhe gelassen, statt im Minutentakt
+gegen ein Hindernis zu fahren.
+
+**Der Trockenlauf gilt auch hier.** Solange er an ist, meldet die Freigabe nur,
+was sie täte. Ein Add-on im Probebetrieb, das nachts das Haus aufmacht, wäre
+schlimmer als eines, das im Ernstfall nichts tut – im Ernstfall gibt es die
+Melder ja auch noch.
+
+Beim ersten Takt eines Alarms geht **eine** Meldung über die Meldewege des
+Wächters hinaus und ein Eintrag ins Protokoll: was aufgefahren wurde, was schon
+offen stand und – zuerst – was **nicht** erreichbar war. Wer bei jedem Takt
+meldete, verschickte während eines Brandes im Minutentakt Nachrichten und
+begrübe die eine, auf die es ankommt.
+
+Läuft diese Freigabe, kann eine eigene Automation „bei Rauch alle Rollos hoch“
+entfallen. Beide nebeneinander schaden nicht – sie wollen dasselbe.
 
 ## Hitzeschutz
 
@@ -238,7 +276,9 @@ eines, das zweimal am Tag fährt, meldet sich auch nur zweimal am Tag.
 | `switch.rolloplaner_automatik` | Automatik insgesamt |
 | `switch.rolloplaner_beschattung` | Hitzeschutz |
 | `switch.rolloplaner_urlaubssimulation` | Urlaubssimulation |
+| `switch.rolloplaner_fluchtweg` | Fluchtweg-Freigabe |
 | `binary_sensor.rolloplaner_rauchsperre` | Sperre aktiv |
+| `binary_sensor.rolloplaner_fluchtweg_offen` | Freigabe läuft gerade; Attribute sagen, was auffuhr und was nicht |
 | `binary_sensor.rolloplaner_stoerung` | Ein Antrieb meldet sich nicht oder hängt |
 
 ## Die Karte

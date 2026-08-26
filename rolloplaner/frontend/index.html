@@ -896,6 +896,7 @@ function rolloDialog(rollo){
     oeffnungswinkel: 90, beschattung: false, beschattung_position: null,
     raumtemp: "", raumtemp_ab: null, fenster: [], praesenz: [], personen: [],
     urlaub_simulation: true, position_offen: 100, position_zu: 0,
+    fluchtweg: true,
   };
   $("#dlg-titel").textContent = neu ? "Rollo hinzufügen" : rolloName(ENTWURF);
   $("#btn-dlg-loeschen").hidden = neu;
@@ -990,6 +991,12 @@ function zeichneRolloDialog(){
       <label class="haken" style="margin-top:var(--l3)">
         <input type="checkbox" name="urlaub_simulation" ${r.urlaub_simulation ? "checked" : ""}>
         Im Urlaub mitsimulieren</label>
+      <label class="haken" style="margin-top:var(--l3)">
+        <input type="checkbox" name="fluchtweg" ${r.fluchtweg !== false ? "checked" : ""}>
+        Bei Rauchalarm auffahren</label>
+      <p class="hinweis">Der Fluchtweg geht allem vor – auch einem
+        abgeschalteten Zeitplan und „von Hand“. Ausschalten nur für ein Rollo,
+        das nicht fahren darf, etwa weil ein Möbelstück im Weg steht.</p>
     </div>
 
     <div class="abschnitt"><h3>Stellungen</h3>
@@ -1142,6 +1149,7 @@ function sammleDialog(){
   r.raumtemp_ab = wert("raumtemp_ab") === "" ? null : Number(wert("raumtemp_ab"));
   r.fenster = mehrfach("fenster");
   r.urlaub_simulation = haken("urlaub_simulation");
+  r.fluchtweg = haken("fluchtweg");
   r.position_offen = lies(Number(wert("position_offen")));
   r.position_zu = lies(Number(wert("position_zu")));
 }
@@ -1330,16 +1338,37 @@ function zeichneEinstellungen(){
       </div>
     </div>
 
-    <div class="abschnitt"><h3>Rauchsperre</h3>
+    <div class="abschnitt"><h3>Rauchalarm</h3>
       <label class="haken"><input type="checkbox" name="rauchsperre.aktiv"
         ${e.rauchsperre?.aktiv ? "checked" : ""}>
-        Bei Rauch kein Rollo mehr anfassen</label>
+        Bei Rauch keinen Zeitplan mehr ausführen</label>
       <p class="hinweis">Ohne Melderauswahl gelten alle Melder der Geräteklasse „Rauch“.
-        Das muss an bleiben, solange eine Automation bei Rauch die Rollos hochfährt –
-        sonst macht der Planer den Fluchtweg wieder zu.</p>
-      <label class="feld" style="margin-top:var(--l3)"><span>Nachlauf nach der Entwarnung (Minuten)</span>
-        <input type="number" name="rauchsperre.nachlauf_min" value="${e.rauchsperre?.nachlauf_min}"
-               min="0" max="720" step="5" style="max-width:140px"></label>
+        Das muss an bleiben: Sonst führe der Planer beim nächsten Takt seinen
+        Zeitplan durch und machte den Fluchtweg wieder zu.</p>
+
+      <label class="haken" style="margin-top:var(--l3)">
+        <input type="checkbox" name="rauchsperre.fluchtweg"
+        ${e.rauchsperre?.fluchtweg ? "checked" : ""}>
+        Fluchtweg freigeben – bei Alarm jedes Rollo auffahren</label>
+      <p class="hinweis">Steht über allem: über der Automatik, über einem
+        abgeschalteten Zeitplan, über „von Hand“. Nur ein Rollo, an dem die
+        Freigabe einzeln abgeschaltet ist, bleibt zu. Der <b>Trockenlauf</b> gilt
+        auch hier – solange er an ist, wird nur gemeldet, nicht gefahren.
+        Läuft diese Freigabe, kann eine eigene Automation „bei Rauch alle Rollos
+        hoch“ entfallen.</p>
+      <div class="gitter g2" style="margin-top:var(--l3)">
+        <label class="feld"><span>Nachlauf nach der Entwarnung (Minuten)</span>
+          <input type="number" name="rauchsperre.nachlauf_min" value="${e.rauchsperre?.nachlauf_min}"
+                 min="0" max="720" step="5"></label>
+        <label class="feld"><span>Versuche je Rollo</span>
+          <input type="number" name="rauchsperre.fluchtweg_versuche"
+                 value="${e.rauchsperre?.fluchtweg_versuche ?? 3}"
+                 min="1" max="10" step="1"></label>
+      </div>
+      <p class="hinweis">Ein Rollo, das nach der Fahrzeit immer noch zu ist,
+        bekommt den Befehl erneut – so oft, wie hier steht. Danach gilt es als
+        blockiert und wird in Ruhe gelassen, statt im Minutentakt gegen ein
+        Hindernis zu fahren.</p>
     </div>
 
     <div class="abschnitt"><h3>Hitzeschutz</h3>

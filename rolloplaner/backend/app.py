@@ -88,6 +88,7 @@ def _takt_ausfuehren() -> dict:
             _LOGGER.exception("Regeltakt fehlgeschlagen")
             bericht = {"zeit": None, "rollos": [], "fehler": str(err)}
         else:
+            _fluchtweg_melden(bericht, config["einstellungen"])
             store.save_state(state)
         bericht["version"] = VERSION
         _letzter_bericht = bericht
@@ -97,6 +98,39 @@ def _takt_ausfuehren() -> dict:
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("MQTT-Meldung fehlgeschlagen: %s", err)
     return bericht
+
+
+def _fluchtweg_melden(bericht: dict, einstellungen: dict) -> None:
+    """Einmal je Alarm ins Protokoll und auf die Meldewege.
+
+    ``neu`` setzt die Regelung nur im ersten Takt eines Alarms – wer bei jedem
+    Takt meldete, verschickte während eines Brandes im Minutentakt Nachrichten
+    und begrübe die eine, auf die es ankommt.
+    """
+    freigabe = bericht.get("fluchtweg") or {}
+    if not freigabe.get("neu"):
+        return
+
+    gefahren = freigabe.get("gefahren") or []
+    offen = freigabe.get("offen") or []
+    fehlt = freigabe.get("fehlt") or []
+    grund = bericht.get("rauch_grund") or "Rauchalarm"
+
+    zeilen = [grund]
+    if gefahren:
+        zeilen.append("Aufgefahren: " + ", ".join(gefahren))
+    if offen:
+        zeilen.append("Stand schon offen: " + ", ".join(offen))
+    if fehlt:
+        zeilen.append("NICHT erreichbar: " + ", ".join(fehlt))
+    if freigabe.get("uebergangen"):
+        zeilen.append("Ausgenommen: " + ", ".join(freigabe["uebergangen"]))
+    if bericht.get("trockenlauf"):
+        zeilen.append("Trockenlauf – es ist nichts wirklich gefahren.")
+
+    logbuch.eintragen("", "Fluchtweg", " · ".join(zeilen), art="warnung")
+    for dienst in (einstellungen.get("wachhund") or {}).get("melden_an") or []:
+        ha_api.notify(dienst, "Rauchalarm – Rollos fahren auf", "\n".join(zeilen))
 
 
 def _stoerungen_melden(stoerungen: list, state: dict, einstellungen: dict) -> None:
@@ -266,6 +300,8 @@ def _schalter_setzen(key: str, an: bool) -> None:
         store.update_einstellungen({"beschattung": {"aktiv": an}})
     elif key == "urlaubssimulation":
         store.update_einstellungen({"urlaub": {"modus": "simulation" if an else "zu"}})
+    elif key == "fluchtweg":
+        store.update_einstellungen({"rauchsperre": {"fluchtweg": an}})
     elif key == "trockenlauf_schalter":
         vorher = store.load_config()["einstellungen"].get("trockenlauf")
         store.update_einstellungen({"trockenlauf": an})

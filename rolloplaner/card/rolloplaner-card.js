@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.3.0";
+const CARD_VERSION = "2.4.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -41,6 +41,7 @@ const FUNKTIONEN = [
   ["switch.rolloplaner_automatik", "Automatik", "mdi:home-automation"],
   ["switch.rolloplaner_beschattung", "Hitzeschutz", "mdi:sun-thermometer"],
   ["switch.rolloplaner_urlaubssimulation", "Urlaub", "mdi:shield-home"],
+  ["switch.rolloplaner_fluchtweg", "Fluchtweg", "mdi:fire-alert"],
 ];
 
 /* Was ein Helfer freigibt – abgeleitet aus den Schaltpunkten, an denen er
@@ -57,6 +58,7 @@ const TUERARTEN = ["balkontuer", "terrassentuer", "haustuer"];
 
 const ZUSTAND_TEXT = {
   beschattung: "Hitzeschutz", urlaub: "Urlaub", rauch: "Rauchsperre",
+  fluchtweg: "Fluchtweg",
   fenster: "Fenster offen", manuell: "Handbetrieb", aus: "aus",
   gesperrt: "gesperrt", ohne_plan: "kein Plan", nur_schliessen: "nur schließen",
   von_hand: "von Hand",
@@ -192,6 +194,8 @@ class RolloplanerCard extends HTMLElement {
 
     const a = status.attributes || {};
     const rauch = this._hass.states["binary_sensor.rolloplaner_rauchsperre"];
+    const fluchtweg = this._hass.states["binary_sensor.rolloplaner_fluchtweg_offen"];
+    const fluchtwegSchalter = this._hass.states["switch.rolloplaner_fluchtweg"];
     const stoerung = this._hass.states["binary_sensor.rolloplaner_stoerung"];
     const naechster = this._hass.states["sensor.rolloplaner_naechster_wechsel"];
 
@@ -212,11 +216,33 @@ class RolloplanerCard extends HTMLElement {
     </div>`;
 
     let warnung = "";
-    if (rauch && rauch.state === "on") {
+    if (fluchtweg && fluchtweg.state === "on") {
+      // Im Alarm zählt eine Auskunft: Ist der Weg nach draußen offen? Was
+      // *nicht* aufging, steht deshalb vor dem, was aufging.
+      const f = fluchtweg.attributes || {};
+      const zeile = (titel, liste, klasse) => (liste || []).length
+        ? `<div class="${klasse || ""}">${titel}: ${this._esc(liste.join(", "))}</div>` : "";
+      warnung += `<div class="warnung rauch">
+        <ha-icon icon="mdi:fire-alert"></ha-icon>
+        <div><b>${f.akut === false ? "Entwarnung – Fluchtweg bleibt offen."
+                                  : "Rauchalarm – Fluchtweg offen."}</b>
+        ${this._esc(f.grund || rauch?.attributes?.grund || "")}
+        ${zeile("Nicht erreichbar", f.nicht_erreichbar, "schwer")}
+        ${zeile("Bleibt zu", f.aufgegeben, "schwer")}
+        ${zeile("Ausgenommen", f.ausgenommen)}
+        ${zeile("Aufgefahren", f.geoeffnet)}</div></div>`;
+    } else if (rauch && rauch.state === "on") {
       warnung += `<div class="warnung rauch">
         <ha-icon icon="mdi:smoke-detector-variant-alert"></ha-icon>
         <div>Rauchsperre – der Planer fasst gerade kein Rollo an.
         ${this._esc(rauch.attributes.grund || "")}</div></div>`;
+    }
+    // Ein abgeschalteter Fluchtweg fällt sonst erst im Brandfall auf. Ein
+    // Fehlgriff auf den Knopf darüber darf nicht stumm bleiben.
+    if (c.show_funktionen && fluchtwegSchalter && fluchtwegSchalter.state === "off") {
+      warnung += `<div class="warnung">
+        <ha-icon icon="mdi:fire-alert"></ha-icon>
+        <div>Die Fluchtweg-Freigabe ist aus – bei Rauchalarm fährt kein Rollo auf.</div></div>`;
     }
     if (c.show_stoerungen && stoerung && stoerung.state === "on") {
       warnung += `<div class="warnung">
@@ -600,6 +626,8 @@ class RolloplanerCard extends HTMLElement {
         white-space:nowrap; letter-spacing:.02em; flex:none;
         background:rgba(127,127,127,.22); color:var(--primary-text-color)}
       .s-rauch{background:rgba(227,109,109,.3)}
+      .s-fluchtweg{background:rgba(227,109,109,.45); color:var(--primary-text-color)}
+      .warnung .schwer{font-weight:600}
       .s-fenster,.s-manuell{background:rgba(224,164,74,.3)}
 
       .knoepfe{display:flex; gap:1px; flex:none}

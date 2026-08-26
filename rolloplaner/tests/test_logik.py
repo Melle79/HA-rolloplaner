@@ -20,6 +20,8 @@ try:
 except AttributeError:  # pragma: no cover – Windows
     pass
 
+import ha_api         # noqa: E402
+import regelung       # noqa: E402
 import sonne          # noqa: E402
 import store          # noqa: E402
 import uebernahme     # noqa: E402
@@ -445,6 +447,195 @@ def test_karte_ist_gueltiges_javascript():
                               capture_output=True, text=True)
     if ergebnis.returncode != 0:
         raise AssertionError(ergebnis.stderr.strip().splitlines()[-1])
+
+
+# ------------------------------------------------- Fluchtweg bei Rauch ----
+
+def _rollo(eid, **rest):
+    return {**store.STANDARD_ROLLO, "entity_id": eid,
+            "name": rest.pop("name", eid.split(".")[-1]), **rest}
+
+
+def _cover(eid, position):
+    return {"entity_id": eid, "state": "open" if position else "closed",
+            "attributes": {"current_position": position}}
+
+
+class _Fahrten:
+    """Nimmt die Fahrbefehle auf, statt sie an Home Assistant zu schicken."""
+
+    def __enter__(self):
+        self.befehle = []
+        self._echt = ha_api.set_position
+        ha_api.set_position = lambda eid, ziel, zustand=None: (
+            self.befehle.append((eid, ziel)) or True)
+        return self
+
+    def __exit__(self, *_):
+        ha_api.set_position = self._echt
+        return False
+
+
+def _lage(config, state, index, jetzt, rauch=True):
+    return regelung._fluchtweg(config, config["einstellungen"], index, state,
+                               jetzt, rauch)
+
+
+def test_fluchtweg_oeffnet_auch_was_vom_zeitplan_ausgenommen_ist():
+    """Der Sinn der Sache: Im Brandfall gibt es keine Sonderfälle.
+
+    Das Schlafzimmer hat keinen Zeitplan und steht auf „von Hand“, ein anderes
+    Rollo ist gesperrt – aufgehen müssen sie trotzdem beide.
+    """
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "automatik": False,
+                   "trockenlauf": False}),
+              "rollos": [_rollo("cover.a", betriebsart="von_hand"),
+                         _rollo("cover.b", betriebsart="beobachten"),
+                         _rollo("cover.c")]}
+    index = {eid: _cover(eid, 0) for eid in ("cover.a", "cover.b", "cover.c")}
+    state = {}
+    with _Fahrten() as f:
+        bericht = _lage(config, state, index, datetime(2026, 8, 27, 3, 0))
+    assert [eid for eid, _ in f.befehle] == ["cover.a", "cover.b", "cover.c"]
+    assert {ziel for _, ziel in f.befehle} == {100}
+    assert bericht["aktiv"] and bericht["neu"]
+
+
+def test_fluchtweg_faehrt_nicht_zweimal_und_nicht_endlos():
+    """Flanke statt Pegel – und ein Ende, wenn es nichts mehr bringt.
+
+    Ein Rollladen fährt auf jeden Befehl. Solange die Fahrzeit läuft, darf kein
+    zweiter kommen; danach wird nachgefasst, aber nur begrenzt oft.
+    """
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": False}),
+              "rollos": [_rollo("cover.a")]}
+    index = {"cover.a": _cover("cover.a", 0)}      # bleibt stur zu
+    state = {}
+    start = datetime(2026, 8, 27, 3, 0)
+    with _Fahrten() as f:
+        _lage(config, state, index, start)
+        assert len(f.befehle) == 1
+        _lage(config, state, index, start + timedelta(minutes=1))
+        assert len(f.befehle) == 1, "innerhalb der Fahrzeit kein zweiter Befehl"
+        for n in range(1, 8):
+            _lage(config, state, index,
+                  start + timedelta(minutes=n * (regelung.FAHRZEIT_MIN + 1)))
+    grenze = config["einstellungen"]["rauchsperre"]["fluchtweg_versuche"]
+    assert len(f.befehle) == grenze
+    bericht = _lage(config, state, index, start + timedelta(hours=1))
+    assert bericht["aufgegeben"] == ["a"]
+
+
+def test_fluchtweg_laesst_offene_und_ausgenommene_rollos_in_ruhe():
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": False}),
+              "rollos": [_rollo("cover.offen"),
+                         _rollo("cover.aus", fluchtweg=False),
+                         _rollo("cover.zu")]}
+    index = {"cover.offen": _cover("cover.offen", 100),
+             "cover.aus": _cover("cover.aus", 0),
+             "cover.zu": _cover("cover.zu", 0)}
+    with _Fahrten() as f:
+        bericht = _lage(config, {}, index, datetime(2026, 8, 27, 3, 0))
+    assert [eid for eid, _ in f.befehle] == ["cover.zu"]
+    assert bericht["offen"] == ["offen"] and bericht["uebergangen"] == ["aus"]
+
+
+def test_fluchtweg_haelt_den_trockenlauf_ein():
+    """Sonst machte ein Add-on im Probebetrieb nachts das Haus auf."""
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": True}),
+              "rollos": [_rollo("cover.a")]}
+    with _Fahrten() as f:
+        bericht = _lage(config, {}, {"cover.a": _cover("cover.a", 0)},
+                        datetime(2026, 8, 27, 3, 0))
+    assert f.befehle == []
+    assert bericht["gefahren"] == ["a"]      # gemeldet wird trotzdem
+
+
+def test_entwarnung_gibt_die_versuche_wieder_frei():
+    """Sonst hätte ein einmal blockiertes Rollo beim nächsten Brand keinen
+    Versuch mehr frei."""
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": False}),
+              "rollos": [_rollo("cover.a")]}
+    index = {"cover.a": _cover("cover.a", 0)}
+    state = {}
+    start = datetime(2026, 8, 27, 3, 0)
+    with _Fahrten() as f:
+        _lage(config, state, index, start)
+        _lage(config, state, index, start + timedelta(minutes=10), rauch=False)
+        assert state["fluchtweg"]["seit"] is None
+        _lage(config, state, index, start + timedelta(minutes=11))
+    assert len(f.befehle) == 2
+
+
+def test_nachlauf_faehrt_nicht_mehr_auf():
+    """Nach der Entwarnung gilt die Sperre weiter, die Freigabe aber nicht.
+
+    Sonst führe der Planer eine halbe Stunde lang gegen jeden an, der hinter
+    dem abgezogenen Alarm wieder zumachen will.
+    """
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": False}),
+              "rollos": [_rollo("cover.a")]}
+    index = {"cover.a": _cover("cover.a", 0)}
+    state = {}
+    start = datetime(2026, 8, 27, 3, 0)
+    with _Fahrten() as f:
+        regelung._fluchtweg(config, config["einstellungen"], index, state,
+                            start, True, akut=True)
+        assert len(f.befehle) == 1
+        bericht = regelung._fluchtweg(
+            config, config["einstellungen"], index, state,
+            start + timedelta(minutes=20), True, akut=False)
+    assert len(f.befehle) == 1
+    assert bericht["nachlauf"] == ["a"] and not bericht["neu"]
+
+
+def test_rauchsperre_trennt_akut_von_nachlauf():
+    einstellungen = store.validate_einstellungen(dict(store.STANDARD_EINSTELLUNGEN))
+    index = {"binary_sensor.rm_flur_rauch": {
+        "entity_id": "binary_sensor.rm_flur_rauch", "state": "on",
+        "attributes": {"friendly_name": "RM Flur", "device_class": "smoke"}}}
+    state = {}
+    jetzt = datetime(2026, 8, 27, 3, 0)
+    assert regelung._rauchsperre(einstellungen, index, state, jetzt) \
+        == (True, "Rauchmelder: RM Flur", True)
+    index["binary_sensor.rm_flur_rauch"]["state"] = "off"
+    sperre, grund, akut = regelung._rauchsperre(
+        einstellungen, index, state, jetzt + timedelta(minutes=5))
+    assert sperre and not akut and "Nachlauf" in grund
+
+
+def test_fluchtweg_abschaltbar_und_dann_nur_sperre():
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": False,
+                   "rauchsperre": {**store.STANDARD_EINSTELLUNGEN["rauchsperre"],
+                                   "fluchtweg": False}}),
+              "rollos": [_rollo("cover.a")]}
+    with _Fahrten() as f:
+        bericht = _lage(config, {}, {"cover.a": _cover("cover.a", 0)},
+                        datetime(2026, 8, 27, 3, 0))
+    assert f.befehle == [] and not bericht["aktiv"]
+
+
+def test_rauch_steht_ueber_der_automatik():
+    """Die Regelkette muss den Fluchtweg auch dann melden, wenn die Automatik
+    aus ist – sonst stünde in der Karte „Automatik aus“, während das Haus
+    brennt."""
+    rollo = _rollo("cover.a", betriebsart="von_hand")
+    lage = {"automatik": False, "rauch": True, "rauch_grund": "Rauchmelder: Flur",
+            "fluchtweg": {"aktiv": True}, "zustaende": {}, "urlaub": False,
+            "urlaub_seit": None, "simulation": {}}
+    ergebnis = regelung._rollo_rechnen(
+        rollo, store.validate_einstellungen(dict(store.STANDARD_EINSTELLUNGEN)),
+        {"cover.a": _cover("cover.a", 0)}, {"rollos": {}}, None, None,
+        datetime(2026, 8, 27, 3, 0), lage, {})
+    assert ergebnis["zustand"] == "fluchtweg"
+    assert "Flur" in ergebnis["begruendung"]
 
 
 if __name__ == "__main__":
