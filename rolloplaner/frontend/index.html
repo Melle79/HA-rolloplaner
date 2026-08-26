@@ -121,23 +121,34 @@
     font-size:.78rem; color:var(--grau)}
   /* ═══ Rollladen vor Fenster oder Tür ═══ */
   /* ── Rollladen vor Fenster oder Tür ──
-     `--zu` geht von 0 % (ganz offen) bis 100 % (ganz geschlossen); der
-     Panzer hängt von oben herunter, darunter kommt die Öffnung zum
-     Vorschein. Beide Bilder stecken in einer Box gleicher Höhe, damit in
-     einer Kachelreihe nichts springt – der Unterschied steckt darin, wie
-     sie die Box füllen: Eine Tür geht bis zum Boden, ein Fenster hat eine
-     Brüstung darunter. Schmaler allein sähe nur aus wie ein kleineres
-     Fenster.
+     Die Eigenschaft --zu geht von 0 % (ganz offen) bis 100 % (ganz
+     geschlossen); der Panzer hängt von oben herunter, darunter kommt die
+     Öffnung zum Vorschein.
+
+     Beide Bilder stecken in einer Box gleicher Höhe, damit in einer
+     Kachelreihe nichts springt. Der Unterschied steckt in zwei Dingen: Die
+     Tür reicht bis zur Bodenlinie hinunter, das Fenster hängt darüber in
+     der Wand – und die Tür hat einen sichtbaren Flügelrahmen mit Griff.
+     Ohne den Rahmen war sie nur ein schmales hohes Rechteck mit einem
+     Griff an der Seite, und das sieht aus wie ein Kühlschrank.
 
      Die Farben folgen bewusst nicht dem Farbschema: Das ist kein
      Bedienelement, sondern das Bild eines Gegenstands. Ein Rollladen ist
      hellgrau, und was dahinterliegt, ist Himmel. */
-  .bild{height:46px; display:flex; align-items:flex-start; flex:none}
+  .bild{height:46px; display:flex; align-items:flex-start; flex:none;
+    position:relative; padding-bottom:3px}
+  .bild::after{content:""; position:absolute; left:-2px; right:-2px; bottom:0;
+    height:1.5px; border-radius:1px; background:currentColor; opacity:.35}
   .rollo{position:relative; border-radius:2px; overflow:hidden;
     border:1px solid rgba(0,0,0,.45);
     background:linear-gradient(160deg,#7fb4d8,#4a7fa5)}
-  .rollo.fenster{height:76%; width:calc(46px*1.16); margin-top:6%}
-  .rollo.tuer{height:100%; width:calc(46px*.62)}
+  .rollo.fenster{height:74%; width:calc(46px*1.16); margin-top:5%}
+  .rollo.tuer{height:calc(100% - 3px); width:calc(46px*.76)}
+  /* Der Türflügel: Rahmenprofil außen, Glas innen. */
+  .rollo .fluegel{position:absolute; inset:0; border:2px solid #e2e7ec;
+    border-radius:1px}
+  .rollo .griff{position:absolute; right:3px; top:47%; width:4px; height:1.5px;
+    border-radius:1px; background:#3d4750}
   .rollo .panzer{position:absolute; left:0; right:0; top:0; height:var(--zu,0%);
     transition:height .6s ease; box-shadow:0 1px 3px rgba(0,0,0,.5);
     background:repeating-linear-gradient(to bottom,#cfd6de 0 3px,#9aa5b1 3px 4px)}
@@ -148,11 +159,6 @@
      Rollo sichtbar, sonst fehlte dem Bild oben der Abschluss. */
   .rollo .kasten{position:absolute; left:0; right:0; top:0; height:4px;
     background:linear-gradient(to bottom,#b8c1cb,#8e99a5)}
-  .rollo .griff{position:absolute; right:2px; top:50%; width:2.5px; height:22%;
-    border-radius:1.5px; background:rgba(25,35,45,.85);
-    box-shadow:0 0 0 .5px rgba(255,255,255,.25)}
-  .rollo .schwelle{position:absolute; left:0; right:0; bottom:0; height:2px;
-    background:rgba(25,35,45,.5)}
 
   .rollo-zeile{display:flex; align-items:baseline; gap:var(--l2); font-size:.8rem;
     padding:2px 0}
@@ -446,7 +452,7 @@ function rollobild(position, art){
   const tuer = art === "tuer";
   return `<div class="bild"><div class="rollo ${tuer ? "tuer" : "fenster"}"
     style="--zu:${zu}%">
-    ${tuer ? '<div class="schwelle"></div><div class="griff"></div>' : ""}
+    ${tuer ? '<div class="fluegel"></div><div class="griff"></div>' : ""}
     <div class="panzer"></div><div class="kasten"></div>
   </div></div>`;
 }

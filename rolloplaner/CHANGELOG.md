@@ -1,5 +1,16 @@
 # Änderungen
 
+## 1.3.1 – 26.08.2026
+
+**Die Tür sah aus wie ein Kühlschrank.** Ein schmales hohes Rechteck mit einem
+Griff an der Seite – da half es nicht, dass die Proportion stimmte. Sie hat
+jetzt einen sichtbaren **Flügelrahmen mit Glas darin** und einen kurzen
+Drehgriff statt des langen Balkens.
+
+Dazu eine **Bodenlinie** unter beiden Bildern. Sie zeigt, worauf das Ding
+steht: Die Tür reicht bis hinunter, das Fenster hängt darüber in der Wand. Das
+ist der Unterschied, den man auch bei vierzig Pixeln noch sieht.
+
 ## 1.3.0 – 26.08.2026
 
 **Keine Fensterkreuze mehr.** Die Sprossen waren bei 40 Pixeln kein Detail,

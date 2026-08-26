@@ -177,8 +177,9 @@ Rollladen**, der zeigt, wie weit der Panzer heruntersteht. Ein Balken sagt
 „65 %“, aber nicht, ob das Rollo dabei oben oder unten ist; das Bild sagt es
 ohne Umweg, und beim Fahren läuft es sichtbar mit.
 
-Vor einer **Tür** sieht der Rollladen anders aus als vor einem **Fenster**: Er
-geht bis zum Boden, während das Fenster eine Brüstung darunter hat. Welches
+Vor einer **Tür** sieht der Rollladen anders aus als vor einem **Fenster**: Die
+Tür reicht bis zur Bodenlinie hinunter und hat einen Flügelrahmen mit Griff,
+das Fenster hängt darüber in der Wand. Welches
 Bild ein Raum bekommt, entscheidet der Planer nach den Namen seiner Rollos –
 „Rollo Balkontür Luna“ ist eine Tür, „Rollo Küche“ ein Fenster. Ein Raum gilt
 nur dann als Tür, wenn *alle* seine Rollos welche sind. Überstimmen lässt sich
