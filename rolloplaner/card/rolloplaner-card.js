@@ -19,7 +19,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "1.4.0";
+const CARD_VERSION = "1.6.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -46,7 +46,7 @@ const WIRKUNG = {
   oeffnen: "öffnen",
   schliessen: "schließen",
   beides: "auf und zu",
-  raum: "den ganzen Raum",
+  raum: "alles",
 };
 
 const ZUSTAND_TEXT = {
@@ -237,6 +237,20 @@ class RolloplanerCard extends HTMLElement {
         <span>${this._esc(naechster.state)}</span></div>`;
     }
 
+    // Die Schalter, die mehrere Räume betreffen, stehen einmal oben. Sonst
+    // sähe in jeder Kachel derselbe Schalter aus wie ein eigener – und wer ihn
+    // bei Nele ausschaltet, wundert sich, warum er bei Luna auch weg ist.
+    let freigabenHtml = "";
+    if (c.show_helfer) {
+      const geteilt = (a.freigaben || []).filter((f) => this._hass.states[f.entity_id]);
+      if (geteilt.length) {
+        freigabenHtml = `<div class="freigaben">
+          <div class="f-titel">Gilt für mehrere Räume</div>
+          <div class="f-liste">${geteilt.map((f) => this._chip(f, true)).join("")}</div>
+        </div>`;
+      }
+    }
+
     let raumHtml = "";
     if (c.show_raeume) {
       raumHtml = raeume.length
@@ -245,7 +259,7 @@ class RolloplanerCard extends HTMLElement {
     }
 
     this.shadowRoot.innerHTML = `<ha-card>
-      <div class="rand">${kopf}${warnung}${funktionen}${naechsterHtml}</div>
+      <div class="rand">${kopf}${warnung}${funktionen}${naechsterHtml}${freigabenHtml}</div>
       ${raumHtml}
     </ha-card>${this._stil()}`;
 
@@ -313,32 +327,52 @@ class RolloplanerCard extends HTMLElement {
     </div>`;
   }
 
+  /* Ein Bedienelement für einen Schalter – oben wie in der Kachel derselbe
+     Bauplan, damit nicht zweierlei Knöpfe für dieselbe Sache entstehen.
+     `mit_namen`: oben steht der Name des Schalters (dort fehlt der Raum als
+     Zusammenhang), in der Kachel nur seine Wirkung. */
+  _chip(h, mit_namen, beschriftung) {
+    const zustand = this._hass.states[h.entity_id];
+    if (!zustand) return "";
+    const wirkungen = h.wirkungen || [h.wirkung];
+    const wirkungstext = wirkungen.map((w) => WIRKUNG[w] || w).join(" und ");
+    const raeume = h.raeume ? `\n${h.raeume.join(", ")}` : "";
+    const titel = `${h.name} – gibt ${wirkungstext} frei${raeume}\n${h.entity_id}`;
+
+    if (h.optionen && h.optionen.length) {
+      // In der Kachel steht die Wirkung, oben der Name: „Terrassentür
+      // schliessen“ ist in der Kachel „Wohnzimmer – Terrassentür“ dreimal
+      // dasselbe Wort und bricht die Zeile um, ohne etwas zu sagen.
+      return `<label class="chip auswahl" title="${this._esc(titel)}">
+        <span class="c-text">${this._esc(beschriftung
+          || (mit_namen ? this._kurzname(h.name) : wirkungstext))}</span>
+        <select data-auswahl="${h.entity_id}">${h.optionen.map((o) =>
+          `<option value="${this._esc(o)}"${o === zustand.state ? " selected" : ""}>${this._esc(o)}</option>`
+        ).join("")}</select></label>`;
+    }
+    const an = zustand.state === "on";
+    const text = beschriftung
+      || (mit_namen ? this._kurzname(h.name) : wirkungstext);
+    return `<button class="chip ${an ? "an" : ""}" data-schalter="${h.entity_id}"
+      data-an="${an ? "0" : "1"}" title="${this._esc(titel)}"
+      ><span class="c-text">${this._esc(text)}</span></button>`;
+  }
+
   _helfer(helfer) {
-    if (!helfer.length) return "";
+    // Zwei Schalter desselben Raumes können dieselbe Wirkung haben – dann
+    // stünde zweimal „schließen“ nebeneinander und niemand wüsste, welcher
+    // welcher ist. In dem Fall kommt der Name des Schalters dazu.
+    const wirkung = (h) => (h.wirkungen || [h.wirkung])
+      .map((w) => WIRKUNG[w] || w).join(" und ");
+    const zaehler = {};
+    helfer.forEach((h) => { const w = wirkung(h); zaehler[w] = (zaehler[w] || 0) + 1; });
     const teile = helfer.map((h) => {
-      const zustand = this._hass.states[h.entity_id];
-      if (!zustand) return "";
-      // Der volle Name steht im Tooltip; auf dem Chip steht, was der Schalter
-      // freigibt. „Öffnen Nele“ sagt nur, wie der Helfer heißt – „öffnen“
-      // sagt, was ausfällt, wenn man ihn ausschaltet.
-      const titel = `${h.name} (${h.entity_id})`;
-      if (h.optionen && h.optionen.length) {
-        return `<label class="helfer" title="${this._esc(titel)}">
-          <span>${this._esc(this._kurzname(h.name))}</span>
-          <select data-auswahl="${h.entity_id}">${h.optionen.map((o) =>
-            `<option value="${this._esc(o)}"${o === zustand.state ? " selected" : ""}>${this._esc(o)}</option>`
-          ).join("")}</select></label>`;
-      }
-      const an = zustand.state === "on";
-      const text = WIRKUNG[h.wirkung] || this._kurzname(h.name);
-      return `<button class="helfer knopf ${an ? "an" : ""}"
-        data-schalter="${h.entity_id}" data-an="${an ? "0" : "1"}"
-        title="${this._esc(titel)}">${this._esc(text)}</button>`;
+      const w = wirkung(h);
+      return this._chip(h, false,
+        zaehler[w] > 1 ? `${w}: ${this._kurzname(h.name)}` : null);
     }).join("");
     if (!teile) return "";
-    // Ohne die Beschriftung davor steht dort eine Reihe Knöpfe, von denen
-    // niemand weiß, wozu sie gehören.
-    return `<div class="helferzeile"><span class="helfer-titel">gibt frei</span>${teile}</div>`;
+    return `<div class="chipzeile"><span class="c-titel">gibt frei</span>${teile}</div>`;
   }
 
   _kurzname(name) {
@@ -408,11 +442,48 @@ class RolloplanerCard extends HTMLElement {
         font-size:.8rem; color:var(--secondary-text-color)}
       .naechster ha-icon{--mdc-icon-size:15px; flex:none}
 
+      /* ── Die geteilten Schalter, einmal oben ── */
+      .freigaben{margin-top:12px; padding-top:10px;
+        border-top:1px solid var(--divider-color)}
+      .f-titel{font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
+        color:var(--secondary-text-color); opacity:.8; margin-bottom:6px}
+      .f-liste{display:flex; gap:5px; flex-wrap:wrap; align-items:center}
+
+      /* ── Ein Chip, ein Aussehen – oben wie in der Kachel ── */
+      .chip{display:inline-flex; align-items:center; gap:5px; cursor:pointer;
+        border:1px solid var(--divider-color); background:none; border-radius:14px;
+        padding:2px 9px 2px 7px; font-family:inherit; font-weight:500;
+        font-size:.74rem; color:var(--secondary-text-color); line-height:1.5;
+        max-width:100%}
+      /* Der Punkt davor sagt an oder aus. Ein bloß etwas hellerer Hintergrund
+         reicht dafür nicht – ein Schalter, dessen Stellung man raten muss, ist
+         kein Schalter. */
+      .chip::before{content:""; width:7px; height:7px; border-radius:50%; flex:none;
+        background:currentColor; opacity:.3}
+      .chip:hover{color:var(--primary-text-color)}
+      .chip.an{color:var(--primary-text-color); border-color:var(--primary-color);
+        background:rgba(127,127,127,.14)}
+      .chip.an::before{background:var(--primary-color); opacity:1}
+      .chip.auswahl{padding-right:3px; cursor:default}
+      .chip.auswahl::before{background:var(--primary-color); opacity:1}
+      .c-text{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+      .chip select{border:none; background:none; font-family:inherit;
+        font-size:.74rem; color:var(--primary-text-color); cursor:pointer;
+        padding:1px 2px; max-width:110px}
+      .chip select:focus{outline:none}
+      .chipzeile{display:flex; gap:5px; flex-wrap:wrap; align-items:center;
+        margin-top:7px}
+      .c-titel{font-size:.7rem; color:var(--secondary-text-color); opacity:.75}
+
       /* Kacheln, die sich der Breite anpassen: In einer schmalen
-         Dashboard-Spalte steht eine je Zeile, in einer breiten mehrere. */
-      .raeume{display:grid; gap:8px; padding:0 12px 12px;
+         Dashboard-Spalte steht eine je Zeile, in einer breiten mehrere.
+         Ausrichtung „stretch“ und ein Fuß mit margin-top:auto halten sie auf gleicher
+         Höhe – sonst hängt der eine „dann offen um …“-Text auf halber Strecke
+         und der andere ganz unten. */
+      .raeume{display:grid; gap:8px; padding:0 12px 12px; align-items:stretch;
         grid-template-columns:repeat(auto-fill, minmax(230px, 1fr))}
-      .raum{border:1px solid var(--divider-color); border-radius:10px;
+      .raum{display:flex; flex-direction:column;
+        border:1px solid var(--divider-color); border-radius:10px;
         padding:10px 11px 8px}
       .raum.ruht{opacity:.5}
 
@@ -437,6 +508,18 @@ class RolloplanerCard extends HTMLElement {
         background:rgba(127,127,127,.22); color:var(--primary-text-color)}
       .s-rauch{background:rgba(227,109,109,.3)}
       .s-fenster,.s-manuell{background:rgba(224,164,74,.3)}
+
+      .knoepfe{display:flex; gap:1px; flex:none}
+      .tipp{border:none; background:none; cursor:pointer; padding:3px;
+        border-radius:6px; color:var(--secondary-text-color); line-height:0}
+      .tipp:hover{color:var(--primary-text-color); background:rgba(127,127,127,.18)}
+      .tipp.an{color:var(--primary-color)}
+      .tipp ha-icon{--mdc-icon-size:18px; display:block}
+
+      .z3{display:flex; align-items:center; gap:8px; margin-top:auto;
+        padding-top:7px; font-size:.75rem; color:var(--secondary-text-color)}
+      .dann{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
+        white-space:nowrap}
 
       /* ── Rollladen vor Fenster oder Tür ──
          Die Eigenschaft --zu geht von 0 % (ganz offen) bis 100 % (ganz
@@ -492,33 +575,6 @@ class RolloplanerCard extends HTMLElement {
         font-size:.75rem; color:var(--secondary-text-color)}
       .dann{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
         white-space:nowrap}
-
-      .helferzeile{display:flex; gap:5px; flex-wrap:wrap; margin-top:8px;
-        align-items:center}
-      .helfer{font-size:.74rem; color:var(--secondary-text-color)}
-      .helfer-titel{font-size:.7rem; color:var(--secondary-text-color); opacity:.8;
-        margin-right:1px}
-      .helfer.knopf{display:inline-flex; align-items:center; gap:5px;
-        cursor:pointer; border:1px solid var(--divider-color); background:none;
-        border-radius:14px; padding:2px 9px 2px 7px; font-family:inherit;
-        font-weight:500}
-      /* Der Punkt davor sagt an oder aus. Ein bloß etwas hellerer Hintergrund
-         reicht dafür nicht – in Svens Theme waren „an“ und „aus“ auf einen
-         Blick nicht zu unterscheiden, und ein Schalter, dessen Stellung man
-         raten muss, ist kein Schalter. */
-      .helfer.knopf::before{content:""; width:7px; height:7px; border-radius:50%;
-        flex:none; background:currentColor; opacity:.3}
-      .helfer.knopf:hover{color:var(--primary-text-color)}
-      .helfer.knopf.an{color:var(--primary-text-color);
-        border-color:var(--primary-color); background:rgba(127,127,127,.14)}
-      .helfer.knopf.an::before{background:var(--primary-color); opacity:1}
-      label.helfer{display:inline-flex; align-items:center; gap:5px;
-        border:1px solid var(--divider-color); border-radius:14px;
-        padding:1px 4px 1px 9px}
-      label.helfer select{border:none; background:none; font-family:inherit;
-        font-size:.74rem; color:var(--primary-text-color); cursor:pointer;
-        padding:2px}
-      label.helfer select:focus{outline:none}
 
       .leer{padding:14px 0; color:var(--secondary-text-color); font-size:.85rem;
         text-align:center}

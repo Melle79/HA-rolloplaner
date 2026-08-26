@@ -255,11 +255,16 @@ bedienen – als Chip mit Punkt für an/aus, als Auswahlliste bei mehreren
 Stellungen. So lässt sich „die Terrassentür heute mal offen lassen“ dort
 erledigen, wo man ohnehin hinsieht.
 
-Auf dem Chip steht nicht der Name des Helfers, sondern **was er freigibt**:
-*öffnen*, *schließen*, *auf und zu* oder *den ganzen Raum*. Abgeleitet wird das
-aus den Schaltpunkten, an denen er hängt. „Öffnen Nele“ sagt nur, wie der
-Helfer heißt; „öffnen“ sagt, was ausfällt, wenn man ihn ausschaltet. Der volle
-Name steht im Tooltip.
+Auf dem Chip steht nicht der Name des Schalters, sondern **was er freigibt**:
+*öffnen*, *schließen*, *auf und zu* oder *alles*. Abgeleitet wird das aus den
+Schaltpunkten, an denen er hängt. „Öffnen Nele“ sagt nur, wie der Schalter
+heißt; „öffnen“ sagt, was ausfällt, wenn man ihn ausschaltet. Der volle Name
+steht im Tooltip.
+
+Ein Schalter, der **mehrere Räume** betrifft, steht nicht in deren Kacheln,
+sondern einmal oben unter *Gilt für mehrere Räume*. Sonst sähe er in jeder
+Kachel aus wie ein eigener – und wer ihn bei einem Raum ausschaltet, wundert
+sich, warum er beim anderen auch weg ist. Es ist derselbe Schalter.
 
 Ist die Karte bereits aus einer anderen Quelle eingebunden (etwa HACS), legt
 das Add-on **nichts** an und schreibt nur einen Hinweis ins Protokoll: Zwei

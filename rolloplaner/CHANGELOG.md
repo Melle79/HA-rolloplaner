@@ -1,5 +1,28 @@
 # Änderungen
 
+## 1.6.0 – 26.08.2026
+
+**Geteilte Schalter stehen jetzt oben, nicht in jeder Kachel.** „Obergeschoss
+schließen“ ist *ein* Schalter für Luna und Nele – in beiden Kacheln sah er aus
+wie ein eigener, und wer ihn bei Nele ausschaltete, wunderte sich, warum er bei
+Luna auch weg war. Solche Schalter stehen jetzt einmal unter **Gilt für mehrere
+Räume**; in der Kachel bleibt nur, was allein diesem Raum gehört.
+
+**Einheitliche Beschriftung.** „den ganzen Raum“ heißt jetzt *alles* und steht
+in derselben Reihe wie *öffnen* und *schließen* – es ist derselbe Mechanismus,
+nur ein anderer Umfang. Haben zwei Schalter eines Raumes dieselbe Wirkung,
+kommt ihr Name dazu, damit man sie auseinanderhalten kann.
+
+**Aufgeräumtes Layout.** Jede Kachel hat jetzt dieselbe Zeilenfolge – Bild,
+Name und Stellung; Begründung; Schalter; Fußzeile mit dem nächsten Wechsel und
+den Knöpfen. Die Kacheln einer Reihe sind gleich hoch, und die Fußzeile sitzt
+unten, statt auf halber Strecke zu hängen. Chips sehen oben und in der Kachel
+gleich aus.
+
+**Neu in der Selbstauskunft**: stillgelegte Schaltpunkte. Zeigt die Bedingung
+eines Punktes auf einen Schalter, der aus ist und sonst nirgends gebraucht
+wird, greift dieser Punkt nie – im Zeitplan sieht man ihm das nicht an.
+
 ## 1.5.1 – 26.08.2026
 
 **Die eigenen Schalter standen in Home Assistant auf „unknown“.** Ein

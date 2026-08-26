@@ -785,7 +785,28 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         except Exception:  # noqa: BLE001 – der Wächter darf den Takt nicht kippen
             _LOGGER.exception("Wächter fehlgeschlagen")
 
+    # Welcher Schalter betrifft welche Räume? Ohne diese Auskunft sieht in der
+    # Karte jeder Schalter aus, als gehöre er dem Raum, in dessen Kachel er
+    # steht – und wer „Obergeschoss schließen“ bei Nele ausschaltet, wundert
+    # sich, warum es bei Luna auch verschwindet. Es ist derselbe Schalter.
+    freigaben: dict[str, dict] = {}
+    for ergebnis in bericht["raeume"]:
+        for helfer in ergebnis.get("helfer") or []:
+            eintrag = freigaben.setdefault(helfer["entity_id"], {
+                **{k: v for k, v in helfer.items() if k != "wirkung"},
+                "wirkungen": [], "raeume": []})
+            eintrag["raeume"].append(ergebnis["name"])
+            if helfer["wirkung"] not in eintrag["wirkungen"]:
+                eintrag["wirkungen"].append(helfer["wirkung"])
+    for eintrag in freigaben.values():
+        eintrag["geteilt"] = len(eintrag["raeume"]) > 1
+    # Und zurück an die Räume, damit die Kachel weiß, was sie zeigen darf.
+    for ergebnis in bericht["raeume"]:
+        for helfer in ergebnis.get("helfer") or []:
+            helfer["geteilt"] = freigaben[helfer["entity_id"]]["geteilt"]
+
     bericht.update({
+        "freigaben": sorted(freigaben.values(), key=lambda e: e["name"]),
         "prozent_invertiert": bool(einstellungen.get("prozent_invertiert")),
         "automatik": lage["automatik"],
         "trockenlauf": bool(einstellungen.get("trockenlauf")),

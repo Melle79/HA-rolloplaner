@@ -25,6 +25,7 @@ import regelung
 import store
 import uebernahme
 import wachhund
+import zeitplan
 from version import VERSION
 
 logging.basicConfig(
@@ -890,6 +891,33 @@ def api_gesundheit():
                f"{len(fremde)} Zeitpläne hängen an fremden Helfern – der Planer kann "
                "sie unter „Schalter“ durch eigene ersetzen: " + ", ".join(fremde[:4])
                + (" …" if len(fremde) > 4 else ""))
+
+    # Ein Schaltpunkt, dessen Bedingung auf einen ausgeschalteten Schalter
+    # zeigt, ist stillgelegt – er greift nie, und das sieht man ihm im
+    # Zeitplan nicht an. Gemeldet wird nur, wenn der Schalter sonst nirgends
+    # gebraucht wird: Ein geteilter Schalter ist absichtlich aus.
+    schalterstand = {e["id"]: e for e in einstellungen.get("eigene_schalter") or []}
+    laufzeit = state.get("schalter") or {}
+    zaehler: dict[str, int] = {}
+    for raum in config["raeume"]:
+        for punkt in raum.get("zeitplan") or []:
+            for bedingung in punkt.get("wenn") or []:
+                kennung = store.eigener_schalter(bedingung.get("entity") or "")
+                if kennung:
+                    zaehler[kennung] = zaehler.get(kennung, 0) + 1
+    for raum in config["raeume"]:
+        for punkt in raum.get("zeitplan") or []:
+            for bedingung in punkt.get("wenn") or []:
+                kennung = store.eigener_schalter(bedingung.get("entity") or "")
+                eintrag = schalterstand.get(kennung or "")
+                if eintrag is None or zaehler.get(kennung, 0) != 1:
+                    continue
+                jetzt = str(laufzeit.get(kennung, eintrag["vorgabe"]))
+                if jetzt != str(bedingung.get("wert")):
+                    melden("hinweis",
+                           f"„{zeitplan.beschreibung(punkt)}“ ist stillgelegt: "
+                           f"„{eintrag['name']}“ steht auf {jetzt}, gebraucht würde "
+                           f"{bedingung.get('wert')}", raum["name"])
 
     # Ein eigener Schalter, den niemand benutzt, legt eine Entität in Home
     # Assistant an, die nichts tut.

@@ -353,6 +353,9 @@ class Publisher:
             "schulfrei_morgen": bericht.get("schulfrei_morgen"),
             "aussentemperatur": bericht.get("aussen"),
             "prozent_invertiert": invertiert,
+            # Die Schalter, die mehr als einen Raum betreffen – sie gehören in
+            # der Karte nach oben und nicht in jede Kachel einzeln.
+            "freigaben": [e for e in (bericht.get("freigaben") or []) if e["geteilt"]],
             "sonnenaufgang": sonne.get("aufgang"),
             "sonnenuntergang": sonne.get("untergang"),
             "sonnenhoehe": sonne.get("elevation"),
@@ -415,6 +418,9 @@ class Publisher:
             self._zustand(key, str(angezeigt) if angezeigt is not None else "unknown", {
                 "stellung_ha": ziel,
                 "prozent_invertiert": invertiert,
+            # Die Schalter, die mehr als einen Raum betreffen – sie gehören in
+            # der Karte nach oben und nicht in jede Kachel einzeln.
+            "freigaben": [e for e in (bericht.get("freigaben") or []) if e["geteilt"]],
                 # Die ID gehört mit in die Attribute: Die Karte spricht Räume
                 # darüber an, nicht über den Namen – ein umbenannter Raum
                 # behält seine ID.
@@ -425,7 +431,10 @@ class Publisher:
                 "fenster_offen": raum.get("fenster_offen") or [],
                 # Die Helfer, an denen die Schaltpunkte hängen – die Karte
                 # macht daraus Schalter und Auswahllisten.
-                "helfer": raum.get("helfer") or [],
+                # Nur die Schalter, die allein diesem Raum gehören. Die
+                # geteilten stehen einmal oben, im Status.
+                "helfer": [h for h in (raum.get("helfer") or [])
+                           if not h.get("geteilt")],
                 # „fenster“ oder „tuer“ – die Karte zeichnet danach.
                 "bildart": raum.get("bildart") or "fenster",
                 "naechste_uhrzeit": raum.get("naechste_uhrzeit"),
