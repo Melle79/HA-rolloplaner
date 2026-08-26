@@ -338,18 +338,28 @@
   <section id="s-schalter">
     <div class="tafel">
       <h2>Eigene Schalter</h2>
+      <p class="hinweis" style="margin-bottom:var(--l3)">
+        Ein Schalter ist eine <b>Bedingung, die Sie von Hand umlegen können</b>.
+        Sie hängen ihn an einen Schaltpunkt („nur wenn …“), und solange er nicht
+        passt, greift der Punkt nicht. So lässt sich das Öffnen eines Rollos
+        aussetzen, ohne den Zeitplan zu ändern.
+      </p>
       <p class="hinweis" style="margin-bottom:var(--l4)">
-        Diese Schalter gehören dem Planer: Er legt sie in Home Assistant an, kennt
-        ihren Stand und räumt sie wieder ab. Damit hängt kein Zeitplan an Helfern,
-        die jemand vorher von Hand anlegen müsste – nach einer Neuinstallation gäbe
-        es die nicht.
-        Ein <b>Schalter</b> kennt an und aus, eine <b>Auswahl</b> mehrere Stellungen
-        (etwa <i>normal / 24 Uhr / aus</i>).
+        <b>Ein/Aus-Schalter</b> – zwei Stellungen. Beispiel: „Obergeschoss
+        schließen“. Steht er auf aus, fahren die Kinderzimmer abends nicht zu.<br>
+        <b>Auswahl</b> – mehrere Stellungen, von denen immer eine gilt. Beispiel:
+        „Terrassentür schließen“ mit <i>normal / 24 Uhr / aus</i>. Für jede
+        Stellung gibt es einen eigenen Schaltpunkt; bei „aus“ greift keiner, und
+        die Tür bleibt offen.<br>
+        Der Planer legt beide in Home Assistant an – als
+        <code>switch.</code> beziehungsweise <code>select.</code> Er kennt ihren
+        Stand und räumt sie wieder ab, wenn Sie sie hier löschen. Deshalb hängt
+        kein Zeitplan an Helfern, die jemand vorher von Hand anlegen müsste.
       </p>
       <div id="schalterliste"></div>
       <div style="margin-top:var(--l4); display:flex; gap:var(--l2); flex-wrap:wrap">
-        <button class="leise" id="btn-schalter-neu">Schalter hinzufügen</button>
-        <button class="leise" id="btn-auswahl-neu">Auswahl hinzufügen</button>
+        <button class="leise" id="btn-schalter-neu">Ein/Aus-Schalter anlegen</button>
+        <button class="leise" id="btn-auswahl-neu">Auswahl anlegen</button>
         <button id="btn-schalter-speichern">Speichern</button>
       </div>
     </div>
@@ -1007,8 +1017,15 @@ function zeichneRolloDialog(){
 function zeichnePlaene(){
   const plaene = CONFIG?.plaene || [];
   const rollos = CONFIG?.rollos || [];
-  $("#planliste").innerHTML = plaene.length ? `<table>
-    <thead><tr><th>Zeitplan</th><th>Schaltpunkte</th><th>Rollos</th><th></th></tr></thead>
+  // Auch die Rollos mit **eigenem** Zeitplan gehören hierher. Wer den Reiter
+  // „Zeitpläne“ öffnet, sucht alle – und nicht nur die, die sich mehrere
+  // teilen. Sonst wäre der Zeitplan des Büros nur über den Umweg Rollos →
+  // Bearbeiten zu finden.
+  const eigene = rollos.filter((r) => !r.plan && (r.zeitplan || []).length);
+  const ohne = rollos.filter((r) => !r.plan && !(r.zeitplan || []).length);
+
+  const gemeinsam = plaene.length ? `<table>
+    <thead><tr><th>Zeitplan</th><th>Schaltpunkte</th><th>gilt für</th><th></th></tr></thead>
     <tbody>${plaene.map((p) => {
       const folger = rollos.filter((r) => r.plan === p.id);
       return `<tr>
@@ -1021,8 +1038,41 @@ function zeichnePlaene(){
       </tr>`;
     }).join("")}</tbody></table>`
     : `<div class="leerhinweis">Noch kein gemeinsamer Zeitplan.</div>`;
+
+  const eigenteil = eigene.length ? `
+    <div class="abschnitt" style="margin-top:var(--l5)">
+      <h3>Eigene Zeitpläne</h3>
+      <p class="hinweis" style="margin-bottom:var(--l3)">
+        Diese Rollos folgen keinem gemeinsamen Plan, sondern haben einen für sich
+        allein. Bearbeitet wird er im Rollo selbst.</p>
+      <table><tbody>${eigene.map((r) => `<tr>
+        <td><b>${esc(rolloName(r))}</b>
+          <div class="hinweis">${esc(r.raum || "")}</div></td>
+        <td>${r.zeitplan.length} Schaltpunkte</td>
+        <td class="knopfspalte">
+          <button class="leise" data-rollo-plan="${esc(r.entity_id)}">Bearbeiten</button></td>
+      </tr>`).join("")}</tbody></table>
+    </div>` : "";
+
+  const ohneteil = ohne.length ? `
+    <div class="abschnitt" style="margin-top:var(--l5)">
+      <h3>Ohne Zeitplan</h3>
+      <table><tbody>${ohne.map((r) => `<tr>
+        <td><b>${esc(rolloName(r))}</b>
+          <div class="hinweis">${esc(r.raum || "")}</div></td>
+        <td class="hinweis">${r.betriebsart === "von_hand"
+          ? "wird von Hand gefahren – so gewollt"
+          : "<span class=\"art-warnung\">fährt nie</span>"}</td>
+        <td class="knopfspalte">
+          <button class="leise" data-rollo-plan="${esc(r.entity_id)}">Bearbeiten</button></td>
+      </tr>`).join("")}</tbody></table>
+    </div>` : "";
+
+  $("#planliste").innerHTML = gemeinsam + eigenteil + ohneteil;
   $$("#planliste [data-plan]").forEach((el) =>
     el.onclick = () => planDialog(plaene.find((p) => p.id === el.dataset.plan)));
+  $$("#planliste [data-rollo-plan]").forEach((el) =>
+    el.onclick = () => rolloDialog(rollos.find((r) => r.entity_id === el.dataset.rolloPlan)));
 }
 
 function planDialog(plan){
@@ -1573,6 +1623,25 @@ $("#btn-rollo-neu").onclick = () => rolloDialog(null);
 $("#btn-plan-neu").onclick = () => planDialog(null);
 $("#btn-dlg-speichern").onclick = dialogSpeichern;
 $("#btn-dlg-loeschen").onclick = dialogLoeschen;
+$("#btn-schalter-neu").onclick = () => {
+  (SCHALTER = SCHALTER || []).push({name: "Neuer Schalter", art: "schalter",
+                                    optionen: [], vorgabe: "on", icon: ""});
+  zeichneSchalter();
+};
+$("#btn-auswahl-neu").onclick = () => {
+  (SCHALTER = SCHALTER || []).push({name: "Neue Auswahl", art: "auswahl",
+                                    optionen: ["normal", "aus"], vorgabe: "normal",
+                                    icon: ""});
+  zeichneSchalter();
+};
+$("#btn-schalter-speichern").onclick = async () => {
+  try {
+    SCHALTER = await holeJSON("api/schalter", "PUT", {schalter: SCHALTER});
+    melden("gespeichert");
+    await aktualisieren();
+    await ladeSchalter();
+  } catch (err) { melden(err.message, true); }
+};
 $("#btn-einst-speichern").onclick = einstellungenSpeichern;
 $("#btn-probe").onclick = async () => {
   try { const r = await holeJSON("api/wachhund/probe", "POST");

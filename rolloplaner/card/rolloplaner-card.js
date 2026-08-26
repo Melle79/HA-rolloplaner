@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.1.0";
+const CARD_VERSION = "2.2.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -265,9 +265,10 @@ class RolloplanerCard extends HTMLElement {
       if (!rollos.length) {
         rolloHtml = `<div class="rand"><div class="leer">Noch kein Rollo eingerichtet.</div></div>`;
       } else if (c.gruppieren) {
-        // Ein durchgehendes Raster mit Raumüberschriften darin: Ein eigenes
-        // Raster je Raum ließe die Kachel eines Einzelrollos über die ganze
-        // Breite laufen.
+        // Jeder Raum ist ein Block, und die Blöcke fließen nebeneinander. Eine
+        // Überschrift über die ganze Breite zwänge jeden Raum in eine eigene
+        // Zeile – bei einem Zimmer mit einem Rollo bliebe daneben die halbe
+        // Karte leer. Ein Block ist so breit, wie er Kacheln hat.
         const nachRaum = new Map();
         rollos.forEach((r) => {
           const raum = r.raum || "Ohne Bereich";
@@ -275,8 +276,11 @@ class RolloplanerCard extends HTMLElement {
           nachRaum.get(raum).push(r);
         });
         rolloHtml = `<div class="raeume">${[...nachRaum].map(([raum, liste]) =>
-          `<div class="raumtitel">${this._esc(raum)}</div>`
-          + liste.map((r) => this._rollo(r)).join("")).join("")}</div>`;
+          `<section class="raumgruppe" style="flex-grow:${liste.length};
+             flex-basis:${liste.length * 300}px">
+            <div class="raumtitel">${this._esc(raum)}</div>
+            <div class="gruppe">${liste.map((r) => this._rollo(r)).join("")}</div>
+          </section>`).join("")}</div>`;
       } else {
         rolloHtml = `<div class="raeume">${rollos.map((r) => this._rollo(r)).join("")}</div>`;
       }
@@ -478,10 +482,10 @@ class RolloplanerCard extends HTMLElement {
       .f-titel{font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
         color:var(--secondary-text-color); opacity:.8; margin-bottom:6px}
       .f-liste{display:flex; gap:5px; flex-wrap:wrap; align-items:center}
-      .raumtitel{grid-column:1/-1; font-size:.68rem; letter-spacing:.09em;
-        text-transform:uppercase; color:var(--secondary-text-color); opacity:.85;
-        font-weight:600; padding:6px 0 3px; border-bottom:1px solid var(--divider-color)}
-      .raumtitel:first-child{padding-top:0}
+      .raumtitel{font-size:.68rem; letter-spacing:.09em; text-transform:uppercase;
+        color:var(--secondary-text-color); opacity:.85; font-weight:600;
+        padding:8px 0 4px; border-bottom:1px solid var(--divider-color);
+        margin-bottom:8px}
       .planschild{display:inline-block; padding:0 6px; border-radius:12px;
         background:rgba(127,127,127,.2); color:var(--secondary-text-color);
         font-size:.68rem; font-weight:600}
@@ -523,7 +527,10 @@ class RolloplanerCard extends HTMLElement {
          untereinander, mittel zwei nebeneinander, breit eine Zeile je Rollo.
          Zeilen sind bei viel Breite das Richtige – man liest sie von links
          nach rechts wie eine Liste, statt sechs Kacheln abzusuchen. */
-      .raeume{display:grid; gap:8px; padding:0 12px 12px; align-items:stretch;
+      .raeume{display:flex; flex-wrap:wrap; gap:4px 18px; padding:0 12px 12px;
+        align-items:flex-start}
+      .raumgruppe{min-width:250px; max-width:100%}
+      .gruppe{display:grid; gap:10px; align-items:stretch;
         grid-template-columns:1fr}
       .raum{display:flex; flex-direction:column;
         border:1px solid var(--divider-color); border-radius:10px;
@@ -619,61 +626,12 @@ class RolloplanerCard extends HTMLElement {
       .dann{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
         white-space:nowrap}
 
-      @container (min-width: 580px){
-        .raeume{grid-template-columns:repeat(2, 1fr)}
-      }
-      @container (min-width: 880px){
-        /* Ab hier: eine Zeile je Rollo über die ganze Breite.
-
-           Als Raster mit festen Spalten, nicht als Flexbox: In einer Flexbox
-           dehnte sich der Textteil über den ganzen freien Platz und drückte
-           alles Übrige an den rechten Rand – dazwischen klaffte ein Loch von
-           tausend Pixeln. Ein Raster verteilt den Platz stattdessen auf
-           Spalten, die untereinander fluchten, und genau das macht eine Liste
-           lesbar.
-
-           display:contents auf .z1 hebt die eine Verschachtelung auf, die im
-           Weg steht: So werden Bild, Text und Zahl Geschwister der Schalter
-           und Knöpfe und lassen sich einzeln in Spalten legen. */
-        .raeume{grid-template-columns:1fr; gap:0}
-        /* Der Platz gehört dem Text: Nur seine Spalte wächst, alles Übrige
-           ist so breit wie sein Inhalt. Damit rückt die rechte Seite als Block
-           zusammen, statt sich über die halbe Karte zu verteilen. */
-        /* Jede Spalte muss schrumpfen können. Die Breitenangabe „auto“ tut
-           das nicht: Eine Spalte mit langem Inhalt – etwa die Auswahl der
-           Terrassentür – macht das Raster dann breiter als die Karte, und
-           rechts fällt die Stellung über den Rand hinaus. Mit minmax(0, …)
-           darf sie schrumpfen, und die Zelle schneidet ab, was nicht passt. */
-        .raum{display:grid; align-items:center; gap:6px 18px;
-          grid-template-columns:auto minmax(0, 2fr) minmax(0, 1.1fr)
-                                minmax(150px, auto) auto auto;
-          border:none; border-bottom:1px solid var(--divider-color);
-          border-radius:0; padding:7px 6px}
-        .raum > *{min-width:0}
-        .raum:last-child{border-bottom:none}
-        .z1{display:contents}
-        /* Jedes Feld nennt Spalte **und** Zeile. Ohne die Zeile setzt das
-           Raster automatisch weiter – und weil die Stellung im HTML vor den
-           Schaltern steht, aber in die letzte Spalte gehört, landete alles
-           Nachfolgende in einer zweiten Zeile. */
-        .bild{grid-column:1; grid-row:1}
-        .z1-text{grid-column:2; grid-row:1; min-width:0; display:flex;
-          align-items:baseline; gap:10px; flex-wrap:wrap}
-        /* Name und Begründung nebeneinander statt untereinander: Eine Zeile,
-           die halb so hoch ist, lässt sich als Liste überfliegen. */
-        .grund{-webkit-line-clamp:1; margin-top:0; flex:1 1 auto}
-        .chipzeile{grid-column:3; grid-row:1; margin-top:0; min-width:0;
-          flex-wrap:nowrap; overflow:hidden; justify-content:flex-start}
-        /* Die Fußzeile wird aufgelöst: Im Kachelmodus gehören Zeit und
-           Knöpfe zusammen in eine Zeile, hier in zwei Spalten. */
-        .z3{display:contents}
-        .dann{grid-column:4; grid-row:1; text-align:right; white-space:nowrap}
-        .knoepfe{grid-column:5; grid-row:1}
-        .z1-wert{grid-column:6; grid-row:1; flex-direction:row;
-          align-items:baseline; gap:5px; justify-content:flex-end;
-          min-width:86px; white-space:nowrap}
-        .wert{font-size:1.2rem}
-        .raumtitel{padding-top:14px}
+      /* Kacheln, so viele nebeneinander wie hineinpassen. Die Mindestbreite
+         ist bewusst großzügig: Bei 240 Pixeln zerfiel eine breite Karte in
+         sechs schmale Spalten, in denen jeder Text dreizeilig umbrach. So
+         bleiben es wenige, ruhige Kacheln, in denen alles lesbar steht. */
+      @container (min-width: 640px){
+        .gruppe{grid-template-columns:repeat(auto-fill, minmax(280px, 1fr))}
       }
 
       .leer{padding:14px 0; color:var(--secondary-text-color); font-size:.85rem;

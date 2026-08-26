@@ -1,5 +1,28 @@
 # Änderungen
 
+## 2.2.0 – 26.08.2026
+
+**Die Karte zeigt wieder Kacheln, auch auf breiten Ansichten.** Die
+Zeilendarstellung war ein Umweg: Sie füllte zwar die Breite, aber eine Karte
+soll wie eine Karte aussehen. Stattdessen ist jetzt **jeder Raum ein Block**,
+und die Blöcke fließen nebeneinander – ein Zimmer mit einem Rollo ist ein
+schmaler Block, das Wohnzimmer mit dreien ein breiter. Damit bleibt die
+Ordnung nach Räumen sichtbar, ohne dass neben jedem kleinen Raum die halbe
+Karte leer bliebe.
+
+**Drei Fehler und eine Unklarheit im Add-on:**
+
+* **Die Knöpfe unter *Schalter* taten nichts.** Beim Umbau auf Fassung 2.0
+  sind ihre Handler verlorengegangen – anlegen und speichern war schlicht
+  nicht möglich.
+* **Im Reiter *Zeitpläne* standen nur die gemeinsamen.** Wer ihn öffnet, sucht
+  alle: Jetzt stehen dort auch die Rollos mit eigenem Zeitplan und die ohne –
+  mit einem Knopf, der direkt ins Rollo führt.
+* **„Auswahl hinzufügen“ erklärte sich nicht.** Der Text sagt jetzt, wozu die
+  beiden Arten da sind, und nennt je ein Beispiel aus einer echten Anlage:
+  Ein/Aus für „Obergeschoss schließen“, eine Auswahl für „Terrassentür
+  schließen“ mit *normal / 24 Uhr / aus*.
+
 ## 2.1.2 – 26.08.2026
 
 **Die Stellung fiel rechts aus der Karte heraus.** Die Spalten der
