@@ -31,6 +31,7 @@ AVAILABILITY_TOPIC = f"{BASE_TOPIC}/availability"
 COMMAND_TOPIC = f"{BASE_TOPIC}/cmd"
 SCHALTER_TOPIC = f"{BASE_TOPIC}/schalter"      # …/<key>/set
 ROLLO_TOPIC = f"{BASE_TOPIC}/rollo"            # …/<entity_id>/set
+HITZE_TOPIC = f"{BASE_TOPIC}/hitzeschutz"      # …/<entity_id>/set
 PLAN_TOPIC = f"{BASE_TOPIC}/plan"              # …/<id>/set
 EIGEN_TOPIC = f"{BASE_TOPIC}/eigen"            # …/<id>/set – die eigenen Schalter
 DEVICE_ID = "rolloplaner"
@@ -87,6 +88,7 @@ class Publisher:
         self.on_command = None
         self.on_schalter = None      # (key, an: bool)
         self.on_rollo = None         # (entity_id, an: bool)
+        self.on_hitzeschutz = None   # (entity_id, an: bool)
         self.on_plan = None          # (plan_id, an: bool)
         self.on_eigen = None         # (schalter_id, wert: str)
         self._bekannte_eigene: set[str] = set()
@@ -128,6 +130,7 @@ class Publisher:
             client.subscribe(COMMAND_TOPIC, qos=1)
             client.subscribe(f"{SCHALTER_TOPIC}/+/set", qos=1)
             client.subscribe(f"{ROLLO_TOPIC}/+/set", qos=1)
+            client.subscribe(f"{HITZE_TOPIC}/+/set", qos=1)
             client.subscribe(f"{PLAN_TOPIC}/+/set", qos=1)
             client.subscribe(f"{EIGEN_TOPIC}/+/set", qos=1)
             self.connected.set()
@@ -152,6 +155,9 @@ class Publisher:
 
         if msg.topic.startswith(f"{SCHALTER_TOPIC}/") and self.on_schalter is not None:
             self._sicher(self.on_schalter, teile[-2], nutzlast.upper() == "ON")
+            return
+        if msg.topic.startswith(f"{HITZE_TOPIC}/") and self.on_hitzeschutz is not None:
+            self._sicher(self.on_hitzeschutz, teile[-2], nutzlast.upper() == "ON")
             return
         if msg.topic.startswith(f"{ROLLO_TOPIC}/") and self.on_rollo is not None:
             self._sicher(self.on_rollo, teile[-2], nutzlast.upper() == "ON")
@@ -207,9 +213,12 @@ class Publisher:
         for key in schluessel:
             self._publish(f"{DISCOVERY_PREFIX}/sensor/{DEVICE_ID}/rollo_{key}/config", "")
             self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/rollo_{key}_an/config", "")
+            self._publish(
+                f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/rollo_{key}_hitzeschutz/config", "")
             self._publish(f"{BASE_TOPIC}/rollo_{key}/state", "")
             self._publish(f"{BASE_TOPIC}/rollo_{key}/attributes", "")
             self._publish(f"{BASE_TOPIC}/rollo_{key}_an/state", "")
+            self._publish(f"{BASE_TOPIC}/rollo_{key}_hitzeschutz/state", "")
             self._bekannte_rollos.discard(key)
         if schluessel:
             _LOGGER.info("Rollos entfernt: %s", ", ".join(schluessel))
@@ -341,6 +350,22 @@ class Publisher:
                               "availability_topic": AVAILABILITY_TOPIC,
                               "unit_of_measurement": "%",
                               "icon": "mdi:window-shutter",
+                              "device": device,
+                          }))
+            # Der Hitzeschutz je Rollo. Bisher gab es ihn nur als Haken im
+            # Add-on und als einen Schalter fürs ganze Haus – wer ihn für ein
+            # einzelnes Fenster abstellen wollte, musste die Konfiguration
+            # öffnen. Das ist keine Bedienung, das ist Wartung.
+            self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/{key}_hitzeschutz/config",
+                          json.dumps({
+                              "name": f"{anzeige} Hitzeschutz",
+                              "unique_id": f"{DEVICE_ID}_{key}_hitzeschutz",
+                              "default_entity_id": f"switch.{DEVICE_ID}_{key}_hitzeschutz",
+                              "state_topic": f"{BASE_TOPIC}/{key}_hitzeschutz/state",
+                              "command_topic": f"{HITZE_TOPIC}/{rollo['entity_id']}/set",
+                              "availability_topic": AVAILABILITY_TOPIC,
+                              "payload_on": "ON", "payload_off": "OFF",
+                              "icon": "mdi:sun-thermometer",
                               "device": device,
                           }))
             self._publish(f"{DISCOVERY_PREFIX}/switch/{DEVICE_ID}/{key}_an/config",
@@ -538,6 +563,9 @@ class Publisher:
             })
             self._zustand(f"{key}_an",
                           "OFF" if rollo.get("zustand") == "aus" else "ON", {})
+            self._zustand(f"{key}_hitzeschutz",
+                          "ON" if rollo.get("hitzeschutz") else "OFF",
+                          {"ausrichtung": rollo.get("ausrichtung")})
 
         for plan in bericht.get("plaene") or []:
             self._zustand(f"plan_{plan['id']}", "ON" if plan.get("aktiv") else "OFF", {})

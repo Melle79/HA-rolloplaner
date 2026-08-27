@@ -1,5 +1,45 @@
 # Änderungen
 
+## 2.12.0 – 27.08.2026
+
+**Obergruppen: eine Ebene über den Rollos, mit eigenem Zeitplan und eigener
+Freigabe.**
+
+Bisher war der Zeitplan die heimliche Gruppe – wer wissen wollte, was
+zusammengehört, musste nachsehen, welche Rollos auf denselben Plan zeigen. Das
+stand nirgends und ging nicht, solange eine Gruppe ohne Plan auskommen soll.
+
+* Eine Gruppe **legt dazu, sie ersetzt nichts**: Jedes Rollo behält seinen
+  eigenen Zeitplan. Hat die Gruppe zusätzlich einen, gelten dessen Punkte für
+  alle ihre Rollos – wie früher „Rollo schliessen EG" neben den
+  Einzelautomationen.
+* Die Gruppe trägt den **Freigabeschalter**. Steht er aus, fährt der Planer
+  keines ihrer Rollos nach Plan; von Hand und bei Rauchalarm fahren sie weiter.
+* Neuer Reiter **Gruppen**: anlegen, benennen, Rollos hineinschieben, beides
+  sortieren. Die Reihenfolge dort ist die Reihenfolge in der Karte. Ein Knopf
+  macht aus den **Etagen** von Home Assistant einen Vorschlag – ohne
+  Gruppenzeitplan, er ändert also kein Verhalten.
+
+**Der Hitzeschutz lässt sich je Rollo schalten**, nicht nur insgesamt: ein
+eigener Schalter in Home Assistant und ein Knopf in der Kachel. Der Knopf
+erscheint nur, wo eine Himmelsrichtung hinterlegt ist – ohne sie kann der
+Hitzeschutz nichts tun.
+
+**Die Karte hat zwei Ebenen und endlich gleich breite Kacheln.** Vorher war
+jeder Raum ein Block, und ein Block war so breit, wie er Kacheln hatte: bei
+1280 px war die Kachel eines Ein-Rollo-Zimmers 619 px breit, die daneben 413.
+Jetzt ist die Obergruppe die Überschrift über die volle Breite, darunter läuft
+**ein** Raster – von 400 px bis 1820 px sind alle Kacheln gleich breit und
+gleich hoch, ohne Überlauf. Der Raum ist nicht verschwunden, er steht als
+Schild an der Kachel, wo der Name ihn nicht schon nennt.
+
+**Ein umbenannter Schalter verschwand von der Karte.** Aus „Erdgeschoss" wurde
+„EG öffnen", und er war weg. Die entity_id entsteht **einmal** beim Anlegen aus
+dem Namen und ändert sich beim Umbenennen nie – der Anzeigename schon. Das
+Add-on rechnete sie jedes Mal aus dem aktuellen Namen zurück und zeigte damit
+auf eine Entität, die es nicht gab. Jetzt schlägt es die echte nach, statt sie
+zu raten.
+
 ## 2.11.0 – 27.08.2026
 
 **Aufgeräumte Wortwahl: „aus" heißt die Automatik, nicht das Rollo.**

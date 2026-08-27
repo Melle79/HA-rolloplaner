@@ -449,6 +449,175 @@ def test_karte_ist_gueltiges_javascript():
         raise AssertionError(ergebnis.stderr.strip().splitlines()[-1])
 
 
+def test_umbenannter_schalter_behaelt_seine_entitaet():
+    """Am 27.08.2026 wurde „Erdgeschoss" zu „EG öffnen" – und verschwand von
+    der Karte.
+
+    Die entity_id entsteht **einmal** beim Anlegen aus dem Namen und ändert
+    sich beim Umbenennen nie; der Anzeigename schon. Wer sie aus dem aktuellen
+    Namen zurückrechnet, zeigt auf eine Entität, die es nicht gibt.
+    """
+    index = {"switch.rolloplaner_erdgeschoss": {
+        "entity_id": "switch.rolloplaner_erdgeschoss", "state": "on",
+        "attributes": {"friendly_name": "Rolloplaner EG öffnen"}}}
+    assert regelung._eigene_entitaet(index, "switch", "EG öffnen") \
+        == "switch.rolloplaner_erdgeschoss"
+    # Ohne Gerätenamen davor ebenso …
+    index["switch.rolloplaner_erdgeschoss"]["attributes"]["friendly_name"] = "EG öffnen"
+    assert regelung._eigene_entitaet(index, "switch", "EG öffnen") \
+        == "switch.rolloplaner_erdgeschoss"
+    # … und wo nichts zu finden ist, bleibt die Schätzung.
+    assert regelung._eigene_entitaet({}, "switch", "Neuer Schalter") \
+        == "switch.rolloplaner_neuer_schalter"
+
+
+# ------------------------------------------------------------ Gruppen ----
+
+def test_ein_rollo_gehoert_in_hoechstens_eine_gruppe():
+    """Sonst hätte es zwei Zeitpläne, und welcher gilt, wäre Zufall der
+    Speicherreihenfolge. Das ist keine Gruppierung mehr."""
+    rollos = {"cover.a", "cover.b"}
+    store.validate_gruppen([{"name": "Eins", "rollos": ["cover.a"]},
+                            {"name": "Zwei", "rollos": ["cover.b"]}], rollos, set())
+    try:
+        store.validate_gruppen([{"name": "Eins", "rollos": ["cover.a"]},
+                                {"name": "Zwei", "rollos": ["cover.a"]}], rollos, set())
+    except store.ValidationError as err:
+        assert "höchstens eine Gruppe" in str(err)
+    else:
+        raise AssertionError("doppelte Mitgliedschaft muss auffallen")
+
+
+def test_gruppe_zeigt_nicht_ins_leere():
+    """Eine Gruppe auf ein gelöschtes Rollo wäre still kaputt: Sie sähe
+    vollständig aus und ließe eines aus."""
+    for gruppe, stueck in (({"name": "G", "rollos": ["cover.weg"]}, "cover.weg"),
+                           ({"name": "G", "rollos": [], "plan": "gibtsnicht"},
+                            "gibtsnicht")):
+        try:
+            store.validate_gruppe(gruppe, {"cover.a"}, {"plan1"})
+        except store.ValidationError as err:
+            assert stueck in str(err)
+        else:
+            raise AssertionError(f"{stueck} hätte auffallen müssen")
+
+
+def test_ueberfuehrung_schlaegt_die_etagen_vor_und_nimmt_nichts_weg():
+    """Die Obergruppe kommt dazu, sie ersetzt nichts.
+
+    Vorgeschlagen wird nach Etage – so führt Home Assistant die Bereiche, und
+    so waren die Sammelautomationen geschnitten. Jedes Rollo behält seinen
+    eigenen Zeitplan, und die Gruppen starten ohne eigenen: Die Überführung
+    darf das Verhalten nicht ändern.
+    """
+    plaene = [{"id": "p1", "name": "Küche + Wohnzimmer", "zeitplan": []}]
+    punkt = [{"ausloeser": "uhrzeit", "start": "07:00", "position": 100,
+              "gilt": "immer", "tage": ["mon"], "versatz_min": 0,
+              "frueh": "", "spaet": "", "wenn": []}]
+    rollos = [
+        {"entity_id": "cover.kueche", "plan": "p1", "zeitplan": [], "raum": "Küche"},
+        {"entity_id": "cover.wz", "plan": "p1", "zeitplan": [], "raum": "Wohnzimmer"},
+        {"entity_id": "cover.buero", "plan": "", "zeitplan": punkt, "raum": "Büro"},
+        {"entity_id": "cover.schlaf1", "plan": "", "zeitplan": [], "raum": "Schlafzimmer"},
+        {"entity_id": "cover.ohne", "plan": "", "zeitplan": [], "raum": ""},
+    ]
+    etagen = {"cover.kueche": "Erdgeschoss", "cover.wz": "Erdgeschoss",
+              "cover.buero": "Obergeschoß", "cover.schlaf1": "Obergeschoß"}
+    gruppen = store.gruppen_ableiten(rollos, plaene, {"cover.ohne": "Rollo Keller"}, etagen)
+    nach_name = {g["name"]: g for g in gruppen}
+
+    assert nach_name["Erdgeschoss"]["rollos"] == ["cover.kueche", "cover.wz"]
+    assert nach_name["Obergeschoß"]["rollos"] == ["cover.buero", "cover.schlaf1"]
+    # Ohne Etage tritt der Bereich ein, ohne Bereich der Name.
+    assert "Rollo Keller" in nach_name
+    # Keine Gruppe bringt einen eigenen Zeitplan mit – das Verhalten bleibt.
+    assert all(g["plan"] == "" for g in gruppen)
+
+    drin = [eid for g in gruppen for eid in g["rollos"]]
+    assert sorted(drin) == sorted(r["entity_id"] for r in rollos)
+    assert len(drin) == len(set(drin))
+
+
+def _punkt(uhr, position, tage=None):
+    return {"ausloeser": "uhrzeit", "start": uhr, "position": position,
+            "gilt": "immer", "tage": tage or ["mon", "tue", "wed", "thu", "fri",
+                                              "sat", "sun"],
+            "versatz_min": 0, "frueh": "", "spaet": "", "wenn": []}
+
+
+def test_die_gruppe_legt_punkte_dazu_statt_sie_zu_ersetzen():
+    """Der Kern des Modells: Die Obergruppe kommt über das Rollo, nicht an
+    seine Stelle. So lief früher „Rollo schliessen EG" neben den
+    Einzelautomationen."""
+    rollo = {"entity_id": "cover.a", "plan": "", "zeitplan": [_punkt("08:00", 100)]}
+    plaene = {"g1": {"id": "g1", "name": "Erdgeschoss", "aktiv": True,
+                     "zeitplan": [_punkt("22:00", 0)]}}
+    gruppe = {"id": "x", "name": "Erdgeschoss", "plan": "g1", "aktiv": True,
+              "rollos": ["cover.a"]}
+
+    ohne, _ = regelung._plan_von(rollo, plaene, None)
+    assert [p["start"] for p in ohne] == ["08:00"]
+
+    mit, _ = regelung._plan_von(rollo, plaene, gruppe)
+    assert [p["start"] for p in mit] == ["08:00", "22:00"], "beides, nicht entweder"
+
+    # Eine abgeschaltete Gruppe legt nichts dazu …
+    aus, _ = regelung._plan_von(rollo, plaene, {**gruppe, "aktiv": False})
+    assert [p["start"] for p in aus] == ["08:00"]
+    # … und ein abgeschalteter Gruppenzeitplan ebenso wenig.
+    plaene["g1"]["aktiv"] = False
+    still, _ = regelung._plan_von(rollo, plaene, gruppe)
+    assert [p["start"] for p in still] == ["08:00"]
+
+
+def test_gruppe_legt_auch_zu_einem_gemeinsamen_plan_dazu():
+    """Ein Rollo an einem gemeinsamen Plan behält ihn – die Gruppe kommt
+    obendrauf, nicht an seine Stelle."""
+    rollo = {"entity_id": "cover.a", "plan": "p1", "zeitplan": []}
+    plaene = {"p1": {"id": "p1", "name": "Küche + Wohnzimmer", "aktiv": True,
+                     "zeitplan": [_punkt("06:30", 100)]},
+              "g1": {"id": "g1", "name": "Erdgeschoss", "aktiv": True,
+                     "zeitplan": [_punkt("22:00", 0)]}}
+    gruppe = {"id": "x", "name": "Erdgeschoss", "plan": "g1", "aktiv": True,
+              "rollos": ["cover.a"]}
+    punkte, plan = regelung._plan_von(rollo, plaene, gruppe)
+    assert [p["start"] for p in punkte] == ["06:30", "22:00"]
+    assert plan["name"] == "Küche + Wohnzimmer", "der eigene Plan bleibt der eigene"
+
+
+def test_gruppenschalter_gibt_frei_wie_frueher_eg_schliessen():
+    """Steht der Schalter der Gruppe aus, fährt der Planer keines ihrer Rollos.
+
+    Bisher hing so eine Freigabe als Bedingung an jedem einzelnen Schaltpunkt
+    und war nur über Umwege zu erkennen.
+    """
+    rollo = {**store.STANDARD_ROLLO, "entity_id": "cover.a", "name": "Prüfrollo",
+             "plan": "", "zeitplan": [_punkt("08:00", 100)]}
+    gruppe = {"id": "x", "name": "Erdgeschoss", "plan": "", "aktiv": True,
+              "schalter": "abc123", "rollos": ["cover.a"]}
+    einst = store.validate_einstellungen(dict(store.STANDARD_EINSTELLUNGEN))
+    lage = {"automatik": True, "rauch": False, "rauch_grund": "", "urlaub": False,
+            "urlaub_seit": None, "simulation": {}, "fluchtweg": {},
+            "zustaende": {store.EIGEN_PREFIX + "abc123": "off"}}
+    state = {"rollos": {}}
+    ergebnis = regelung._rollo_rechnen(
+        rollo, einst, {"cover.a": _cover("cover.a", 0)}, state, None, None,
+        datetime(2026, 8, 27, 9, 0), lage, {}, gruppe)
+    assert ergebnis["zustand"] == "gesperrt"
+    assert "nicht freigegeben" in ergebnis["begruendung"]
+
+    lage["zustaende"][store.EIGEN_PREFIX + "abc123"] = "on"
+    frei = regelung._rollo_rechnen(
+        rollo, einst, {"cover.a": _cover("cover.a", 0)}, state, None, None,
+        datetime(2026, 8, 27, 9, 0), lage, {}, gruppe)
+    assert frei["zustand"] != "gesperrt"
+
+
+def test_gruppen_ueberleben_das_laden_und_speichern():
+    config = store._leer_config()
+    assert config["gruppen"] == []
+
+
 # ------------------------------------------------------- Trockenlauf ----
 
 def _plan_rollo(eid, name="Prüfrollo"):

@@ -293,6 +293,7 @@
 <nav>
   <button data-reiter="uebersicht" class="an">Übersicht</button>
   <button data-reiter="rollos">Rollos</button>
+  <button data-reiter="gruppen">Gruppen</button>
   <button data-reiter="plaene">Zeitpläne</button>
   <button data-reiter="schalter">Schalter</button>
   <button data-reiter="rauchalarm">Rauchalarm</button>
@@ -379,6 +380,25 @@
     <div class="tafel">
       <h2>Fremde Helfer ersetzen</h2>
       <div id="fremde"></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ Gruppen ═══ -->
+  <section id="s-gruppen">
+    <div class="tafel"><h2>Obergruppen</h2>
+      <p class="hinweis">Eine Obergruppe liegt <b>über</b> den Rollos, sie
+        ersetzt sie nicht: Jedes Rollo behält seinen eigenen Zeitplan. Gibst du
+        der Gruppe zusätzlich einen, gelten seine Schaltpunkte für alle ihre
+        Rollos – so wie früher eine Automation „Rollo schliessen EG" neben den
+        Einzelautomationen lief. Welcher Punkt gilt, entscheidet der zuletzt
+        fällige.</p>
+      <div id="gruppen"></div>
+      <div class="dlg-fuss" style="border-top:1px solid var(--linie); margin-top:var(--l4);
+        padding-left:0; padding-right:0">
+        <button class="leise" id="btn-gruppe-vorschlag">Vorschlag aus Home Assistant</button>
+        <button class="leise" id="btn-gruppe-neu">Gruppe hinzufügen</button>
+        <button id="btn-gruppen-speichern">Speichern</button>
+      </div>
     </div>
   </section>
 
@@ -1440,6 +1460,159 @@ function zeichneEinstellungen(){
     </div>`;
 }
 
+/* ──────────────────────────────────────────────────────────── Gruppen ─── */
+
+let GRUPPEN = null;                       // der Arbeitsstand, erst beim Speichern echt
+
+function rolloNameVon(eid){
+  const r = (BERICHT?.rollos || []).find((x) => x.entity_id === eid);
+  if (r) return r.name;
+  const k = (CONFIG?.rollos || []).find((x) => x.entity_id === eid);
+  return (k && k.name) || eid;
+}
+
+function zeichneGruppen(){
+  if (GRUPPEN === null) GRUPPEN = JSON.parse(JSON.stringify(CONFIG?.gruppen || []));
+  const plaene = CONFIG?.plaene || [];
+  const schalter = (CONFIG?.einstellungen?.eigene_schalter || [])
+    .filter((k) => k.art !== "auswahl");
+  const zugeordnet = new Set(GRUPPEN.flatMap((g) => g.rollos));
+  const frei = (CONFIG?.rollos || []).map((r) => r.entity_id)
+    .filter((eid) => !zugeordnet.has(eid));
+
+  const ziele = (eid, ausser) => GRUPPEN
+    .map((g, i) => i === ausser ? "" :
+      `<option value="${i}">${esc(g.name)}</option>`).join("");
+
+  let html = GRUPPEN.map((g, i) => `
+    <div class="abschnitt" data-gruppe="${i}">
+      <div class="gitter g2">
+        <label class="feld"><span>Name der Gruppe</span>
+          <input type="text" data-g-feld="name" data-i="${i}" value="${esc(g.name)}"></label>
+        <label class="feld"><span>Gemeinsamer Zeitplan (freiwillig)</span>
+          <select data-g-feld="plan" data-i="${i}">
+            <option value="">— keiner, die Gruppe ordnet nur —</option>
+            ${plaene.map((pl) => `<option value="${esc(pl.id)}"
+              ${pl.id === g.plan ? "selected" : ""}>${esc(pl.name)}</option>`).join("")}
+          </select></label>
+      </div>
+      <div class="gitter g2">
+        <label class="feld"><span>Freigabeschalter (freiwillig)</span>
+          <select data-g-feld="schalter" data-i="${i}">
+            <option value="">— keiner —</option>
+            ${schalter.map((k) => `<option value="${esc(k.id)}"
+              ${k.id === g.schalter ? "selected" : ""}>${esc(k.name)}</option>`).join("")}
+          </select></label>
+        <label class="haken" style="align-self:end">
+          <input type="checkbox" data-g-feld="aktiv" data-i="${i}"
+                 ${g.aktiv ? "checked" : ""}>Gruppe eingeschaltet</label>
+      </div>
+      <p class="hinweis">Steht der Freigabeschalter aus, fährt der Planer kein
+        Rollo dieser Gruppe nach Plan. Von Hand und bei Rauchalarm fahren sie
+        weiter.</p>
+
+      <table class="liste" style="margin-top:var(--l3)">
+        <tbody>
+          ${g.rollos.length ? g.rollos.map((eid, j) => `<tr>
+            <td><b>${esc(rolloNameVon(eid))}</b>
+                <div class="hinweis">${esc(eid)}</div></td>
+            <td class="knopfspalte" style="white-space:nowrap">
+              <button class="leise" data-r-hoch="${i}:${j}" ${j ? "" : "disabled"}>↑</button>
+              <button class="leise" data-r-runter="${i}:${j}"
+                      ${j === g.rollos.length - 1 ? "disabled" : ""}>↓</button>
+              <select data-r-ziel="${i}:${j}">
+                <option value="">verschieben nach …</option>
+                ${ziele(eid, i)}
+                <option value="-">— aus der Gruppe nehmen —</option>
+              </select>
+            </td></tr>`).join("")
+            : `<tr><td colspan="2" class="leerhinweis">Noch kein Rollo in dieser Gruppe.</td></tr>`}
+        </tbody>
+      </table>
+
+      <div class="dlg-fuss" style="padding-left:0; padding-right:0">
+        <button class="leise" data-g-hoch="${i}" ${i ? "" : "disabled"}>↑ Gruppe</button>
+        <button class="leise" data-g-runter="${i}"
+                ${i === GRUPPEN.length - 1 ? "disabled" : ""}>↓ Gruppe</button>
+        <button class="leise art-warnung" data-g-weg="${i}">Gruppe löschen</button>
+      </div>
+    </div>`).join("");
+
+  if (frei.length) {
+    html += `<div class="abschnitt"><h3>Noch in keiner Gruppe</h3>
+      <table class="liste"><tbody>${frei.map((eid) => `<tr>
+        <td><b>${esc(rolloNameVon(eid))}</b><div class="hinweis">${esc(eid)}</div></td>
+        <td class="knopfspalte">
+          <select data-frei-ziel="${esc(eid)}">
+            <option value="">in eine Gruppe legen …</option>
+            ${GRUPPEN.map((g, i) => `<option value="${i}">${esc(g.name)}</option>`).join("")}
+          </select></td></tr>`).join("")}</tbody></table>
+      <p class="hinweis">Ein Rollo ohne Gruppe fährt weiter nach seinem eigenen
+        Zeitplan – es fehlt ihm nur die Obergruppe.</p></div>`;
+  }
+  if (!GRUPPEN.length && !frei.length) {
+    html = `<p class="leerhinweis">Noch keine Gruppen. „Vorschlag aus Home
+      Assistant" macht aus deinen Etagen einen Anfang.</p>`;
+  }
+  $("#gruppen").innerHTML = html;
+  gruppenVerdrahten();
+}
+
+function gruppenVerdrahten(){
+  const wurzel = $("#gruppen");
+  $$("[data-g-feld]", wurzel).forEach((el) => {
+    el.onchange = () => {
+      const g = GRUPPEN[Number(el.dataset.i)];
+      g[el.dataset.gFeld] = el.type === "checkbox" ? el.checked : el.value;
+      if (el.dataset.gFeld !== "name") zeichneGruppen();
+    };
+  });
+  const tausch = (liste, a, b) => { const t = liste[a]; liste[a] = liste[b]; liste[b] = t; };
+  $$("[data-r-hoch]", wurzel).forEach((el) => el.onclick = () => {
+    const [i, j] = el.dataset.rHoch.split(":").map(Number);
+    tausch(GRUPPEN[i].rollos, j, j - 1); zeichneGruppen();
+  });
+  $$("[data-r-runter]", wurzel).forEach((el) => el.onclick = () => {
+    const [i, j] = el.dataset.rRunter.split(":").map(Number);
+    tausch(GRUPPEN[i].rollos, j, j + 1); zeichneGruppen();
+  });
+  $$("[data-r-ziel]", wurzel).forEach((el) => el.onchange = () => {
+    const [i, j] = el.dataset.rZiel.split(":").map(Number);
+    const [eid] = GRUPPEN[i].rollos.splice(j, 1);
+    if (el.value !== "-") GRUPPEN[Number(el.value)].rollos.push(eid);
+    zeichneGruppen();
+  });
+  $$("[data-frei-ziel]", wurzel).forEach((el) => el.onchange = () => {
+    if (el.value === "") return;
+    GRUPPEN[Number(el.value)].rollos.push(el.dataset.freiZiel);
+    zeichneGruppen();
+  });
+  $$("[data-g-hoch]", wurzel).forEach((el) => el.onclick = () => {
+    const i = Number(el.dataset.gHoch); tausch(GRUPPEN, i, i - 1); zeichneGruppen();
+  });
+  $$("[data-g-runter]", wurzel).forEach((el) => el.onclick = () => {
+    const i = Number(el.dataset.gRunter); tausch(GRUPPEN, i, i + 1); zeichneGruppen();
+  });
+  $$("[data-g-weg]", wurzel).forEach((el) => el.onclick = () => {
+    const g = GRUPPEN[Number(el.dataset.gWeg)];
+    // Die Rollos bleiben – sie stehen danach unter „Noch in keiner Gruppe".
+    if (confirm(`Gruppe „${g.name}" löschen? Die ${g.rollos.length} Rollos `
+                + "darin bleiben bestehen und fahren weiter nach ihrem eigenen Zeitplan.")) {
+      GRUPPEN.splice(Number(el.dataset.gWeg), 1); zeichneGruppen();
+    }
+  });
+}
+
+async function gruppenSpeichern(){
+  try {
+    await holeJSON("api/gruppen", "PUT", {gruppen: GRUPPEN});
+    melden("gespeichert");
+    GRUPPEN = null;
+    await aktualisieren();
+    zeichneGruppen();
+  } catch (err) { melden(err.message, true); }
+}
+
 /* ───────────────────────────────────────────────────────── Rauchalarm ─── */
 
 function zeichneRauchalarm(){
@@ -1756,6 +1929,7 @@ async function aktualisieren(){
     zeichnePlaene();
     zeichneEinstellungen();
     zeichneRauchalarm();
+    if (GRUPPEN === null) zeichneGruppen();
   } catch (err) {
     $("#kopfstatus").textContent = err.message;
     $("#punkt").classList.remove("ok");
@@ -1809,6 +1983,21 @@ $("#btn-schalter-speichern").onclick = async () => {
 };
 $("#btn-einst-speichern").onclick = einstellungenSpeichern;
 $("#btn-rauch-speichern").onclick = rauchalarmSpeichern;
+$("#btn-gruppen-speichern").onclick = gruppenSpeichern;
+$("#btn-gruppe-neu").onclick = () => {
+  GRUPPEN.push({name: "Neue Gruppe", rollos: [], plan: "", schalter: "", aktiv: true});
+  zeichneGruppen();
+};
+$("#btn-gruppe-vorschlag").onclick = async () => {
+  try {
+    const v = await hole("api/gruppen/vorschlag");
+    if (!confirm(`Vorschlag: ${v.length} Gruppen aus deinen Etagen. `
+                 + "Das ersetzt den aktuellen Stand in diesem Reiter – "
+                 + "gespeichert wird erst mit „Speichern“.")) return;
+    GRUPPEN = v;
+    zeichneGruppen();
+  } catch (err) { melden(err.message, true); }
+};
 $("#btn-rauch-probe").onclick = async () => {
   try {
     const a = await holeJSON("api/rauchalarm/probe", "POST", {});

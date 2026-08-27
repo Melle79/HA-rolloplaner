@@ -73,6 +73,31 @@ Ein Schalter, der noch als Bedingung in Gebrauch ist, lässt sich nicht löschen
 Eine Bedingung auf einen Schalter, den es nicht gibt, trifft nie zu – der
 Schaltpunkt wäre stumm, ohne dass es auffiele.
 
+## Obergruppen
+
+Eine Obergruppe liegt **über** den Rollos – bei uns die Etage („Erdgeschoss",
+„Obergeschoß"). Sie ersetzt nichts: Jedes Rollo behält seinen eigenen
+Zeitplan. Gibt man der Gruppe zusätzlich einen, gelten dessen Schaltpunkte für
+alle ihre Rollos, so wie früher eine Automation „Rollo schliessen EG" neben den
+Einzelautomationen lief. Welcher Punkt gilt, entscheidet wie immer der zuletzt
+fällige.
+
+Die Gruppe trägt außerdem den **Freigabeschalter**: Steht er aus, fährt der
+Planer keines ihrer Rollos nach Plan – von Hand und bei Rauchalarm fahren sie
+weiter. Bisher hing so eine Freigabe als Bedingung an jedem einzelnen
+Schaltpunkt und war nur über Umwege zu erkennen.
+
+Zwei Regeln gelten hart: Ein Rollo gehört in **höchstens eine** Gruppe (sonst
+hätte es zwei Zeitpläne, und welcher gilt, wäre Zufall der Speicherreihenfolge),
+und eine Gruppe kann nicht auf ein gelöschtes Rollo oder einen gelöschten Plan
+zeigen. Ein Rollo ohne Gruppe fährt weiter nach seinem eigenen Zeitplan – ihm
+fehlt nur die Obergruppe.
+
+Im Reiter *Gruppen* legt man sie an, benennt sie, schiebt Rollos hinein und
+sortiert beides. **Die Reihenfolge dort ist die Reihenfolge in der Karte.** Der
+Knopf *Vorschlag aus Home Assistant* macht aus den dort gepflegten **Etagen**
+einen Anfang – ohne Gruppenzeitplan, er ändert also kein Verhalten.
+
 ## Der Zeitplan
 
 Ein Zeitplan ist eine Liste von **Schaltpunkten** – wie am mechanischen
@@ -253,6 +278,13 @@ Außenwände eines Hauses stehen in den Kartendaten.
 
 Der **Öffnungswinkel** sagt, wie weit die Sonne daneben stehen darf und
 trotzdem noch ins Fenster scheint (Vorgabe 90°, also 45° zu jeder Seite).
+
+Der Hitzeschutz lässt sich **je Rollo** schalten, nicht nur insgesamt: Jedes
+Rollo hat dafür einen eigenen Schalter in Home Assistant
+(`switch.rolloplaner_rollo_<name>_hitzeschutz`) und einen Knopf in seiner
+Kachel. Der Knopf erscheint nur, wo eine Himmelsrichtung hinterlegt ist – ohne
+sie kann der Hitzeschutz nichts tun, und ein Knopf ohne Wirkung hält man für
+kaputt statt für unzuständig.
 
 ### Wie weit zufahren?
 

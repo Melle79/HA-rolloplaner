@@ -433,21 +433,34 @@ def _temperatur(entity_id: str | None, index: dict) -> float | None:
     return ha_api.as_float(zustand.get("state"))
 
 
-def _plan_von(rollo: dict, plaene: dict) -> tuple[list, dict | None]:
-    """Welchem Zeitplan folgt dieses Rollo – und wem gehört er?
+def _plan_von(rollo: dict, plaene: dict,
+              gruppe: dict | None = None) -> tuple[list, dict | None]:
+    """Welchen Schaltpunkten folgt dieses Rollo – und wem gehört der Plan?
 
     Liefert (Schaltpunkte, Plan). Ohne Plan-ID hat das Rollo einen eigenen;
     dann ist der zweite Wert ``None``.
+
+    Die **Obergruppe legt dazu**, sie ersetzt nicht: Hat sie einen eigenen
+    Zeitplan, gelten seine Punkte für alle ihre Rollos – so wie früher die
+    Automation „Rollo schliessen EG" neben den Einzelautomationen lief.
+    Welcher Punkt am Ende gilt, entscheidet wie immer der zuletzt fällige.
     """
     if rollo.get("plan"):
         plan = plaene.get(rollo["plan"])
-        return (plan["zeitplan"] if plan else []), plan
-    return rollo.get("zeitplan") or [], None
+        eigene = plan["zeitplan"] if plan else []
+    else:
+        plan, eigene = None, rollo.get("zeitplan") or []
+
+    if gruppe and gruppe.get("aktiv", True) and gruppe.get("plan"):
+        gruppenplan = plaene.get(gruppe["plan"])
+        if gruppenplan and gruppenplan.get("aktiv", True):
+            return list(eigene) + list(gruppenplan.get("zeitplan") or []), plan
+    return eigene, plan
 
 
 def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
                    kalender, sonnenstand, jetzt: datetime, lage: dict,
-                   plaene: dict) -> dict:
+                   plaene: dict, gruppe: dict | None = None) -> dict:
     """Was dieses Rollo jetzt tun soll – mitsamt Begründung.
 
     Liefert ein Ergebnis, auch wenn nichts zu tun ist: Die Oberfläche soll
@@ -456,13 +469,17 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
     eid = rollo["entity_id"]
     rollo_state = state["rollos"].setdefault(eid, {})
     zustand = index.get(eid)
-    punkte, plan = _plan_von(rollo, plaene)
+    punkte, plan = _plan_von(rollo, plaene, gruppe)
     invertiert = bool(einstellungen.get("prozent_invertiert"))
 
     ergebnis = {
         "entity_id": eid,
         "name": anzeigename(rollo, index),
         "raum": rollo.get("raum") or "",
+        "gruppe": (gruppe or {}).get("name") or "",
+        "gruppe_id": (gruppe or {}).get("id") or "",
+        "hitzeschutz": bool(rollo.get("beschattung")),
+        "ausrichtung": rollo.get("ausrichtung"),
         "art": rollo.get("art") or "fenster",
         "ist": ha_api.position_von(zustand),
         "zustand": "plan",
@@ -510,6 +527,19 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
         ergebnis.update(zustand="gesperrt",
                         begruendung=f"Zeitplan „{plan['name']}“ ist abgeschaltet")
         return ergebnis
+    if gruppe is not None and not gruppe.get("aktiv", True):
+        ergebnis.update(zustand="gesperrt",
+                        begruendung=f"Gruppe „{gruppe['name']}“ ist abgeschaltet")
+        return ergebnis
+    if gruppe is not None and gruppe.get("schalter"):
+        # Ein eigener Schalter des Planers, kein fremder: Sein Stand steht in
+        # denselben Zuständen, durch die auch die Bedingungen an den
+        # Schaltpunkten laufen.
+        stand = lage["zustaende"].get(store.EIGEN_PREFIX + gruppe["schalter"])
+        if stand is not None and str(stand).lower() in ("off", "aus", "false", "0"):
+            ergebnis.update(zustand="gesperrt",
+                            begruendung=f"Gruppe „{gruppe['name']}“ ist nicht freigegeben")
+            return ergebnis
 
     if zustand is None:
         ergebnis.update(zustand="fehlt", begruendung="In Home Assistant nicht gefunden")
@@ -581,6 +611,32 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
     return ergebnis
 
 
+def _eigene_entitaet(index: dict, domain: str, name: str) -> str:
+    """Die Entität, unter der ein eigener Schalter in Home Assistant steht.
+
+    Nicht raten, nachsehen. Die entity_id wird **einmal** beim Anlegen aus dem
+    Namen gebildet und ändert sich beim Umbenennen nie – der Anzeigename schon.
+    Wer sie aus dem aktuellen Namen zurückrechnet, zeigt nach einer Umbenennung
+    auf eine Entität, die es nicht gibt: Am 27.08.2026 wurde aus „Erdgeschoss"
+    der Schalter „EG öffnen", und er verschwand von der Karte, obwohl er in
+    Home Assistant unverändert als ``switch.rolloplaner_erdgeschoss`` stand.
+
+    Gesucht wird über den Anzeigenamen, denn der folgt der Umbenennung. Home
+    Assistant stellt den Gerätenamen voran; beides wird geprüft. Findet sich
+    nichts, bleibt die alte Schätzung – besser als gar keine Entität.
+    """
+    gesucht = (name or "").strip().casefold()
+    for eid, zustand in index.items():
+        if not eid.startswith(domain + ".rolloplaner_"):
+            continue
+        anzeige = ((zustand.get("attributes") or {}).get("friendly_name") or "").strip()
+        if anzeige.casefold() == gesucht:
+            return eid
+        if anzeige.casefold() == f"rolloplaner {gesucht}":
+            return eid
+    return f"{domain}.rolloplaner_{_slug(name)}"
+
+
 def _bedienbare_helfer(rollo: dict, punkte: list, index: dict,
                        einstellungen: dict, zustaende: dict) -> list[dict]:
     """Die Schalter, an denen die Schaltpunkte dieses Rollos hängen.
@@ -615,7 +671,7 @@ def _bedienbare_helfer(rollo: dict, punkte: list, index: dict,
             zustand = {"attributes": {"friendly_name": eintrag["name"],
                                       "options": eintrag["optionen"]},
                        "state": zustaende.get(eid, eintrag["vorgabe"])}
-            eid_ha = f"{domain}.rolloplaner_{_slug(eintrag['name'])}"
+            eid_ha = _eigene_entitaet(index, domain, eintrag["name"])
         else:
             zustand = index.get(eid)
             if zustand is None:
@@ -903,9 +959,15 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
 
     plaene = {p["id"]: p for p in config.get("plaene") or []}
 
+    # Welches Rollo liegt in welcher Obergruppe? Die Zuordnung steht an der
+    # Gruppe, gebraucht wird sie am Rollo.
+    gruppe_von = {eid: g for g in (config.get("gruppen") or [])
+                  for eid in g.get("rollos") or []}
+
     for rollo in config.get("rollos") or []:
         ergebnis = _rollo_rechnen(rollo, einstellungen, index, state, kalender,
-                                  sonnenstand, jetzt, lage, plaene)
+                                  sonnenstand, jetzt, lage, plaene,
+                                  gruppe_von.get(rollo["entity_id"]))
         try:
             _rollo_stellen(rollo, ergebnis, einstellungen, index, state, jetzt, protokoll)
         except Exception as err:  # noqa: BLE001 – eines darf die übrigen nicht mitreißen

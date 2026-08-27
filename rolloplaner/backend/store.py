@@ -207,6 +207,30 @@ STANDARD_PLAN = {
     "zeitplan": [],
 }
 
+# Eine Obergruppe fasst Rollos zusammen, die zusammengehören – und zwar so, wie
+# der Bewohner das sieht, nicht wie Home Assistant die Bereiche verwaltet.
+#
+# Sie liegt **über** dem Rollo, sie ersetzt es nicht: Jedes Rollo behält seinen
+# eigenen Zeitplan. Hat die Gruppe zusätzlich einen, gelten seine Schaltpunkte
+# für alle ihre Rollos – so wie früher eine Automation „Rollo schliessen EG"
+# neben den Einzelautomationen lief. Beides zusammen ergibt die Punkte eines
+# Rollos; welcher gilt, entscheidet wie immer der zuletzt fällige.
+STANDARD_GRUPPE = {
+    "name": "Neue Gruppe",
+    # Die Reihenfolge in dieser Liste ist die Reihenfolge in der Karte.
+    "rollos": [],
+    # Ein zusätzlicher Zeitplan für alle Rollos der Gruppe. Leer heißt: Die
+    # Gruppe ordnet nur, sie schaltet nicht.
+    "plan": "",
+    # Der Freigabeschalter der Gruppe – ein eigener Schalter des Planers.
+    # Steht er aus, fährt der Planer keines ihrer Rollos nach Plan. Genau das
+    # taten früher „EG schliessen" und „Obergeschoss schliessen": ein Schalter
+    # für einen ganzen Schnitt des Hauses. Bisher hing so etwas als Bedingung
+    # an jedem einzelnen Schaltpunkt und war nur über Umwege zu erkennen.
+    "schalter": "",
+    "aktiv": True,
+}
+
 STANDARD_ROLLO = {
     # Die Entität ist der Schlüssel: Ein Rollo ist genau ein `cover.`.
     "entity_id": "",
@@ -256,7 +280,8 @@ def rauch_meldewege(einstellungen: dict) -> list[str]:
 
 
 def _leer_config() -> dict:
-    return {"einstellungen": dict(STANDARD_EINSTELLUNGEN), "plaene": [], "rollos": []}
+    return {"einstellungen": dict(STANDARD_EINSTELLUNGEN), "plaene": [],
+            "rollos": [], "gruppen": []}
 
 
 # ------------------------------------------------------------------- I/O ----
@@ -305,6 +330,7 @@ def load_config() -> dict:
         "einstellungen": _merge(STANDARD_EINSTELLUNGEN, roh.get("einstellungen") or {}),
         "plaene": [_merge(STANDARD_PLAN, p) for p in (roh.get("plaene") or [])],
         "rollos": [_merge(STANDARD_ROLLO, r) for r in (roh.get("rollos") or [])],
+        "gruppen": [_merge(STANDARD_GRUPPE, g) for g in (roh.get("gruppen") or [])],
     }
 
 
@@ -461,6 +487,102 @@ def validate_plan(plan: dict, vorhandene_id: str | None = None) -> dict:
         "aktiv": bool(plan.get("aktiv", True)),
         "zeitplan": validate_zeitplan(plan.get("zeitplan") or []),
     }
+
+
+def gruppen_ableiten(rollos: list, plaene: list, namen: dict | None = None,
+                     etagen: dict | None = None) -> list[dict]:
+    """Obergruppen für eine bestehende Konfiguration vorschlagen.
+
+    Vorgeschlagen wird nach **Etage** – so führt Home Assistant seine Bereiche,
+    und so waren in diesem Haus die Sammelautomationen geschnitten („Rollo
+    schliessen EG", „Obergeschoss schliessen"). Wo keine Etage hinterlegt ist,
+    tritt der Bereich an ihre Stelle, und fehlt auch der, steht das Rollo für
+    sich – lieber eine Einzelgruppe als ein Sammelbecken „Sonstige", in dem
+    nachher alles landet.
+
+    Die Gruppen starten **ohne** eigenen Zeitplan: Sie ordnen zunächst nur.
+    Jedes Rollo behält, was es hat; die Überführung nimmt nichts weg und fügt
+    nichts hinzu.
+    """
+    namen, etagen = namen or {}, etagen or {}
+    gruppen: list[dict] = []
+    nach_name: dict[str, dict] = {}
+    for rollo in rollos or []:
+        eid = rollo["entity_id"]
+        titel = (etagen.get(eid) or (rollo.get("raum") or "").strip()
+                 or rollo.get("name") or namen.get(eid) or eid)
+        gruppe = nach_name.get(titel)
+        if gruppe is None:
+            gruppe = {"name": titel, "rollos": [], "plan": "",
+                      "schalter": "", "aktiv": True}
+            nach_name[titel] = gruppe
+            gruppen.append(gruppe)
+        gruppe["rollos"].append(eid)
+    return validate_gruppen(gruppen, {r["entity_id"] for r in rollos or []},
+                            {p["id"] for p in plaene or []})
+
+
+def validate_gruppe(gruppe: dict, bekannte_rollos: set | None = None,
+                    bekannte_plaene: set | None = None,
+                    vorhandene_id: str | None = None) -> dict:
+    """Eine Gruppe: ein Name, die Rollos darin, und wahlweise ein Zeitplan.
+
+    Die Rollos werden gegen die eingerichteten geprüft. Eine Gruppe, die auf
+    ein gelöschtes Rollo zeigt, wäre still kaputt – sie sähe vollständig aus
+    und ließe eines aus.
+    """
+    if not isinstance(gruppe, dict):
+        raise ValidationError("Gruppe: Objekt erwartet")
+    name = str(gruppe.get("name") or "").strip()[:60]
+    if not name:
+        raise ValidationError("Die Gruppe braucht einen Namen")
+
+    rollos, gesehen = [], set()
+    for eid in gruppe.get("rollos") or []:
+        eid = str(eid).strip()
+        if not eid or eid in gesehen:
+            continue
+        if bekannte_rollos is not None and eid not in bekannte_rollos:
+            raise ValidationError(f"„{name}“: {eid} ist kein eingerichtetes Rollo")
+        gesehen.add(eid)
+        rollos.append(eid)
+
+    plan = str(gruppe.get("plan") or "").strip()
+    if plan and bekannte_plaene is not None and plan not in bekannte_plaene:
+        raise ValidationError(f"„{name}“: den Zeitplan {plan} gibt es nicht")
+
+    return {
+        "id": vorhandene_id or str(gruppe.get("id") or "").strip() or uuid.uuid4().hex[:8],
+        "name": name,
+        "rollos": rollos,
+        "plan": plan,
+        "schalter": str(gruppe.get("schalter") or "").strip(),
+        "aktiv": bool(gruppe.get("aktiv", True)),
+    }
+
+
+def validate_gruppen(gruppen, bekannte_rollos: set | None = None,
+                     bekannte_plaene: set | None = None) -> list[dict]:
+    """Alle Gruppen – und die Prüfung, dass kein Rollo in zweien steht.
+
+    Ein Rollo in zwei Gruppen hätte zwei Zeitpläne, und welcher gilt, wäre eine
+    Frage der Reihenfolge im Speicher. Das ist keine Gruppierung mehr.
+    """
+    if gruppen is None:
+        return []
+    if not isinstance(gruppen, list):
+        raise ValidationError("Gruppen: Liste erwartet")
+    fertig, belegt = [], {}
+    for g in gruppen:
+        eintrag = validate_gruppe(g, bekannte_rollos, bekannte_plaene)
+        for eid in eintrag["rollos"]:
+            if eid in belegt:
+                raise ValidationError(
+                    f"{eid} steht in „{belegt[eid]}“ und in „{eintrag['name']}“ – "
+                    "ein Rollo gehört in höchstens eine Gruppe")
+            belegt[eid] = eintrag["name"]
+        fertig.append(eintrag)
+    return fertig
 
 
 def validate_rollo(rollo: dict) -> dict:
@@ -745,6 +867,28 @@ def plaene_setzen(plaene: list) -> list[dict]:
     config["plaene"] = out
     save_config(config)
     return out
+
+
+def gruppen_setzen(gruppen: list) -> list[dict]:
+    """Alle Obergruppen auf einmal – Reihenfolge inbegriffen.
+
+    Einzeln zu speichern ginge auch, aber die Reihenfolge *ist* die Liste:
+    Wer eine Gruppe verschiebt, ändert nichts an ihr, sondern an ihrer Stelle.
+    """
+    config = load_config()
+    out = validate_gruppen(gruppen,
+                           {r["entity_id"] for r in config["rollos"]},
+                           {p["id"] for p in config["plaene"]})
+    config["gruppen"] = out
+    save_config(config)
+    return out
+
+
+def gruppen_vorschlag(namen: dict | None = None,
+                      etagen: dict | None = None) -> list[dict]:
+    """Ein Vorschlag aus der bestehenden Konfiguration – ohne ihn zu speichern."""
+    config = load_config()
+    return gruppen_ableiten(config["rollos"], config["plaene"], namen, etagen)
 
 
 def update_einstellungen(roh: dict) -> dict:

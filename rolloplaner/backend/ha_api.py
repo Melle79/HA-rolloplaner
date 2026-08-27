@@ -302,6 +302,35 @@ def bereiche_je_entitaet(domains: tuple[str, ...] = ("cover", "binary_sensor"),
     return zuordnung if zuordnung else (gespeichert[1] if gespeichert else {})
 
 
+_etagen_cache: dict = {}
+
+
+def etagen_je_entitaet(hoechstalter: float = BEREICH_CACHE_SEKUNDEN) -> dict:
+    """Entity-ID → Etagenname, für die Rollos.
+
+    Home Assistant führt seine Bereiche in Etagen. Das ist genau der Schnitt,
+    nach dem in diesem Haus die Sammelautomationen gebaut waren („Rollo
+    schliessen EG", „Obergeschoss schliessen"), und damit der beste Vorschlag
+    für eine Obergruppe – besser als etwas, das der Planer sich ausdenkt.
+    """
+    import time
+
+    gespeichert = _etagen_cache.get("cover")
+    if gespeichert and time.monotonic() - gespeichert[0] < hoechstalter:
+        return gespeichert[1]
+
+    roh = template("{%- for s in states.cover %}{{ s.entity_id }}|"
+                   "{{ floor_name(s.entity_id) or '' }}\n{% endfor -%}")
+    zuordnung = {}
+    for zeile in roh.splitlines():
+        entity_id, _, etage = zeile.partition("|")
+        if entity_id and etage:
+            zuordnung[entity_id] = etage
+    if zuordnung or gespeichert is None:
+        _etagen_cache["cover"] = (time.monotonic(), zuordnung)
+    return zuordnung if zuordnung else (gespeichert[1] if gespeichert else {})
+
+
 def ist_fensterkontakt(entity_id: str, name: str, klasse: str | None) -> bool:
     """Fensterkontakt an Geräteklasse oder Bezeichnung erkennen.
 

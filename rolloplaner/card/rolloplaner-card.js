@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.11.0";
+const CARD_VERSION = "2.12.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -126,7 +126,10 @@ class RolloplanerCard extends HTMLElement {
                          (r.sensor.attributes.helfer || []).map(
                            (h) => [h.entity_id, hass.states[h.entity_id]
                                                 && hass.states[h.entity_id].state]),
-                         r.schalter && r.schalter.state]),
+                         r.sensor.attributes.gruppe,
+                         r.sensor.attributes.raum,
+                         r.schalter && r.schalter.state,
+                         r.hitzeschutz && r.hitzeschutz.state]),
       hass.states["sensor.rolloplaner_naechster_wechsel"]
         && hass.states["sensor.rolloplaner_naechster_wechsel"].state,
       hass.states["binary_sensor.rolloplaner_stoerung"]
@@ -146,6 +149,7 @@ class RolloplanerCard extends HTMLElement {
       .map((e) => {
         const sensor = hass.states[e];
         const schalterId = e.replace(/^sensor\./, "switch.") + "_an";
+        const sonnenId = e.replace(/^sensor\./, "switch.") + "_hitzeschutz";
         return {
           id: e,
           // Home Assistant stellt den Gerätenamen voran: aus „Rollo Büro“ wird
@@ -154,8 +158,10 @@ class RolloplanerCard extends HTMLElement {
           name: (sensor.attributes.friendly_name || e)
             .replace(/^Rolloplaner\s+/, "").replace(/^Rollo\s+/, ""),
           raum: sensor.attributes.raum || "",
+          gruppe: sensor.attributes.gruppe || "",
           sensor,
           schalter: hass.states[schalterId] || null,
+          hitzeschutz: hass.states[sonnenId] || null,
         };
       })
       .filter((r) => !gewuenscht || gewuenscht.includes(r.raum))
@@ -297,20 +303,25 @@ class RolloplanerCard extends HTMLElement {
       if (!rollos.length) {
         rolloHtml = `<div class="rand"><div class="leer">Noch kein Rollo eingerichtet.</div></div>`;
       } else if (c.gruppieren) {
-        // Jeder Raum ist ein Block, und die Blöcke fließen nebeneinander. Eine
-        // Überschrift über die ganze Breite zwänge jeden Raum in eine eigene
-        // Zeile – bei einem Zimmer mit einem Rollo bliebe daneben die halbe
-        // Karte leer. Ein Block ist so breit, wie er Kacheln hat.
-        const nachRaum = new Map();
+        // Zwei Ebenen: Die Obergruppe – bei uns die Etage – ist die
+        // Überschrift, der Raum steht am Rollo. Vorher war der Raum der Block,
+        // und ein Block war so breit, wie er Kacheln hatte: Bei 1280 px war
+        // die Kachel eines Ein-Rollo-Zimmers 619 px breit, die daneben 413.
+        // Gleiche Dinge in verschiedenen Größen, und die Karte sah unruhig aus.
+        //
+        // Jetzt füllt jede Überschrift die Breite, und darunter läuft **ein**
+        // Raster: Alle Kacheln sind gleich breit, egal wie viele Rollos eine
+        // Gruppe hat. Der Raum geht dabei nicht verloren, er steht als Schild
+        // an der Kachel – dort, wo er hingehört.
+        const nachGruppe = new Map();
         rollos.forEach((r) => {
-          const raum = r.raum || "Ohne Bereich";
-          if (!nachRaum.has(raum)) nachRaum.set(raum, []);
-          nachRaum.get(raum).push(r);
+          const titel = r.gruppe || r.raum || "Ohne Gruppe";
+          if (!nachGruppe.has(titel)) nachGruppe.set(titel, []);
+          nachGruppe.get(titel).push(r);
         });
-        rolloHtml = `<div class="raeume">${[...nachRaum].map(([raum, liste]) =>
-          `<section class="raumgruppe" style="flex-grow:${liste.length};
-             flex-basis:${Math.round(liste.length * 300 * this._skala())}px">
-            <div class="raumtitel">${this._esc(raum)}</div>
+        rolloHtml = `<div class="raeume">${[...nachGruppe].map(([titel, liste]) =>
+          `<section class="raumgruppe">
+            <div class="raumtitel">${this._esc(titel)}</div>
             <div class="gruppe">${liste.map((r) => this._rollo(r)).join("")}</div>
           </section>`).join("")}</div>`;
       } else {
@@ -346,6 +357,13 @@ class RolloplanerCard extends HTMLElement {
     const schild = ZUSTAND_TEXT[zustand]
       ? `<span class="schild s-${zustand}">${ZUSTAND_TEXT[zustand]}</span>` : "";
 
+    // Der Raum steht seit der Umstellung auf Obergruppen an der Kachel. Er
+    // entfällt, wo der Name ihn schon enthält: „Rollo Küche" im Raum „Küche"
+    // zweimal zu lesen, hilft niemandem.
+    const raum = attrs.raum || "";
+    const raumSchild = raum && !r.name.toLowerCase().includes(raum.toLowerCase())
+      ? `<span class="raumschild">${this._esc(raum)}</span>` : "";
+
     // Die Begründung ist Vergangenheit, die Fußzeile Zukunft. Ohne die Uhrzeit
     // davor las sich beides als Folge von Vorhaben: „zu um Sonnenuntergang …
     // dann offen um 10:00 Uhr" klingt nach zwei Terminen, von denen der erste
@@ -370,6 +388,19 @@ class RolloplanerCard extends HTMLElement {
         title="Automatik für ${this._esc(r.name)}">
         <ha-icon icon="mdi:${an ? "robot" : "robot-off"}"></ha-icon></button>` : "";
 
+    // Ein Knopf für den Hitzeschutz dieses Rollos – aber nur, wo eine
+    // Himmelsrichtung hinterlegt ist. Ohne sie weiß der Planer nicht, wann die
+    // Sonne in dieses Fenster steht; ein Knopf ohne Wirkung ist schlimmer als
+    // keiner, weil man ihn für kaputt hält statt für unzuständig.
+    const sonne = r.hitzeschutz && attrs.ausrichtung !== null
+                  && attrs.ausrichtung !== undefined
+      ? `<button class="tipp ${r.hitzeschutz.state === "on" ? "an" : ""}"
+          data-schalter="${r.hitzeschutz.entity_id}"
+          data-an="${r.hitzeschutz.state === "on" ? "0" : "1"}"
+          title="Hitzeschutz für ${this._esc(r.name)} (Fenster zeigt nach ${
+            this._esc(String(attrs.ausrichtung))}°)">
+          <ha-icon icon="mdi:sun-thermometer"></ha-icon></button>` : "";
+
     const zahl = Number(r.sensor.state);
     const wert = Number.isNaN(zahl) ? "–" : zahl;
 
@@ -379,7 +410,12 @@ class RolloplanerCard extends HTMLElement {
                     ? r.sensor.state : attrs.stellung_ha, attrs.art)}
         <div class="z1-text">
           <div class="namenzeile">
-            <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>${schild}
+            <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>${raumSchild}${schild}${
+              // Heißt der Zeitplan wie der Raum, steht dasselbe Wort zweimal
+              // nebeneinander. Einmal reicht.
+              attrs.zeitplan && attrs.zeitplan !== raum
+                ? `<span class="planschild" title="Zeitplan">${
+                    this._esc(attrs.zeitplan)}</span>` : ""}
           </div>
           <div class="grund">${grund}</div>
         </div>
@@ -390,10 +426,8 @@ class RolloplanerCard extends HTMLElement {
       </div>
       ${c.show_helfer ? this._helfer(attrs.helfer || [], r.name) : ""}
       <div class="z3">
-        ${attrs.zeitplan
-          ? `<span class="planschild">${this._esc(attrs.zeitplan)}</span>` : ""}
         <span class="dann">${dann}</span>
-        <span class="knoepfe">${knoepfe}${kippe}</span>
+        <span class="knoepfe">${knoepfe}${sonne}${kippe}</span>
       </div>
     </div>`;
   }
@@ -574,11 +608,13 @@ class RolloplanerCard extends HTMLElement {
          verloren hat regelmäßig die Uhrzeit – also die Tatsache gegen die
          Beschriftung. Am Namen ist er außerdem, was er ist: eine Eigenschaft
          des Rollos, nicht des nächsten Schaltpunkts. */
+      /* Der Zeitplanname steht bei den Schildern am Namen. In der Fußzeile
+         stritt er mit der Uhrzeit um die Breite, und verloren hat regelmäßig
+         die Uhrzeit – also die Tatsache gegen die Beschriftung. */
       .planschild{display:inline-block; padding:0 7px; border-radius:12px;
         background:rgba(127,127,127,.2); color:var(--secondary-text-color);
-        font-size:calc(.66rem * var(--skala)); font-weight:600;
-        white-space:nowrap; flex:0 50 auto; min-width:0;
-        overflow:hidden; text-overflow:ellipsis}
+        font-size:calc(.64rem * var(--skala)); font-weight:600;
+        white-space:nowrap; flex:none}
 
       /* ── Ein Chip, ein Aussehen – oben wie in der Kachel ── */
       .chip{display:inline-flex; align-items:center; gap:5px; cursor:pointer;
@@ -633,16 +669,20 @@ class RolloplanerCard extends HTMLElement {
          gibt sie an sein Raster weiter (flex:1), und grid-auto-rows:1fr teilt
          sie gleichmäßig auf die Kacheln auf. Ohne diese Kette richtet sich jede
          Kachel nach ihrem eigenen Inhalt, und die Reihe franst aus. */
-      .raeume{display:flex; flex-wrap:wrap; gap:4px 18px; padding:0 12px 12px;
-        align-items:stretch}
-      .raumgruppe{min-width:min(calc(250px * var(--skala)), 100%); max-width:100%; display:flex;
-        flex-direction:column}
-      .gruppe{display:grid; gap:10px; align-items:stretch; flex:1;
-        grid-auto-rows:1fr;
-        /* minmax(0,…) statt 1fr: Eine „auto"-Spalte schrumpft nie unter den
-           Mindestinhalt ihrer Kacheln, und die Kachel stand dann über den Rand
-           hinaus, statt ihren Text abzuschneiden. */
-        grid-template-columns:minmax(0, 1fr)}
+      /* Untereinander, jede Gruppe über die volle Breite. Die Kacheln darin
+         liegen in einem Raster mit fester Spaltenbreite – daher sind sie
+         überall gleich breit, ohne dass die Karte ihre eigene Spaltenzahl
+         ausrechnen müsste. */
+      .raeume{--spalte:calc(300px * var(--skala)); display:flex;
+        flex-direction:column; gap:2px; padding:0 12px 12px}
+      .raumgruppe{min-width:0; display:flex; flex-direction:column}
+      .gruppe{display:grid; gap:10px 14px; align-items:stretch; grid-auto-rows:1fr;
+        /* minmax(min(…,100%),…): Eine „auto"-Spalte schrumpft nie unter den
+           Mindestinhalt ihrer Kacheln – die Kachel stand dann über den Rand
+           hinaus, statt ihren Text abzuschneiden. Der 100-Prozent-Deckel hält
+           sie auf einem schmalen Telefon in der Karte. */
+        grid-template-columns:repeat(auto-fill,
+          minmax(min(var(--spalte), 100%), 1fr))}
       .raum{display:flex; flex-direction:column;
         border:1px solid var(--divider-color); border-radius:10px;
         padding:10px 11px 8px}
@@ -677,6 +717,11 @@ class RolloplanerCard extends HTMLElement {
       .schild{font-size:calc(.66rem * var(--skala)); font-weight:600; padding:1px 7px; border-radius:18px;
         white-space:nowrap; letter-spacing:.02em; flex:none;
         background:rgba(127,127,127,.22); color:var(--primary-text-color)}
+      /* Der Raum ist eine Einordnung, kein Zustand – deshalb blasser als die
+         Zustandsschilder daneben und ohne eigene Farbe. */
+      .raumschild{font-size:calc(.64rem * var(--skala)); font-weight:500;
+        padding:1px 7px; border-radius:18px; white-space:nowrap; flex:none;
+        border:1px solid var(--divider-color); color:var(--secondary-text-color)}
       .s-rauch{background:rgba(227,109,109,.3)}
       .s-fluchtweg{background:rgba(227,109,109,.45); color:var(--primary-text-color)}
       .warnung .schwer{font-weight:600}
@@ -773,10 +818,7 @@ class RolloplanerCard extends HTMLElement {
          ist bewusst großzügig: Bei 240 Pixeln zerfiel eine breite Karte in
          sechs schmale Spalten, in denen jeder Text dreizeilig umbrach. So
          bleiben es wenige, ruhige Kacheln, in denen alles lesbar steht. */
-      @container (min-width: 640px){
-        .gruppe{grid-template-columns:repeat(auto-fill,
-          minmax(min(calc(280px * var(--skala)), 100%), 1fr))}
-      }
+
 
       .leer{padding:14px 0; color:var(--secondary-text-color); font-size:calc(.85rem * var(--skala));
         text-align:center}

@@ -238,6 +238,7 @@ def _mqtt_starten() -> None:
     _publisher.on_ready = bereit
     _publisher.on_schalter = _schalter_setzen
     _publisher.on_rollo = _rollo_schalten
+    _publisher.on_hitzeschutz = _hitzeschutz_schalten
     _publisher.on_plan = _plan_schalten
     _publisher.on_eigen = _eigenen_schalter_setzen
     _publisher.on_command = _befehl
@@ -339,6 +340,28 @@ def _schalter_setzen(key: str, an: bool) -> None:
         return
     _LOGGER.info("Schalter %s → %s", key, "an" if an else "aus")
     _sofort_rechnen()
+
+
+def _hitzeschutz_schalten(entity_id: str, an: bool) -> None:
+    """Den Hitzeschutz eines einzelnen Rollos umlegen.
+
+    Ohne Ausrichtung kann er nichts tun – der Planer weiß dann nicht, wann die
+    Sonne in dieses Fenster steht. Das Einschalten wird trotzdem gespeichert,
+    aber es gehört ins Protokoll, sonst sucht man später am falschen Ende.
+    """
+    config = store.load_config()
+    for rollo in config["rollos"]:
+        if rollo["entity_id"] != entity_id:
+            continue
+        if an and rollo.get("ausrichtung") is None:
+            _LOGGER.warning("Hitzeschutz für %s eingeschaltet, aber ohne "
+                            "Ausrichtung bleibt er wirkungslos", entity_id)
+        store.update_rollo(entity_id, {**rollo, "beschattung": an})
+        _LOGGER.info("Hitzeschutz %s → %s", entity_id, "an" if an else "aus")
+        _discovery_auffrischen()
+        _sofort_rechnen()
+        return
+    _LOGGER.warning("Hitzeschutz für unbekanntes Rollo: %s", entity_id)
 
 
 def _rollo_schalten(entity_id: str, an: bool) -> None:
@@ -612,6 +635,37 @@ def api_rollo(entity_id: str):
     _discovery_auffrischen()
     _sofort_rechnen()
     return jsonify(ergebnis)
+
+
+@app.route("/api/gruppen", methods=["GET", "PUT"])
+def api_gruppen():
+    """Die Obergruppen. Immer als ganze Liste – die Reihenfolge ist Inhalt."""
+    if request.method == "GET":
+        return jsonify(store.load_config().get("gruppen") or [])
+    try:
+        ergebnis = store.gruppen_setzen(
+            (request.get_json(force=True) or {}).get("gruppen"))
+    except store.ValidationError as err:
+        return jsonify({"fehler": str(err)}), 400
+    _discovery_auffrischen()
+    _sofort_rechnen()
+    return jsonify(ergebnis)
+
+
+@app.route("/api/gruppen/vorschlag")
+def api_gruppen_vorschlag():
+    """Was der Planer vorschlüge – gespeichert wird dabei nichts.
+
+    Nach Etage, so wie Home Assistant die Bereiche führt. Der Vorschlag
+    kommt ohne Gruppenzeitplan: Er ordnet, er ändert kein Verhalten.
+    """
+    try:
+        etagen = ha_api.etagen_je_entitaet()
+    except Exception:  # noqa: BLE001 – ohne Etagen tritt der Bereich ein
+        etagen = {}
+    namen = {r["entity_id"]: r["name"]
+             for r in (_letzter_bericht or {}).get("rollos") or []}
+    return jsonify(store.gruppen_vorschlag(namen, etagen))
 
 
 @app.route("/api/plaene", methods=["GET", "POST", "PUT"])
