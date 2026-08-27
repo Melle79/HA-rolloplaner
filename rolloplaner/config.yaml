@@ -1,5 +1,5 @@
 name: "Rolloplaner"
-version: "2.8.0"
+version: "2.9.0"
 slug: "rolloplaner"
 description: "Rollladensteuerung: Zeitplan je Raum nach Uhrzeit oder Sonnenstand, Hitzeschutz nach Sonnenrichtung, Urlaubssimulation, Fenstersperre und Fluchtweg-Freigabe bei Rauchalarm"
 url: "https://github.com/Melle79/HA-rolloplaner"

@@ -1,5 +1,31 @@
 # Änderungen
 
+## 2.9.0 – 27.08.2026
+
+**Die Karte lässt sich größer stellen — und ist es ab jetzt von Haus aus.**
+
+Am Wandtablett im Flur war sie kaum zu lesen. Neue Kartenoption
+`textgroesse: klein | normal | gross | riesig` (oder eine Zahl von 0,7 bis
+2,5); **Vorgabe ist jetzt „gross" (1,2×)**, *normal* ist die bisherige
+Darstellung.
+
+Mitskaliert wird alles: Schrift, Symbole, die Mindestbreite einer Kachel und
+die Umbruchschwelle. Sonst wüchse der Text in eine gleich breite Kachel hinein
+und jeder zweite Name stünde abgeschnitten da.
+
+**Zwei alte Layoutfehler dabei gefunden**, beide unabhängig von der Schriftgröße:
+
+* **Die Karte kannte kein `box-sizing`.** Rand und Polster einer Kachel kamen
+  zur Spaltenbreite hinzu, also stand jede Kachel 24 px über den Kartenrand
+  hinaus, sobald die Karte schmal wurde. Ein Schattenbaum erbt keinen Reset von
+  der Seite.
+* **Die Gitterspalte konnte nicht schrumpfen.** `1fr` heißt `minmax(auto, 1fr)`
+  und geht nie unter den Mindestinhalt — die Kachel stand über den Rand hinaus,
+  statt ihren Text abzuschneiden. Jetzt `minmax(0, 1fr)`.
+
+Geprüft von 320 px bis 1820 px: kein Überlauf mehr, und ab 480 px sind alle
+Kacheln wieder exakt gleich hoch.
+
 ## 2.8.0 – 27.08.2026
 
 **Der eigene Melder des Planers zählte als Rauchmelder – der erste Alarm hätte

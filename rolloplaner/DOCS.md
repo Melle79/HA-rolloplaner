@@ -337,6 +337,27 @@ eines, das zweimal am Tag fährt, meldet sich auch nur zweimal am Tag.
 | `binary_sensor.rolloplaner_fluchtweg_offen` | Freigabe läuft gerade; Attribute sagen, was auffuhr und was nicht |
 | `binary_sensor.rolloplaner_stoerung` | Ein Antrieb meldet sich nicht oder hängt |
 
+### Schriftgröße
+
+Die Karte hängt hier auch an einem Wandtablett im Flur, und was am Schreibtisch
+klein und aufgeräumt wirkt, ist aus anderthalb Metern nicht mehr zu lesen.
+Deshalb hat sie eine Textskala:
+
+```yaml
+type: custom:rolloplaner-card
+textgroesse: gross      # klein | normal | gross | riesig – oder eine Zahl
+```
+
+Vorgabe ist **gross** (1,2×). *normal* ist die alte, kleinere Darstellung,
+*riesig* (1,45×) ist für die Wand gedacht. Statt einer Stufe geht auch eine
+Zahl zwischen 0,7 und 2,5, wer dazwischen liegt.
+
+Mitskaliert wird **alles**: Schrift, Symbole, die Mindestbreite einer Kachel
+und die Umbruchschwelle. Sonst wüchse der Text in eine Kachel hinein, die
+gleich breit bleibt, und jeder zweite Name stünde abgeschnitten da. Nach oben
+begrenzt die Kartenbreite: Auf einem Telefon im Hochformat bleibt eine Spalte,
+egal wie groß die Schrift steht.
+
 ## Die Karte
 
 Je Rollo eine Kachel, nach Raum geordnet. **Jeder Raum ist ein Block**, und die

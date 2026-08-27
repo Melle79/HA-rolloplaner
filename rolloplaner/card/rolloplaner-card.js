@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.4.0";
+const CARD_VERSION = "2.9.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -35,7 +35,13 @@ const DEFAULTS = {
   allow_fahren: true,
   raeume: null,             // null = alle, sonst Liste von Raumnamen
   gruppieren: true,         // nach Raum ordnen
+  // Schriftgröße. Die Karte hängt bei uns auch an einem Wandtablett im Flur,
+  // und was am Schreibtisch klein und aufgeräumt wirkt, ist aus anderthalb
+  // Metern nicht mehr zu lesen.
+  textgroesse: "gross",     // klein | normal | gross | riesig
 };
+
+const TEXTSKALA = {klein: 0.9, normal: 1, gross: 1.2, riesig: 1.45};
 
 const FUNKTIONEN = [
   ["switch.rolloplaner_automatik", "Automatik", "mdi:home-automation"],
@@ -185,7 +191,7 @@ class RolloplanerCard extends HTMLElement {
     const c = this._config;
 
     if (!status) {
-      this.shadowRoot.innerHTML = `<ha-card><div class="rand"><div class="leer">
+      this.shadowRoot.innerHTML = `<ha-card style="--skala:${this._skala()}"><div class="rand"><div class="leer">
         Entitäten des Rolloplaner Add-ons nicht gefunden
         (<code>sensor.rolloplaner_status</code>). Läuft das Add-on, und ist
         MQTT eingerichtet?</div></div></ha-card>${this._stil()}`;
@@ -303,7 +309,7 @@ class RolloplanerCard extends HTMLElement {
         });
         rolloHtml = `<div class="raeume">${[...nachRaum].map(([raum, liste]) =>
           `<section class="raumgruppe" style="flex-grow:${liste.length};
-             flex-basis:${liste.length * 300}px">
+             flex-basis:${Math.round(liste.length * 300 * this._skala())}px">
             <div class="raumtitel">${this._esc(raum)}</div>
             <div class="gruppe">${liste.map((r) => this._rollo(r)).join("")}</div>
           </section>`).join("")}</div>`;
@@ -312,7 +318,7 @@ class RolloplanerCard extends HTMLElement {
       }
     }
 
-    this.shadowRoot.innerHTML = `<ha-card>
+    this.shadowRoot.innerHTML = `<ha-card style="--skala:${this._skala()}">
       <div class="rand">${kopf}${warnung}${funktionen}${naechsterHtml}${freigabenHtml}</div>
       ${rolloHtml}
     </ha-card>${this._stil()}`;
@@ -466,6 +472,15 @@ class RolloplanerCard extends HTMLElement {
       : d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
   }
 
+  _skala() {
+    // Eine Zahl darf auch direkt in der Kartenkonfiguration stehen – wer
+    // zwischen zwei Stufen liegt, soll nicht die Karte umbauen müssen.
+    const wunsch = (this._config || {}).textgroesse;
+    if (typeof wunsch === "number" && wunsch > 0)
+      return Math.min(2.5, Math.max(0.7, wunsch));
+    return TEXTSKALA[wunsch] ?? TEXTSKALA[DEFAULTS.textgroesse];
+  }
+
   _esc(text) {
     return String(text === null || text === undefined ? "" : text)
       .replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;",
@@ -479,27 +494,35 @@ class RolloplanerCard extends HTMLElement {
          Vorfahren mit container-type – ein Element kann nicht sein eigener
          Container sein. Stand er auf .raeume, blieben deren eigene Regeln
          wirkungslos, und die Karte hing bei einer Spalte fest. */
-      ha-card{display:block; overflow:hidden; container-type:inline-size;
+      /* Ohne das rechnet der Browser Rand und Polster einer Kachel zur
+         Spaltenbreite hinzu – bei schmalen Karten stand jede Kachel 24 px über
+         den Rand hinaus. Ein Schattenbaum erbt keinen Reset von der Seite. */
+      *{box-sizing:border-box}
+
+      /* Die Textskala. Sie steht als Vorgabe hier, damit die Karte auch dann
+         etwas anzeigt, wenn die Konfiguration noch nicht durch ist – das
+         Kartenelement selbst überschreibt sie. */
+      ha-card{--skala:1.2; display:block; overflow:hidden; container-type:inline-size;
         /* Home Assistant bringt keine verlässliche Grünvariable mit; die
            meisten Themes setzen --success-color, sonst dieses Grün. */
         --an-farbe:var(--success-color, #43a047)}
       .rand{padding:14px 16px 12px}
 
       .kopf{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
-      .k-icon{--mdc-icon-size:26px; flex:none;
+      .k-icon{--mdc-icon-size:calc(26px * var(--skala)); flex:none;
         color:var(--state-icon-color, var(--primary-color))}
       .k-text{flex:1 1 auto; min-width:110px}
-      .k-titel{font-size:1.15rem; font-weight:500; line-height:1.25;
+      .k-titel{font-size:calc(1.15rem * var(--skala)); font-weight:500; line-height:1.25;
         color:var(--primary-text-color)}
-      .k-status{font-size:.8rem; color:var(--secondary-text-color)}
-      .k-rechts{display:flex; gap:12px; font-size:.8rem; flex-wrap:wrap;
+      .k-status{font-size:calc(.8rem * var(--skala)); color:var(--secondary-text-color)}
+      .k-rechts{display:flex; gap:12px; font-size:calc(.8rem * var(--skala)); flex-wrap:wrap;
         color:var(--secondary-text-color)}
       .k-rechts span{display:inline-flex; align-items:center; gap:3px;
         white-space:nowrap}
       .k-rechts ha-icon{--mdc-icon-size:16px}
 
       .warnung{display:flex; gap:8px; align-items:flex-start; margin-top:10px;
-        padding:8px 10px; border-radius:8px; font-size:.84rem;
+        padding:8px 10px; border-radius:8px; font-size:calc(.84rem * var(--skala));
         color:var(--primary-text-color);
         border-left:3px solid var(--warning-color,#e0a44a);
         background:rgba(224,164,74,.16)}
@@ -512,9 +535,9 @@ class RolloplanerCard extends HTMLElement {
       .funktionen{display:flex; gap:6px; flex-wrap:wrap; margin-top:12px}
       .fn{display:inline-flex; align-items:center; gap:5px; cursor:pointer;
         border:1px solid var(--divider-color); background:none; border-radius:18px;
-        padding:4px 11px; font-size:.8rem; font-weight:500; font-family:inherit;
+        padding:4px 11px; font-size:calc(.8rem * var(--skala)); font-weight:500; font-family:inherit;
         color:var(--secondary-text-color)}
-      .fn ha-icon{--mdc-icon-size:16px}
+      .fn ha-icon{--mdc-icon-size:calc(16px * var(--skala))}
       .fn:hover{color:var(--primary-text-color)}
       /* Dieselbe Farbe wie bei den Schaltern in den Kacheln: an ist grün.
          Die Themenfarbe wäre hier zwar hübscher, sagt aber nichts – ein
@@ -523,28 +546,28 @@ class RolloplanerCard extends HTMLElement {
         color:var(--text-primary-color,#fff)}
 
       .naechster{display:flex; align-items:center; gap:6px; margin-top:10px;
-        font-size:.8rem; color:var(--secondary-text-color)}
+        font-size:calc(.8rem * var(--skala)); color:var(--secondary-text-color)}
       .naechster ha-icon{--mdc-icon-size:15px; flex:none}
 
       /* ── Die geteilten Schalter, einmal oben ── */
       .freigaben{margin-top:12px; padding-top:10px;
         border-top:1px solid var(--divider-color)}
-      .f-titel{font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
+      .f-titel{font-size:calc(.7rem * var(--skala)); letter-spacing:.06em; text-transform:uppercase;
         color:var(--secondary-text-color); opacity:.8; margin-bottom:6px}
       .f-liste{display:flex; gap:5px; flex-wrap:wrap; align-items:center}
-      .raumtitel{font-size:.68rem; letter-spacing:.09em; text-transform:uppercase;
+      .raumtitel{font-size:calc(.68rem * var(--skala)); letter-spacing:.09em; text-transform:uppercase;
         color:var(--secondary-text-color); opacity:.85; font-weight:600;
         padding:8px 0 4px; border-bottom:1px solid var(--divider-color);
         margin-bottom:8px}
       .planschild{display:inline-block; padding:0 6px; border-radius:12px;
         background:rgba(127,127,127,.2); color:var(--secondary-text-color);
-        font-size:.68rem; font-weight:600}
+        font-size:calc(.68rem * var(--skala)); font-weight:600}
 
       /* ── Ein Chip, ein Aussehen – oben wie in der Kachel ── */
       .chip{display:inline-flex; align-items:center; gap:5px; cursor:pointer;
         border:1px solid var(--divider-color); background:none; border-radius:14px;
         padding:2px 9px 2px 7px; font-family:inherit; font-weight:500;
-        font-size:.74rem; color:var(--secondary-text-color); line-height:1.5;
+        font-size:calc(.74rem * var(--skala)); color:var(--secondary-text-color); line-height:1.5;
         max-width:100%; min-width:0; flex:0 1 auto}
       /* Der Punkt davor sagt an oder aus. Ein bloß etwas hellerer Hintergrund
          reicht dafür nicht – ein Schalter, dessen Stellung man raten muss, ist
@@ -563,7 +586,7 @@ class RolloplanerCard extends HTMLElement {
       .c-text{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
         min-width:2.5ch}
       .chip select{border:none; background:none; font-family:inherit;
-        font-size:.74rem; color:var(--primary-text-color); cursor:pointer;
+        font-size:calc(.74rem * var(--skala)); color:var(--primary-text-color); cursor:pointer;
         padding:1px 2px; max-width:110px; min-width:0; flex:0 1 auto}
       .chip select:focus{outline:none}
       /* Eine Reihe, immer. Umbrechen würde die Kachel wachsen lassen und
@@ -572,8 +595,8 @@ class RolloplanerCard extends HTMLElement {
          Tooltip. Die Mindesthöhe hält den Platz frei, auch wenn ein Rollo gar
          keinen Schalter hat, damit die Fußzeile überall gleich sitzt. */
       .chipzeile{display:flex; gap:5px; flex-wrap:nowrap; align-items:center;
-        margin-top:7px; min-height:26px; overflow:hidden}
-      .c-titel{font-size:.7rem; color:var(--secondary-text-color); opacity:.75;
+        margin-top:7px; min-height:calc(26px * var(--skala)); overflow:hidden}
+      .c-titel{font-size:calc(.7rem * var(--skala)); color:var(--secondary-text-color); opacity:.75;
         white-space:nowrap; flex:none}
 
       /* ── Kacheln oder Zeilen, je nach Platz ──
@@ -594,10 +617,14 @@ class RolloplanerCard extends HTMLElement {
          Kachel nach ihrem eigenen Inhalt, und die Reihe franst aus. */
       .raeume{display:flex; flex-wrap:wrap; gap:4px 18px; padding:0 12px 12px;
         align-items:stretch}
-      .raumgruppe{min-width:250px; max-width:100%; display:flex;
+      .raumgruppe{min-width:min(calc(250px * var(--skala)), 100%); max-width:100%; display:flex;
         flex-direction:column}
       .gruppe{display:grid; gap:10px; align-items:stretch; flex:1;
-        grid-auto-rows:1fr; grid-template-columns:1fr}
+        grid-auto-rows:1fr;
+        /* minmax(0,…) statt 1fr: Eine „auto"-Spalte schrumpft nie unter den
+           Mindestinhalt ihrer Kacheln, und die Kachel stand dann über den Rand
+           hinaus, statt ihren Text abzuschneiden. */
+        grid-template-columns:minmax(0, 1fr)}
       .raum{display:flex; flex-direction:column;
         border:1px solid var(--divider-color); border-radius:10px;
         padding:10px 11px 8px}
@@ -609,20 +636,20 @@ class RolloplanerCard extends HTMLElement {
         flex-wrap:wrap}
       /* Umbrechen statt abschneiden: „Wohnzimmer – Terrassentür“ ist der
          Name, an dem man die Kachel erkennt – „Wohnzimmer – …“ ist keiner. */
-      .name{font-size:1rem; font-weight:500; color:var(--primary-text-color);
+      .name{font-size:calc(1rem * var(--skala)); font-weight:500; color:var(--primary-text-color);
         min-width:0; overflow-wrap:anywhere; line-height:1.25}
       /* Feste Höhen für die Abschnitte, damit in jeder Kachel dasselbe an
          derselben Stelle steht – auch wenn eine Begründung kürzer ist oder ein
          Rollo gar keine Schalter hat. */
-      .grund{font-size:.76rem; color:var(--secondary-text-color); margin-top:2px;
+      .grund{font-size:calc(.76rem * var(--skala)); color:var(--secondary-text-color); margin-top:2px;
         display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
         overflow:hidden; min-height:2.4em}
       .z1-wert{display:flex; flex-direction:column; align-items:flex-end; flex:none}
-      .wert{font-size:1.5rem; font-weight:300; line-height:1.1;
+      .wert{font-size:calc(1.5rem * var(--skala)); font-weight:300; line-height:1.1;
         color:var(--primary-text-color); font-variant-numeric:tabular-nums}
       .wert small{font-size:.62em; color:var(--secondary-text-color); margin-left:1px}
-      .lage{font-size:.7rem; color:var(--secondary-text-color)}
-      .schild{font-size:.66rem; font-weight:600; padding:1px 7px; border-radius:18px;
+      .lage{font-size:calc(.7rem * var(--skala)); color:var(--secondary-text-color)}
+      .schild{font-size:calc(.66rem * var(--skala)); font-weight:600; padding:1px 7px; border-radius:18px;
         white-space:nowrap; letter-spacing:.02em; flex:none;
         background:rgba(127,127,127,.22); color:var(--primary-text-color)}
       .s-rauch{background:rgba(227,109,109,.3)}
@@ -635,10 +662,10 @@ class RolloplanerCard extends HTMLElement {
         border-radius:6px; color:var(--secondary-text-color); line-height:0}
       .tipp:hover{color:var(--primary-text-color); background:rgba(127,127,127,.18)}
       .tipp.an{color:var(--an-farbe)}
-      .tipp ha-icon{--mdc-icon-size:18px; display:block}
+      .tipp ha-icon{--mdc-icon-size:calc(18px * var(--skala)); display:block}
 
       .z3{display:flex; align-items:center; gap:8px; margin-top:auto;
-        padding-top:7px; font-size:.75rem; color:var(--secondary-text-color)}
+        padding-top:7px; font-size:calc(.75rem * var(--skala)); color:var(--secondary-text-color)}
       .dann{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
         white-space:nowrap}
 
@@ -689,11 +716,11 @@ class RolloplanerCard extends HTMLElement {
         border-radius:6px; color:var(--secondary-text-color); line-height:0}
       .tipp:hover{color:var(--primary-text-color); background:rgba(127,127,127,.18)}
       .tipp.an{color:var(--an-farbe)}
-      .tipp ha-icon{--mdc-icon-size:18px; display:block}
+      .tipp ha-icon{--mdc-icon-size:calc(18px * var(--skala)); display:block}
 
       .z3{display:flex; align-items:center; gap:8px; margin-top:7px;
         padding-top:6px; border-top:1px solid var(--divider-color);
-        font-size:.75rem; color:var(--secondary-text-color)}
+        font-size:calc(.75rem * var(--skala)); color:var(--secondary-text-color)}
       .dann{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
         white-space:nowrap}
 
@@ -702,10 +729,11 @@ class RolloplanerCard extends HTMLElement {
          sechs schmale Spalten, in denen jeder Text dreizeilig umbrach. So
          bleiben es wenige, ruhige Kacheln, in denen alles lesbar steht. */
       @container (min-width: 640px){
-        .gruppe{grid-template-columns:repeat(auto-fill, minmax(280px, 1fr))}
+        .gruppe{grid-template-columns:repeat(auto-fill,
+          minmax(min(calc(280px * var(--skala)), 100%), 1fr))}
       }
 
-      .leer{padding:14px 0; color:var(--secondary-text-color); font-size:.85rem;
+      .leer{padding:14px 0; color:var(--secondary-text-color); font-size:calc(.85rem * var(--skala));
         text-align:center}
       code{font-size:.85em}
     </style>`;
