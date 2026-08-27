@@ -1,5 +1,28 @@
 # Änderungen
 
+## 2.4.1 – 27.08.2026
+
+**Der Trockenlauf meldete Handbetrieb, den es nicht gab.**
+
+Er schickt keinen Fahrbefehl hinaus – das stimmte und stimmt. Er merkte sich
+aber trotzdem ein *Ziel*, als hätte er gefahren. Fünf Minuten später stand das
+Rollo woanders als dieses Ziel, und die Handbetriebserkennung schloss daraus,
+jemand sei am Schalter gewesen: Der Planer meldete „von Hand gefahren“ für ein
+Rollo, das niemand angefasst hat, und legte sich selbst für zwölf Stunden
+still. Genau die Auskunft, für die man einen Trockenlauf laufen lässt – *was
+täte er jetzt* – war damit verdeckt.
+
+* **Ein Ziel wird nur noch gemerkt, wenn wirklich gefahren wurde.**
+* **Im Trockenlauf wird kein Handbetrieb mehr erkannt.** Dort bewegt jedes
+  Rollo etwas anderes; die Schlussfolgerung ist dort wertlos. Dasselbe gilt für
+  ein Rollo auf *beobachten* – das hatte denselben Fehler.
+* Im Add-on-Protokoll heißt es jetzt „*wäre* gefahren“, solange der
+  Trockenlauf läuft.
+
+Unverändert richtig: Es geht weiterhin kein Befehl hinaus (auch die
+Fluchtweg-Freigabe nicht), das Protokoll führt mit, und beim Ausschalten wird
+der Plan sofort durchgesetzt.
+
 ## 2.4.0 – 27.08.2026
 
 **Die Fluchtweg-Freigabe: Bei Rauchalarm fährt der Planer jedes Rollo auf.**

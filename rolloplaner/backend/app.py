@@ -177,9 +177,13 @@ def _takt_schleife() -> None:
             _LOGGER.info("Takt ausgesetzt: %s", bericht["hinweis"])
         else:
             gefahren = sum(1 for r in bericht.get("rollos") or [] if r.get("gefahren"))
+            trocken = bool(bericht.get("trockenlauf"))
+            # Im Trockenlauf ist nichts gefahren – „wäre gefahren“ ist die
+            # Auskunft, die dort stimmt.
             _LOGGER.info("Takt: %d Rollos%s%s", anzahl,
-                         f", {gefahren} gefahren" if gefahren else "",
-                         " (Trockenlauf)" if bericht.get("trockenlauf") else "")
+                         (f", {gefahren} wäre gefahren" if trocken
+                          else f", {gefahren} gefahren") if gefahren else "",
+                         " (Trockenlauf)" if trocken else "")
         pause = int(store.load_config()["einstellungen"].get("takt_sekunden", 120))
         _wecker.wait(timeout=pause)
         _wecker.clear()

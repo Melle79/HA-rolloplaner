@@ -729,10 +729,16 @@ def _rollo_stellen(rollo: dict, ergebnis: dict, einstellungen: dict, index: dict
                   ergebnis["begruendung"] + (" (Trockenlauf)" if trockenlauf else ""),
                   eid, art="warnung" if trockenlauf else None)
 
+    # Der Schaltpunkt gilt als abgearbeitet – auch im Trockenlauf, sonst
+    # meldete das Protokoll alle zwei Minuten dasselbe. Beim Beenden des
+    # Trockenlaufs wird dieser Merkposten verworfen (``_durchsetzen``).
     if punkt_zeit is not None:
         rollo_state["letzter_punkt"] = _iso(punkt_zeit)
     rollo_state["beschattet"] = bool(ergebnis["beschattet"])
-    rollo_state["ziel"] = ziel
+    # ``ziel`` heißt „dorthin habe ich es geschickt“ und wird deshalb nur beim
+    # wirklichen Fahren fortgeschrieben (weiter oben). Im Trockenlauf stünde
+    # sonst ein Ziel im Zustand, das nie jemand angefahren hat – und die
+    # Handbetriebserkennung hielte die Abweichung für einen Griff ans Rollo.
 
 
 def _stellung_erfassen(rollo: dict, ergebnis: dict, index: dict, state: dict,
@@ -741,7 +747,19 @@ def _stellung_erfassen(rollo: dict, ergebnis: dict, index: dict, state: dict,
 
     Dabei fällt der Handbetrieb auf – die einzige Stelle, an der er überhaupt
     erkannt werden kann, denn Home Assistant sagt nicht, wer gefahren ist.
+    Erkannt wird er daran, dass das Rollo woanders steht, als der Planer es
+    zuletzt hingeschickt hat.
+
+    Im **Trockenlauf** ist diese Schlussfolgerung wertlos: Dort schickt der
+    Planer nichts, also bewegt sich jedes Rollo von woanders her – die alten
+    Automationen tun schließlich weiter ihren Dienst. Er meldete dann
+    reihenweise „Handbetrieb“ und legte sich selbst für zwölf Stunden still,
+    statt zu zeigen, was er täte. Dasselbe gilt für ein Rollo auf
+    „beobachten“.
     """
+    if (einstellungen.get("trockenlauf")
+            or rollo.get("betriebsart") == "beobachten"):
+        return
     eid = rollo["entity_id"]
     zustand = index.get(eid)
     ist = ha_api.position_von(zustand)

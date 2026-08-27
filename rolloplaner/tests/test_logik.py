@@ -449,6 +449,98 @@ def test_karte_ist_gueltiges_javascript():
         raise AssertionError(ergebnis.stderr.strip().splitlines()[-1])
 
 
+# ------------------------------------------------------- Trockenlauf ----
+
+def _plan_rollo(eid, name="Prüfrollo"):
+    tage = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    punkt = lambda uhr, pos: {"ausloeser": "uhrzeit", "start": uhr, "position": pos,
+                              "gilt": "immer", "tage": tage, "versatz_min": 0,
+                              "frueh": "", "spaet": "", "wenn": []}
+    return {**store.STANDARD_ROLLO, "entity_id": eid, "name": name, "raum": "Prüfstand",
+            "plan": "", "zeitplan": store.validate_zeitplan(
+                [punkt("20:00", 0), punkt("08:00", 100)])}
+
+
+def _takt(config, state, index, jetzt):
+    import regelung as r
+    echt = r._jetzt
+    r._jetzt = lambda: jetzt
+    ha_api.available = lambda: True
+    ha_api.ist_bereit = lambda: True
+    ha_api.get_states = lambda: list(index.values())
+    try:
+        return r.takt(config, state, lambda *a, **k: None)
+    finally:
+        r._jetzt = echt
+
+
+def test_trockenlauf_erfindet_keinen_handbetrieb():
+    """Der Fehler, der den Trockenlauf wertlos machte.
+
+    Im Trockenlauf schickt der Planer nichts los. Merkte er sich trotzdem ein
+    „Ziel“, stünde das Rollo fünf Minuten später woanders als dieses Ziel – und
+    die Handbetriebserkennung hielte das für einen Griff ans Rollo. Der Planer
+    meldete dann „Handbetrieb“ für ein Rollo, das niemand angefasst hat, und
+    legte sich selbst zwölf Stunden stumm.
+    """
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": True}),
+              "plaene": [], "rollos": [_plan_rollo("cover.a")]}
+    # So, als wäre vor dem Trockenlauf einmal wirklich gefahren worden.
+    state = {"rollos": {"cover.a": {"ziel": 100,
+                                    "gesetzt_am": "2026-08-27T19:00:00"}}}
+    index = {"cover.a": _cover("cover.a", 100)}      # bleibt stur offen
+
+    with _Fahrten() as f:
+        for minute in (0, 5, 30, 90):
+            bericht = _takt(config, state, index,
+                            datetime(2026, 8, 27, 20, 0) + timedelta(minutes=minute))
+            assert bericht["rollos"][0]["zustand"] != "manuell", \
+                f"nach {minute} min fälschlich Handbetrieb"
+    assert f.befehle == [], "im Trockenlauf darf kein Befehl hinausgehen"
+    assert state["rollos"]["cover.a"].get("manuell_bis") is None
+    # Und das gemerkte Ziel bleibt das zuletzt *wirklich* gefahrene.
+    assert state["rollos"]["cover.a"]["ziel"] == 100
+
+
+def test_beobachten_erfindet_ebenfalls_keinen_handbetrieb():
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": False}),
+              "plaene": [], "rollos": [{**_plan_rollo("cover.a"),
+                                        "betriebsart": "beobachten"}]}
+    state = {"rollos": {"cover.a": {"ziel": 100,
+                                    "gesetzt_am": "2026-08-27T19:00:00"}}}
+    index = {"cover.a": _cover("cover.a", 100)}
+    with _Fahrten() as f:
+        for minute in (0, 5, 30):
+            bericht = _takt(config, state, index,
+                            datetime(2026, 8, 27, 20, 0) + timedelta(minutes=minute))
+            assert bericht["rollos"][0]["zustand"] != "manuell"
+    assert f.befehle == []
+
+
+def test_nach_dem_trockenlauf_faehrt_nur_das_falsch_stehende():
+    """Beim Ausschalten wird der Merkposten verworfen und der Plan neu
+    durchgesetzt – aber ein Rollo, das schon richtig steht, fährt nicht."""
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": True}),
+              "plaene": [], "rollos": [_plan_rollo("cover.falsch", "Falsch"),
+                                       _plan_rollo("cover.richtig", "Richtig")]}
+    index = {"cover.falsch": _cover("cover.falsch", 100),
+             "cover.richtig": _cover("cover.richtig", 0)}
+    state = {"rollos": {}}
+    with _Fahrten() as f:
+        _takt(config, state, index, datetime(2026, 8, 27, 20, 0))
+        assert f.befehle == []
+
+        config["einstellungen"]["trockenlauf"] = False       # wie _durchsetzen()
+        for daten in state["rollos"].values():
+            daten["letzter_punkt"] = None
+            daten["manuell_bis"] = None
+        _takt(config, state, index, datetime(2026, 8, 27, 20, 1))
+    assert f.befehle == [("cover.falsch", 0)]
+
+
 # ------------------------------------------------- Fluchtweg bei Rauch ----
 
 def _rollo(eid, **rest):

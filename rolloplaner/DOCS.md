@@ -342,6 +342,33 @@ Ist die Karte bereits aus einer anderen Quelle eingebunden (etwa HACS), legt
 das Add-on **nichts** an und schreibt nur einen Hinweis ins Protokoll: Zwei
 Registrierungen desselben Elements legen das Dashboard lahm.
 
+## Trockenlauf
+
+Der Probebetrieb: Der Planer rechnet, protokolliert und meldet, **fährt aber
+nichts**. So lässt sich neben den alten Automationen mitlaufen und vergleichen,
+ob er dasselbe wollen würde.
+
+Was im Trockenlauf gilt:
+
+* **Kein Fahrbefehl verlässt das Add-on** – auch nicht die Fluchtweg-Freigabe
+  bei Rauchalarm. Sie meldet dann nur, was sie täte.
+* **Das Protokoll führt mit**, jeder Eintrag mit dem Zusatz *(Trockenlauf)*.
+  Ein Schaltpunkt gilt dabei als abgearbeitet, sonst stünde alle zwei Minuten
+  derselbe Eintrag darin.
+* **Kein Handbetrieb wird erkannt.** Im Trockenlauf bewegt jedes Rollo etwas
+  anderes – die alten Automationen tun ja weiter ihren Dienst. Der Planer
+  daraus „jemand war am Schalter“ zu folgern, hieße, dass er reihenweise
+  Handbetrieb meldet und sich selbst stilllegt, statt zu zeigen, was er täte.
+  Dasselbe gilt für ein Rollo auf *beobachten*.
+* **Die Pfeiltasten in der Karte fahren trotzdem.** Sie sind ein Handgriff des
+  Benutzers, nicht des Planers.
+
+**Beim Ausschalten setzt der Planer den geltenden Stand sofort durch.** Der
+gemerkte Schaltpunkt wird verworfen und der Plan neu ausgeführt – wer den
+Trockenlauf beendet, erwartet genau das. Vorher hinsehen, ob gerade jemand
+etwas absichtlich offen stehen hat: Ein von Hand geöffnetes Rollo, das der Plan
+zu haben will, fährt in diesem Moment zu.
+
 ## „Warum fährt das Rollo nicht?“
 
 Der Reiter **Einrichtung** hat unten eine Selbstauskunft. Sie beantwortet fast
