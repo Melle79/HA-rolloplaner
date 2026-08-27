@@ -1,5 +1,34 @@
 # Änderungen
 
+## 2.7.0 – 27.08.2026
+
+**Der Rauchalarm hat einen eigenen Reiter und einen eigenen Meldeweg.**
+
+* **Eigener Reiter.** Sperre, Fluchtweg-Freigabe, Melder und Meldeweg standen
+  als ein Abschnitt unter vielen in den Einstellungen — zwischen Ferienkalender
+  und Urlaubssimulation. Für die eine Funktion, die im Ernstfall zählt, ist das
+  der falsche Ort. Jetzt steht sie zwischen *Schalter* und *Einstellungen*, mit
+  einer **Ampelzeile** ganz oben: Sperre, Freigabe, Trockenlauf, Meldeweg. Rot
+  heißt: Hier fährt im Ernstfall nichts, oder es erfährt niemand.
+* **Eigener Meldeweg.** Bisher hing die Alarmmeldung am Meldeweg des Wächters.
+  Wer den stummschaltet, weil ihn die Hinderniswarnungen nerven, will deswegen
+  keinen Brand verschweigen. Ist kein eigener angehakt, gilt weiterhin der des
+  Wächters — lieber die falsche Zustellart als gar keine Meldung.
+* **Gemeldet wird jetzt jeder Rauchalarm**, auch bei abgeschalteter Freigabe.
+  Dann sagt die Nachricht eben, dass kein Rollo aufgefahren ist; das ist die
+  wichtigere Auskunft, nicht die unwichtigere.
+* **Probemeldung senden.** Der einzige Weg, den Ernstfall vorher einmal zu
+  sehen, ohne einen Melder anzuzünden. Gefahren wird dabei nichts.
+
+**Im Protokoll stand bei „von Hand gestellt" die Entitäts-ID statt des Namens.**
+Das war keine Schönheitsfrage: Die Kennungen stammen aus dem alten Haus und
+zeigen fast alle auf ein anderes Zimmer, als ihr Name sagt —
+`cover.finns_rollo` ist das Schlafzimmerfenster, `cover.rollo_terrassentur` die
+Schlafzimmer-Balkontür, `cover.lunas_rollo` das Bürorollo. Eine Kennung im
+Protokoll war damit keine Auskunft, sondern eine Falschauskunft. Jetzt steht
+dort der Anzeigename, und alte Einträge werden beim Anzeigen mit dem heutigen
+Namen nachgeschlagen.
+
 ## 2.6.0 – 27.08.2026
 
 **Die Ausrichtung ist jetzt eine Gradzahl, keine Auswahl aus acht Richtungen.**

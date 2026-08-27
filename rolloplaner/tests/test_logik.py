@@ -702,6 +702,50 @@ def test_rauchsperre_trennt_akut_von_nachlauf():
     assert sperre and not akut and "Nachlauf" in grund
 
 
+def test_meldeweg_faellt_auf_den_waechter_zurueck():
+    """Ein Brandalarm darf nie stumm bleiben.
+
+    Ein eigener Weg gewinnt; ist keiner eingetragen, gilt der des Wächters –
+    lieber die falsche Zustellart als gar keine Meldung.
+    """
+    waechter = {"wachhund": {"melden_an": ["notify.handy"]}}
+    assert store.rauch_meldewege(waechter) == ["notify.handy"]
+    eigen = {**waechter, "rauchsperre": {"melden_an": ["notify.laut", "notify.sirene"]}}
+    assert store.rauch_meldewege(eigen) == ["notify.laut", "notify.sirene"]
+    assert store.rauch_meldewege({}) == []
+
+
+def test_alarm_wird_einmal_gemeldet_und_beim_naechsten_wieder():
+    """Nicht bei jedem Takt – aber auch nicht nur einmal im Leben.
+
+    Wer während eines Brandes im Minutentakt meldet, begräbt die eine
+    Nachricht, auf die es ankommt. Wer den Merkposten nach der Entwarnung nicht
+    zurücksetzt, meldet den nächsten Brand gar nicht.
+    """
+    config = {"einstellungen": store.validate_einstellungen(
+                  {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": True}),
+              "plaene": [], "rollos": [_rollo("cover.a")]}
+    melder = {"entity_id": "binary_sensor.rm_flur_rauch", "state": "off",
+              "attributes": {"friendly_name": "RM Flur", "device_class": "smoke"}}
+    index = {"cover.a": _cover("cover.a", 0), melder["entity_id"]: melder}
+    state = {"rollos": {}}
+    start = datetime(2026, 8, 27, 3, 0)
+
+    def takt(minute):
+        return _takt(config, state, index, start + timedelta(minutes=minute))
+
+    assert takt(0)["rauch_neu"] is False           # noch kein Alarm
+    melder["state"] = "on"
+    assert takt(1)["rauch_neu"] is True            # Alarm – melden
+    assert takt(2)["rauch_neu"] is False           # derselbe Alarm – schweigen
+    melder["state"] = "off"
+    assert takt(3)["rauch_neu"] is False           # Nachlauf – schweigen
+    b = takt(40)                                   # Nachlauf vorbei
+    assert not b["rauch"] and b["rauch_neu"] is False
+    melder["state"] = "on"
+    assert takt(41)["rauch_neu"] is True           # neuer Alarm – wieder melden
+
+
 def test_fluchtweg_abschaltbar_und_dann_nur_sperre():
     config = {"einstellungen": store.validate_einstellungen(
                   {**store.STANDARD_EINSTELLUNGEN, "trockenlauf": False,

@@ -160,6 +160,11 @@ STANDARD_EINSTELLUNGEN = {
         # Hindernis fährt, ist im Brandfall keine Hilfe, sondern ein zweiter
         # Schaden.
         "fluchtweg_versuche": 3,
+        # Ein eigener Meldeweg. Der Wächter meldet Ausfälle – ein Rauchalarm
+        # ist etwas anderes und darf nicht an derselben Einstellung hängen wie
+        # „ein Antrieb meldet sich nicht". Leer heißt: der Weg des Wächters,
+        # damit die Meldung nie ins Leere geht.
+        "melden_an": [],
     },
 
     # Hitzeschutz: Rollo teilweise zufahren, wenn die Sonne aufs Fenster steht
@@ -234,6 +239,20 @@ STANDARD_ROLLO = {
     # eines vor einem Regal etwa, das gegen das Brett läuft.
     "fluchtweg": True,
 }
+
+
+def rauch_meldewege(einstellungen: dict) -> list[str]:
+    """Wohin ein Rauchalarm gemeldet wird.
+
+    Ein eigener Weg, weil ein Brandalarm etwas anderes ist als „ein Antrieb
+    meldet sich nicht“ – wer den Wächter stummschaltet, weil ihn die
+    Hinderniswarnungen nerven, will deswegen keinen Brand verschweigen. Ist
+    kein eigener eingetragen, gilt trotzdem der Weg des Wächters: lieber die
+    falsche Zustellart als gar keine Meldung.
+    """
+    sperre = einstellungen.get("rauchsperre") or {}
+    return (list(sperre.get("melden_an") or [])
+            or list((einstellungen.get("wachhund") or {}).get("melden_an") or []))
 
 
 def _leer_config() -> dict:
@@ -538,6 +557,7 @@ def validate_einstellungen(roh: dict) -> dict:
     r["fluchtweg"] = bool(r.get("fluchtweg", True))
     r["fluchtweg_versuche"] = int(_zahl(r.get("fluchtweg_versuche", 3),
                                         "Versuche der Fluchtweg-Freigabe", 1, 10))
+    r["melden_an"] = [str(m).strip() for m in (r.get("melden_an") or []) if str(m).strip()]
 
     b = e["beschattung"]
     b["aktiv"] = bool(b["aktiv"])
@@ -756,6 +776,9 @@ def load_state() -> dict:
     # oft welches Rollo schon angefahren wurde. Ohne diesen Zähler schickte
     # der Planer bei jedem Takt einen neuen Fahrbefehl.
     state.setdefault("fluchtweg", {"seit": None, "versuche": {}})
+    # Seit wann der Alarm läuft – unabhängig davon, ob die Fluchtweg-Freigabe
+    # eingeschaltet ist. Daran hängt, dass je Alarm genau einmal gemeldet wird.
+    state.setdefault("rauch_seit", None)
     # Tagesversatz der Urlaubssimulation: je Raum und Schaltpunkt eine Zahl,
     # die einmal am Tag neu gewürfelt wird.
     state.setdefault("simulation", {"tag": None, "versatz": {}})

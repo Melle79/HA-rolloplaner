@@ -151,6 +151,12 @@ nicht erreichbaren Funkmotor und reißt die übrigen mit.
 
 ## Rauchalarm: Fluchtweg und Sperre
 
+Alles dazu steht im **eigenen Reiter *Rauchalarm*** – nicht in den
+Einstellungen. Diese Funktion ist zu wichtig, um in einer langen Seite zwischen
+Ferienkalender und Urlaubssimulation zu verschwinden. Ganz oben im Reiter zeigt
+eine Ampelzeile, ob die Sache scharf ist: Sperre, Freigabe, Trockenlauf,
+Meldeweg. Rot heißt: Hier fährt im Ernstfall nichts oder es erfährt niemand.
+
 Zwei Dinge, die zusammengehören. Die **Sperre** sorgt dafür, dass der Planer
 nichts mehr zufährt, die **Fluchtweg-Freigabe** dafür, dass überhaupt etwas
 aufgeht.
@@ -192,11 +198,26 @@ was sie täte. Ein Add-on im Probebetrieb, das nachts das Haus aufmacht, wäre
 schlimmer als eines, das im Ernstfall nichts tut – im Ernstfall gibt es die
 Melder ja auch noch.
 
-Beim ersten Takt eines Alarms geht **eine** Meldung über die Meldewege des
-Wächters hinaus und ein Eintrag ins Protokoll: was aufgefahren wurde, was schon
-offen stand und – zuerst – was **nicht** erreichbar war. Wer bei jedem Takt
-meldete, verschickte während eines Brandes im Minutentakt Nachrichten und
-begrübe die eine, auf die es ankommt.
+### Der Meldeweg
+
+Beim ersten Takt eines Alarms geht **eine** Meldung hinaus und ein Eintrag ins
+Protokoll: was aufgefahren wurde, was schon offen stand und – zuerst – was
+**nicht** erreichbar war. Wer bei jedem Takt meldete, verschickte während eines
+Brandes im Minutentakt Nachrichten und begrübe die eine, auf die es ankommt.
+
+Wohin, steht im Reiter unter *Meldeweg*. Das ist ein **eigener** Weg, nicht der
+des Wächters: Wer den Wächter stummschaltet, weil ihn die Hinderniswarnungen
+nerven, will deswegen keinen Brand verschweigen. Ist keiner angehakt, gilt
+trotzdem der Weg des Wächters – lieber die falsche Zustellart als gar keine
+Meldung.
+
+Gemeldet wird **jeder** Rauchalarm, auch bei abgeschalteter Freigabe. Dann sagt
+die Nachricht eben, dass kein Rollo aufgefahren ist; das ist die wichtigere
+Auskunft, nicht die unwichtigere.
+
+Der Knopf **Probemeldung senden** verschickt eine Testnachricht über denselben
+Weg. Der einzige Weg, den Ernstfall vorher einmal zu sehen, ohne einen Melder
+anzuzünden – gefahren wird dabei nichts.
 
 Läuft diese Freigabe, kann eine eigene Automation „bei Rauch alle Rollos hoch“
 entfallen. Beide nebeneinander schaden nicht – sie wollen dasselbe.

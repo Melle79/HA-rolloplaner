@@ -252,6 +252,18 @@
     grid-column:1/-1; padding-bottom:var(--l1);
     border-bottom:1px solid var(--linie)}
   .raumtitel:first-child{margin-top:0}
+  /* Die Ampelzeile im Rauchalarm-Reiter. Wer ihn aufmacht, will in einem Blick
+     sehen, ob die Sache scharf ist – nicht erst vier Kästchen durchlesen. */
+  .lampenzeile{display:flex; gap:var(--l2); flex-wrap:wrap; margin-bottom:var(--l3)}
+  .lampe{display:inline-flex; align-items:center; gap:6px; padding:2px 10px;
+    border-radius:14px; font-size:.82rem; font-weight:500;
+    border:1px solid var(--linie); color:var(--grau)}
+  .lampe::before{content:""; width:8px; height:8px; border-radius:50%;
+    background:currentColor; flex:none}
+  .lampe.gut{color:var(--text); border-color:var(--ok)}
+  .lampe.gut::before{background:var(--ok)}
+  .lampe.schlecht{color:var(--text); border-color:var(--achtung)}
+  .lampe.schlecht::before{background:var(--achtung)}
   .planschild{display:inline-flex; align-items:center; gap:4px; padding:1px 8px;
     border-radius:20px; font-size:.72rem; font-weight:600;
     background:var(--flaeche3); color:var(--leise)}
@@ -283,6 +295,7 @@
   <button data-reiter="rollos">Rollos</button>
   <button data-reiter="plaene">Zeitpläne</button>
   <button data-reiter="schalter">Schalter</button>
+  <button data-reiter="rauchalarm">Rauchalarm</button>
   <button data-reiter="einstellungen">Einstellungen</button>
   <button data-reiter="protokoll">Protokoll</button>
   <button data-reiter="einrichtung">Einrichtung<span class="zaehler" id="z-einrichtung" hidden></span></button>
@@ -366,6 +379,17 @@
     <div class="tafel">
       <h2>Fremde Helfer ersetzen</h2>
       <div id="fremde"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════ Rauchalarm ═══ -->
+  <section id="s-rauchalarm">
+    <div class="tafel"><h2>Rauchalarm</h2><div id="rauchalarm"></div>
+      <div class="dlg-fuss" style="border-top:1px solid var(--linie); margin-top:var(--l4);
+        padding-left:0; padding-right:0">
+        <button class="leise" id="btn-rauch-probe">Probemeldung senden</button>
+        <button id="btn-rauch-speichern">Speichern</button>
+      </div>
     </div>
   </section>
 
@@ -1356,47 +1380,6 @@ function zeichneEinstellungen(){
       </div>
     </div>
 
-    <div class="abschnitt"><h3>Rauchalarm</h3>
-      <label class="haken"><input type="checkbox" name="rauchsperre.aktiv"
-        ${e.rauchsperre?.aktiv ? "checked" : ""}>
-        Bei Rauch keinen Zeitplan mehr ausführen</label>
-      <p class="hinweis">Das muss an bleiben: Sonst führe der Planer beim nächsten
-        Takt seinen Zeitplan durch und machte den Fluchtweg wieder zu.</p>
-
-      <label class="feld" style="margin-top:var(--l3)"><span>Diese Melder lösen aus</span></label>
-      ${hakenliste("rauchsperre.melder", k.rauch || [], e.rauchsperre?.melder || [])}
-      <p class="hinweis">Keiner gewählt heißt <b>alle</b> – jeder
-        <code>binary_sensor</code> der Geräteklasse „Rauch“, CO-Melder
-        eingeschlossen. Das ist die sichere Vorgabe: Ein Melder, den man beim
-        Auswählen übersieht, löst dann trotzdem aus. Wer auswählt, sollte
-        wissen, warum – ein nicht angehakter Melder schlägt für den Planer
-        niemals an.</p>
-
-      <label class="haken" style="margin-top:var(--l3)">
-        <input type="checkbox" name="rauchsperre.fluchtweg"
-        ${e.rauchsperre?.fluchtweg ? "checked" : ""}>
-        Fluchtweg freigeben – bei Alarm jedes Rollo auffahren</label>
-      <p class="hinweis">Steht über allem: über der Automatik, über einem
-        abgeschalteten Zeitplan, über „von Hand“. Nur ein Rollo, an dem die
-        Freigabe einzeln abgeschaltet ist, bleibt zu. Der <b>Trockenlauf</b> gilt
-        auch hier – solange er an ist, wird nur gemeldet, nicht gefahren.
-        Läuft diese Freigabe, kann eine eigene Automation „bei Rauch alle Rollos
-        hoch“ entfallen.</p>
-      <div class="gitter g2" style="margin-top:var(--l3)">
-        <label class="feld"><span>Nachlauf nach der Entwarnung (Minuten)</span>
-          <input type="number" name="rauchsperre.nachlauf_min" value="${e.rauchsperre?.nachlauf_min}"
-                 min="0" max="720" step="5"></label>
-        <label class="feld"><span>Versuche je Rollo</span>
-          <input type="number" name="rauchsperre.fluchtweg_versuche"
-                 value="${e.rauchsperre?.fluchtweg_versuche ?? 3}"
-                 min="1" max="10" step="1"></label>
-      </div>
-      <p class="hinweis">Ein Rollo, das nach der Fahrzeit immer noch zu ist,
-        bekommt den Befehl erneut – so oft, wie hier steht. Danach gilt es als
-        blockiert und wird in Ruhe gelassen, statt im Minutentakt gegen ein
-        Hindernis zu fahren.</p>
-    </div>
-
     <div class="abschnitt"><h3>Hitzeschutz</h3>
       <label class="haken"><input type="checkbox" name="beschattung.aktiv"
         ${e.beschattung?.aktiv ? "checked" : ""}>Hitzeschutz einschalten</label>
@@ -1454,6 +1437,124 @@ function zeichneEinstellungen(){
     </div>`;
 }
 
+/* ───────────────────────────────────────────────────────── Rauchalarm ─── */
+
+function zeichneRauchalarm(){
+  const e = CONFIG?.einstellungen || {};
+  const k = ENTITAETEN || {};
+  const r = e.rauchsperre || {};
+  const b = BERICHT || {};
+  const f = b.fluchtweg || {};
+  const wachhundweg = (e.wachhund || {}).melden_an || [];
+  const lampe = (gut, text) =>
+    `<span class="lampe ${gut ? "gut" : "schlecht"}">${esc(text)}</span>`;
+  const ausgenommen = (CONFIG?.rollos || []).filter((x) => x.fluchtweg === false);
+
+  const jetzt = b.rauch
+    ? `<p class="hinweis art-fehler"><b>Es läuft gerade ein Alarm.</b>
+        ${esc(b.rauch_grund || "")}${f.aktiv ? " – der Fluchtweg ist offen." : ""}</p>`
+    : `<p class="hinweis">Zurzeit schlägt kein Melder an.</p>`;
+
+  $("#rauchalarm").innerHTML = `<div class="abschnitt"><h3>Stand</h3>
+    <div class="lampenzeile">
+      ${lampe(r.aktiv, r.aktiv ? "Sperre an" : "Sperre AUS")}
+      ${lampe(r.fluchtweg, r.fluchtweg ? "Fluchtweg-Freigabe an" : "Freigabe AUS")}
+      ${lampe(!e.trockenlauf, e.trockenlauf ? "Trockenlauf – es fährt nichts"
+                                            : "kein Trockenlauf")}
+      ${lampe((r.melden_an || []).length || wachhundweg.length,
+              (r.melden_an || []).length ? "eigener Meldeweg"
+                : wachhundweg.length ? "Meldeweg vom Wächter" : "MELDEWEG FEHLT")}
+    </div>
+    ${jetzt}
+    ${ausgenommen.length ? `<p class="hinweis">Vom Auffahren ausgenommen:
+      <b>${ausgenommen.map((x) => esc(rolloName(x))).join(", ")}</b></p>` : ""}
+  </div>
+
+  <div class="abschnitt"><h3>Die Sperre</h3>
+    <label class="haken"><input type="checkbox" name="rauchsperre.aktiv"
+      ${r.aktiv ? "checked" : ""}>
+      Bei Rauch keinen Zeitplan mehr ausführen</label>
+    <p class="hinweis">Das muss an bleiben: Sonst führe der Planer beim nächsten
+      Takt seinen Zeitplan durch und machte den Fluchtweg wieder zu.</p>
+    <label class="feld" style="margin-top:var(--l3)"><span>Nachlauf nach der Entwarnung (Minuten)</span>
+      <input type="number" name="rauchsperre.nachlauf_min" value="${r.nachlauf_min}"
+             min="0" max="720" step="5" style="max-width:160px"></label>
+    <p class="hinweis">So lange nach der Entwarnung führt der Planer noch keinen
+      Zeitplan aus. Aufgefahren wird in dieser Zeit aber auch nicht mehr – wer
+      hinter dem abgezogenen Alarm zumacht, soll nicht gegen den Planer
+      ankämpfen.</p>
+  </div>
+
+  <div class="abschnitt"><h3>Die Fluchtweg-Freigabe</h3>
+    <label class="haken"><input type="checkbox" name="rauchsperre.fluchtweg"
+      ${r.fluchtweg ? "checked" : ""}>
+      Bei Alarm jedes Rollo auffahren</label>
+    <p class="hinweis">Steht über allem: über der Automatik, über einem
+      abgeschalteten Zeitplan, über „von Hand“. Ein einzelnes Rollo nimmt man
+      nicht hier aus, sondern beim Rollo selbst
+      (<i>Rollos → Bearbeiten → Bei Rauchalarm auffahren</i>). Der
+      <b>Trockenlauf</b> gilt auch hier – solange er an ist, wird nur gemeldet.</p>
+    <label class="feld" style="margin-top:var(--l3)"><span>Versuche je Rollo</span>
+      <input type="number" name="rauchsperre.fluchtweg_versuche"
+             value="${r.fluchtweg_versuche ?? 3}" min="1" max="10" step="1"
+             style="max-width:160px"></label>
+    <p class="hinweis">Ein Rollo, das nach der Fahrzeit immer noch zu ist,
+      bekommt den Befehl erneut – so oft, wie hier steht. Danach gilt es als
+      blockiert und wird in Ruhe gelassen, statt im Minutentakt gegen ein
+      Hindernis zu fahren.</p>
+  </div>
+
+  <div class="abschnitt"><h3>Melder</h3>
+    <label class="feld"><span>Diese Melder lösen aus</span></label>
+    ${hakenliste("rauchsperre.melder", k.rauch || [], r.melder || [])}
+    <p class="hinweis">Keiner gewählt heißt <b>alle</b> – jeder
+      <code>binary_sensor</code> der Geräteklasse „Rauch“, CO-Melder
+      eingeschlossen. Das ist die sichere Vorgabe: Ein Melder, den man beim
+      Auswählen übersieht, löst dann trotzdem aus. Ein nicht angehakter Melder
+      schlägt für den Planer niemals an.</p>
+  </div>
+
+  <div class="abschnitt"><h3>Meldeweg</h3>
+    <label class="feld"><span>Ein Rauchalarm geht an</span></label>
+    ${hakenliste("rauchsperre.melden_an",
+                 (k.notify || []).map((n) => ({entity_id: n.entity_id, name: n.name})),
+                 r.melden_an || [], false)}
+    <p class="hinweis">Gemeldet wird <b>einmal je Alarm</b>, nicht bei jedem
+      Takt – und auch dann, wenn die Freigabe abgeschaltet ist; dann sagt die
+      Nachricht eben, dass kein Rollo aufgefahren ist. Ganz oben in der Meldung
+      steht, was <b>nicht</b> erreichbar war.</p>
+    <p class="hinweis">Ist hier nichts angehakt, gilt der Meldeweg des Wächters
+      (<i>Einstellungen → Wächter</i>)${wachhundweg.length
+        ? `, zurzeit <b>${esc(wachhundweg.join(", "))}</b>`
+        : " – und dort steht ebenfalls keiner, die Meldung ginge also ins Leere"}.
+      Ein Brandalarm sollte nicht am selben Weg hängen wie „ein Antrieb meldet
+      sich nicht“.</p>
+  </div>`;
+}
+
+async function rauchalarmSpeichern(){
+  const wurzel = $("#rauchalarm");
+  const r = {};
+  $$("input", wurzel).forEach((el) => {
+    if (!el.name || !el.name.startsWith("rauchsperre.")) return;
+    const feld = el.name.slice("rauchsperre.".length);
+    if (feld === "melder" || feld === "melden_an") return;
+    r[feld] = el.type === "checkbox" ? el.checked
+            : el.value === "" ? null : Number(el.value);
+  });
+  // Hakenlisten sind viele Kästchen unter einem Namen – die Schleife oben
+  // machte daraus ein einzelnes Ja/Nein.
+  for (const feld of ["melder", "melden_an"]) {
+    r[feld] = $$('input[name="rauchsperre.' + feld + '"]:checked', wurzel)
+      .map((el) => el.value);
+  }
+  try {
+    await holeJSON("api/einstellungen", "PUT", {rauchsperre: r});
+    melden("gespeichert");
+    await aktualisieren();
+  } catch (err) { melden(err.message, true); }
+}
+
 async function einstellungenSpeichern(){
   const wurzel = $("#einstellungen");
   const daten = {};
@@ -1471,10 +1572,6 @@ async function einstellungenSpeichern(){
   });
   if (daten.wachhund) daten.wachhund.melden_an =
     daten.wachhund.melden_an ? [daten.wachhund.melden_an] : [];
-  // Eine Hakenliste sind viele Kästchen unter einem Namen – die Schleife oben
-  // macht daraus ein einzelnes Ja/Nein. Die Liste wird deshalb eigens geholt.
-  if (daten.rauchsperre) daten.rauchsperre.melder =
-    $$('input[name="rauchsperre.melder"]:checked', wurzel).map((el) => el.value);
   // Die Beschattungsstellung wurde in der angezeigten Zählweise eingegeben.
   // Achtung: Wird der Schalter im selben Zug umgelegt, gilt für die Eingabe
   // noch die alte Zählweise – deshalb hier `invertiert()` und nicht der neue
@@ -1496,9 +1593,14 @@ async function einstellungenSpeichern(){
 
 async function ladeProtokoll(){
   const eintraege = await hole("api/logbuch");
+  // Ältere Einträge tragen statt des Namens die entity_id – und die stammen aus
+  // dem alten Haus: „cover.finns_rollo" ist heute das Schlafzimmerfenster. Wo
+  // eine Kennung dabeisteht, gilt deshalb der heutige Name.
+  const heute = new Map((BERICHT?.rollos || []).map((r) => [r.entity_id, r.name]));
+  const zeige = (e) => heute.get(e.entity_id) || e.raum || e.entity_id || "";
   $("#protokoll").innerHTML = eintraege.length ? eintraege.map((e) => `<tr>
     <td class="zeit">${esc((e.zeit || "").replace("T", " ").slice(5, 16))}</td>
-    <td>${esc(e.raum)}</td>
+    <td>${esc(zeige(e))}</td>
     <td class="${e.art ? "art-" + e.art : ""}">${esc(e.was)}</td>
     <td>${esc(e.warum)}${e.entity_id ? `<div class="hinweis">${esc(e.entity_id)}</div>` : ""}</td>
   </tr>`).join("") : `<tr><td colspan="4" class="leerhinweis">Noch nichts geschehen.</td></tr>`;
@@ -1650,6 +1752,7 @@ async function aktualisieren(){
     zeichneRollos();
     zeichnePlaene();
     zeichneEinstellungen();
+    zeichneRauchalarm();
   } catch (err) {
     $("#kopfstatus").textContent = err.message;
     $("#punkt").classList.remove("ok");
@@ -1702,6 +1805,14 @@ $("#btn-schalter-speichern").onclick = async () => {
   } catch (err) { melden(err.message, true); }
 };
 $("#btn-einst-speichern").onclick = einstellungenSpeichern;
+$("#btn-rauch-speichern").onclick = rauchalarmSpeichern;
+$("#btn-rauch-probe").onclick = async () => {
+  try {
+    const a = await holeJSON("api/rauchalarm/probe", "POST", {});
+    melden(a.gesendet.length ? "Probemeldung gesendet an " + a.gesendet.join(", ")
+                             : "Nichts gesendet", !a.gesendet.length);
+  } catch (err) { melden(err.message, true); }
+};
 $("#btn-probe").onclick = async () => {
   try { const r = await holeJSON("api/wachhund/probe", "POST");
         melden(`gesendet an ${r.gesendet.join(", ") || "–"}`); }

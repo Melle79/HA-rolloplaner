@@ -88,7 +88,7 @@ def _takt_ausfuehren() -> dict:
             _LOGGER.exception("Regeltakt fehlgeschlagen")
             bericht = {"zeit": None, "rollos": [], "fehler": str(err)}
         else:
-            _fluchtweg_melden(bericht, config["einstellungen"])
+            _rauchalarm_melden(bericht, config["einstellungen"])
             store.save_state(state)
         bericht["version"] = VERSION
         _letzter_bericht = bericht
@@ -100,37 +100,45 @@ def _takt_ausfuehren() -> dict:
     return bericht
 
 
-def _fluchtweg_melden(bericht: dict, einstellungen: dict) -> None:
+def _rauchalarm_melden(bericht: dict, einstellungen: dict) -> None:
     """Einmal je Alarm ins Protokoll und auf die Meldewege.
 
-    ``neu`` setzt die Regelung nur im ersten Takt eines Alarms – wer bei jedem
-    Takt meldete, verschickte während eines Brandes im Minutentakt Nachrichten
-    und begrübe die eine, auf die es ankommt.
+    ``rauch_neu`` setzt die Regelung nur im ersten Takt eines Alarms – wer bei
+    jedem Takt meldete, verschickte während eines Brandes im Minutentakt
+    Nachrichten und begrübe die eine, auf die es ankommt.
+
+    Gemeldet wird **jeder** Rauchalarm, auch bei abgeschalteter
+    Fluchtweg-Freigabe. Dann sagt die Nachricht eben, dass kein Rollo aufgefahren
+    ist – das ist die wichtigere Auskunft, nicht die unwichtigere.
     """
-    freigabe = bericht.get("fluchtweg") or {}
-    if not freigabe.get("neu"):
+    if not bericht.get("rauch_neu"):
         return
 
-    gefahren = freigabe.get("gefahren") or []
-    offen = freigabe.get("offen") or []
-    fehlt = freigabe.get("fehlt") or []
+    freigabe = bericht.get("fluchtweg") or {}
     grund = bericht.get("rauch_grund") or "Rauchalarm"
-
     zeilen = [grund]
-    if gefahren:
-        zeilen.append("Aufgefahren: " + ", ".join(gefahren))
-    if offen:
-        zeilen.append("Stand schon offen: " + ", ".join(offen))
-    if fehlt:
-        zeilen.append("NICHT erreichbar: " + ", ".join(fehlt))
-    if freigabe.get("uebergangen"):
-        zeilen.append("Ausgenommen: " + ", ".join(freigabe["uebergangen"]))
-    if bericht.get("trockenlauf"):
-        zeilen.append("Trockenlauf – es ist nichts wirklich gefahren.")
 
-    logbuch.eintragen("", "Fluchtweg", " · ".join(zeilen), art="warnung")
-    for dienst in (einstellungen.get("wachhund") or {}).get("melden_an") or []:
-        ha_api.notify(dienst, "Rauchalarm – Rollos fahren auf", "\n".join(zeilen))
+    if not freigabe.get("aktiv"):
+        zeilen.append("Die Fluchtweg-Freigabe ist AUS – es fährt kein Rollo auf.")
+    else:
+        for titel, schluessel in (("Aufgefahren", "gefahren"),
+                                  ("Stand schon offen", "offen"),
+                                  ("NICHT erreichbar", "fehlt"),
+                                  ("Ausgenommen", "uebergangen")):
+            if freigabe.get(schluessel):
+                zeilen.append(f"{titel}: " + ", ".join(freigabe[schluessel]))
+        if bericht.get("trockenlauf"):
+            zeilen.append("Trockenlauf – es ist nichts wirklich gefahren.")
+
+    logbuch.eintragen("", "Rauchalarm", " · ".join(zeilen), art="fehler")
+    titel = ("Rauchalarm – Rollos fahren auf" if freigabe.get("aktiv")
+             else "Rauchalarm – Fluchtweg-Freigabe ist aus")
+    wege = store.rauch_meldewege(einstellungen)
+    if not wege:
+        _LOGGER.error("Rauchalarm, aber kein Meldeweg eingestellt: %s", grund)
+        return
+    for dienst in wege:
+        ha_api.notify(dienst, titel, "\n".join(zeilen))
 
 
 def _stoerungen_melden(stoerungen: list, state: dict, einstellungen: dict) -> None:
@@ -378,8 +386,12 @@ def _rollo_fahren(entity_id: str | None, position) -> dict:
                 grund="von Hand über die Karte", manuell_bis=None)
             store.save_state(state)
     if erfolg:
-        logbuch.eintragen(rollo.get("name") or entity_id, f"{ziel} %",
-                          "von Hand gestellt", entity_id)
+        # Nicht die entity_id ins Protokoll: Die Kennungen stammen aus dem alten
+        # Haus und zeigen fast alle auf ein anderes Zimmer, als ihr Name sagt –
+        # „cover.finns_rollo" ist das Schlafzimmerfenster. Eine Kennung im
+        # Protokoll ist dann keine Auskunft, sondern eine Falschauskunft.
+        logbuch.eintragen(regelung.anzeigename(rollo, {entity_id: zustand}),
+                          f"{ziel} %", "von Hand gestellt", entity_id)
     return {"gefahren": erfolg, "position": ziel}
 
 
@@ -846,6 +858,30 @@ def api_wachhund_probe():
                                 "Probemeldung – der Meldeweg funktioniert.")]
     return jsonify({"gesendet": erfolge,
                     "fehlgeschlagen": [d for d in dienste if d not in erfolge]})
+
+
+@app.route("/api/rauchalarm/probe", methods=["POST"])
+def api_rauchalarm_probe():
+    """Eine Probemeldung über den Meldeweg des Rauchalarms.
+
+    Der einzige Weg, den Ernstfall vorher einmal zu sehen, ohne einen Melder
+    anzuzünden. Gefahren wird dabei nichts.
+    """
+    einstellungen = store.load_config()["einstellungen"]
+    wege = store.rauch_meldewege(einstellungen)
+    if not wege:
+        return jsonify({"fehler": "Kein Meldeweg eingestellt"}), 400
+    sperre = einstellungen.get("rauchsperre") or {}
+    melder = sperre.get("melder") or []
+    text = ("Probemeldung – es brennt nicht.\n"
+            "Bei einem echten Alarm käme hier, welche Rollos aufgefahren sind "
+            "und welche NICHT erreichbar waren.\n"
+            f"Fluchtweg-Freigabe: {'an' if sperre.get('fluchtweg', True) else 'AUS'}"
+            f" · Melder: {len(melder) if melder else 'alle'}")
+    erfolge = [d for d in wege
+               if ha_api.notify(d, "Rolloplaner – Probe Rauchalarm", text)]
+    return jsonify({"gesendet": erfolge,
+                    "fehlgeschlagen": [d for d in wege if d not in erfolge]})
 
 
 @app.route("/api/logbuch", methods=["GET", "DELETE"])

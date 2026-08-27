@@ -821,6 +821,14 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         state["urlaub_seit"] = None
 
     rauch, rauch_grund, akut = _rauchsperre(einstellungen, index, state, jetzt)
+    # Ein Alarm ist neu, sobald ein Melder anschlägt und noch keiner lief.
+    # Gemerkt wird das getrennt von der Fluchtweg-Freigabe: Gemeldet gehört ein
+    # Rauchalarm auch dann, wenn die Freigabe abgeschaltet ist.
+    rauch_neu = bool(akut and not state.get("rauch_seit"))
+    if akut and not state.get("rauch_seit"):
+        state["rauch_seit"] = _iso(jetzt)
+    elif not rauch:
+        state["rauch_seit"] = None
     fluchtweg = _fluchtweg(config, einstellungen, index, state, jetzt, rauch, akut)
 
     elevation, azimut = sonnenstand.stand(jetzt)
@@ -906,6 +914,9 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         "schulfrei_morgen": schulfrei_morgen,
         "rauch": rauch,
         "rauch_grund": rauch_grund,
+        "rauch_akut": akut,
+        "rauch_neu": rauch_neu,
+        "rauch_seit": state.get("rauch_seit"),
         "fluchtweg": fluchtweg,
         "sonne": {"elevation": elevation, "azimut": azimut,
                   "aufgang": _iso(sonnenstand.aufgang(jetzt.date())),
