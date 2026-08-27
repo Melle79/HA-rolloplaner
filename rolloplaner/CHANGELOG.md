@@ -1,5 +1,23 @@
 # Änderungen
 
+## 2.10.0 – 27.08.2026
+
+**Größere Tasten, und „Automatik aus" sieht nicht mehr nach „nicht verfügbar" aus.**
+
+* **Die Pfeiltasten sind jetzt gut 40 px statt 24 px** (34 px mal Textskala,
+  wächst also mit der Schrift mit). Am Wandtablett waren sie kaum zu treffen.
+  Dazu eine Rückmeldung beim Drücken – auf einem Tablett gibt es kein „hover".
+* **Ein Rollo mit abgeschalteter Automatik** bekommt einen gestrichelten Rand
+  und das Schild *aus*; gedimmt wird nur noch die Begründung und der nächste
+  Schaltpunkt. Vorher lag die halbe Deckkraft über der ganzen Kachel — Stellung,
+  Name und Tasten inbegriffen. Das las sich, als wäre das Rollo weg, obwohl es
+  sich weiter von Hand fahren lässt.
+* In der Fußzeile schrumpft bei Enge jetzt der **Zeitplanname** und nicht mehr
+  die **Uhrzeit**: Die Uhrzeit ist die Tatsache, der Name die Beschriftung.
+
+Nachgemessen gegen 2.9.0 von 400 px bis 1820 px: gleiche Kachelhöhen wie vorher,
+kein zusätzliches Abschneiden, kein Überlauf.
+
 ## 2.9.0 – 27.08.2026
 
 **Die Karte lässt sich größer stellen — und ist es ab jetzt von Haus aus.**

@@ -337,6 +337,21 @@ eines, das zweimal am Tag fährt, meldet sich auch nur zweimal am Tag.
 | `binary_sensor.rolloplaner_fluchtweg_offen` | Freigabe läuft gerade; Attribute sagen, was auffuhr und was nicht |
 | `binary_sensor.rolloplaner_stoerung` | Ein Antrieb meldet sich nicht oder hängt |
 
+### Bedienung mit dem Finger
+
+Die Pfeiltasten in der Kachel sind **34 × 34 px mal Textskala** groß, bei der
+Vorgabe also gut 40 px. Vorher waren es 24 px – am Wandtablett kaum zu treffen.
+Sie wachsen mit der Schrift mit: Eine große Schrift deutet auf einen weiter
+entfernten Betrachter, und der zielt schlechter.
+
+### Ein abgeschaltetes Rollo ist nicht verschwunden
+
+Steht die Automatik eines Rollos auf aus, bekommt seine Kachel einen
+**gestrichelten Rand** und das Schild *aus*; gedimmt wird nur die Begründung
+und der nächste Schaltpunkt. Vorher lag die halbe Deckkraft über der ganzen
+Kachel – das las sich wie „nicht verfügbar", obwohl Stellung, Name und Tasten
+weiter stimmen und das Rollo sich von Hand fahren lässt.
+
 ### Schriftgröße
 
 Die Karte hängt hier auch an einem Wandtablett im Flur, und was am Schreibtisch

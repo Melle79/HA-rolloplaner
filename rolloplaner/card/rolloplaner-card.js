@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.9.0";
+const CARD_VERSION = "2.10.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -381,8 +381,9 @@ class RolloplanerCard extends HTMLElement {
       </div>
       ${c.show_helfer ? this._helfer(attrs.helfer || [], r.name) : ""}
       <div class="z3">
-        <span class="dann">${attrs.zeitplan
-          ? `<span class="planschild">${this._esc(attrs.zeitplan)}</span> ` : ""}${dann}</span>
+        ${attrs.zeitplan
+          ? `<span class="planschild">${this._esc(attrs.zeitplan)}</span>` : ""}
+        <span class="dann">${dann}</span>
         <span class="knoepfe">${knoepfe}${kippe}</span>
       </div>
     </div>`;
@@ -559,9 +560,16 @@ class RolloplanerCard extends HTMLElement {
         color:var(--secondary-text-color); opacity:.85; font-weight:600;
         padding:8px 0 4px; border-bottom:1px solid var(--divider-color);
         margin-bottom:8px}
-      .planschild{display:inline-block; padding:0 6px; border-radius:12px;
+      /* Der Zeitplanname steht bei den Zustandsschildern am Namen, nicht in
+         der Fußzeile. Dort stritt er mit der Uhrzeit um die Breite, und
+         verloren hat regelmäßig die Uhrzeit – also die Tatsache gegen die
+         Beschriftung. Am Namen ist er außerdem, was er ist: eine Eigenschaft
+         des Rollos, nicht des nächsten Schaltpunkts. */
+      .planschild{display:inline-block; padding:0 7px; border-radius:12px;
         background:rgba(127,127,127,.2); color:var(--secondary-text-color);
-        font-size:calc(.68rem * var(--skala)); font-weight:600}
+        font-size:calc(.66rem * var(--skala)); font-weight:600;
+        white-space:nowrap; flex:0 50 auto; min-width:0;
+        overflow:hidden; text-overflow:ellipsis}
 
       /* ── Ein Chip, ein Aussehen – oben wie in der Kachel ── */
       .chip{display:inline-flex; align-items:center; gap:5px; cursor:pointer;
@@ -597,7 +605,8 @@ class RolloplanerCard extends HTMLElement {
       .chipzeile{display:flex; gap:5px; flex-wrap:nowrap; align-items:center;
         margin-top:7px; min-height:calc(26px * var(--skala)); overflow:hidden}
       .c-titel{font-size:calc(.7rem * var(--skala)); color:var(--secondary-text-color); opacity:.75;
-        white-space:nowrap; flex:none}
+        white-space:nowrap; flex:0 50 auto; min-width:0;
+        overflow:hidden; text-overflow:ellipsis}
 
       /* ── Kacheln oder Zeilen, je nach Platz ──
          Eine Karte in einer schmalen Dashboard-Spalte ist etwas anderes als
@@ -628,7 +637,14 @@ class RolloplanerCard extends HTMLElement {
       .raum{display:flex; flex-direction:column;
         border:1px solid var(--divider-color); border-radius:10px;
         padding:10px 11px 8px}
-      .raum.ruht{opacity:.5}
+      /* Automatik aus heißt: Der Planer fährt dieses Rollo nicht. Es heißt
+         nicht, dass das Rollo weg ist – Stellung, Name und Tasten stimmen
+         weiter. Die halbe Deckkraft über der ganzen Kachel las sich wie
+         „nicht verfügbar". Gedimmt wird deshalb nur, was tatsächlich ruht:
+         die Begründung und der nächste Schaltpunkt. Der gestrichelte Rand
+         sagt den Rest. */
+      .raum.ruht{border-style:dashed}
+      .raum.ruht .grund, .raum.ruht .dann{opacity:.5}
 
       .z1{display:flex; align-items:flex-start; gap:10px}
       .z1-text{flex:1 1 auto; min-width:0}
@@ -657,14 +673,24 @@ class RolloplanerCard extends HTMLElement {
       .warnung .schwer{font-weight:600}
       .s-fenster,.s-manuell{background:rgba(224,164,74,.3)}
 
-      .knoepfe{display:flex; gap:1px; flex:none}
-      .tipp{border:none; background:none; cursor:pointer; padding:3px;
-        border-radius:6px; color:var(--secondary-text-color); line-height:0}
+      /* Die Tastenzeile wird mit dem Finger bedient, nicht mit der Maus: Am
+         Wandtablett war die alte Fläche von 24 px kaum zu treffen. Sie wächst
+         mit der Textskala mit, weil eine große Schrift auf einen weiter
+         entfernten Betrachter deutet. */
+      .knoepfe{display:flex; gap:calc(3px * var(--skala)); flex:none;
+        margin-left:auto}
+      .tipp{border:none; background:none; cursor:pointer;
+        display:inline-flex; align-items:center; justify-content:center;
+        min-width:calc(34px * var(--skala)); min-height:calc(34px * var(--skala));
+        padding:0; border-radius:10px; color:var(--secondary-text-color)}
       .tipp:hover{color:var(--primary-text-color); background:rgba(127,127,127,.18)}
+      /* Auf dem Tablett gibt es kein „hover" – dort ist der Druck die einzige
+         Rückmeldung, die man bekommt. */
+      .tipp:active{background:rgba(127,127,127,.3)}
       .tipp.an{color:var(--an-farbe)}
-      .tipp ha-icon{--mdc-icon-size:calc(18px * var(--skala)); display:block}
+      .tipp ha-icon{--mdc-icon-size:calc(22px * var(--skala)); display:block}
 
-      .z3{display:flex; align-items:center; gap:8px; margin-top:auto;
+      .z3{display:flex; align-items:center; gap:6px; margin-top:auto;
         padding-top:7px; font-size:calc(.75rem * var(--skala)); color:var(--secondary-text-color)}
       .dann{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
         white-space:nowrap}
@@ -711,14 +737,24 @@ class RolloplanerCard extends HTMLElement {
       .rollo .kasten{position:absolute; left:0; right:0; top:0; height:4px;
         background:linear-gradient(to bottom,#b8c1cb,#8e99a5)}
 
-      .knoepfe{display:flex; gap:1px; flex:none}
-      .tipp{border:none; background:none; cursor:pointer; padding:3px;
-        border-radius:6px; color:var(--secondary-text-color); line-height:0}
+      /* Die Tastenzeile wird mit dem Finger bedient, nicht mit der Maus: Am
+         Wandtablett war die alte Fläche von 24 px kaum zu treffen. Sie wächst
+         mit der Textskala mit, weil eine große Schrift auf einen weiter
+         entfernten Betrachter deutet. */
+      .knoepfe{display:flex; gap:calc(3px * var(--skala)); flex:none;
+        margin-left:auto}
+      .tipp{border:none; background:none; cursor:pointer;
+        display:inline-flex; align-items:center; justify-content:center;
+        min-width:calc(34px * var(--skala)); min-height:calc(34px * var(--skala));
+        padding:0; border-radius:10px; color:var(--secondary-text-color)}
       .tipp:hover{color:var(--primary-text-color); background:rgba(127,127,127,.18)}
+      /* Auf dem Tablett gibt es kein „hover" – dort ist der Druck die einzige
+         Rückmeldung, die man bekommt. */
+      .tipp:active{background:rgba(127,127,127,.3)}
       .tipp.an{color:var(--an-farbe)}
-      .tipp ha-icon{--mdc-icon-size:calc(18px * var(--skala)); display:block}
+      .tipp ha-icon{--mdc-icon-size:calc(22px * var(--skala)); display:block}
 
-      .z3{display:flex; align-items:center; gap:8px; margin-top:7px;
+      .z3{display:flex; align-items:center; gap:6px; margin-top:7px;
         padding-top:6px; border-top:1px solid var(--divider-color);
         font-size:calc(.75rem * var(--skala)); color:var(--secondary-text-color)}
       .dann{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
