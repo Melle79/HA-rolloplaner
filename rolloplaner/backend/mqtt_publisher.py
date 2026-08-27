@@ -14,6 +14,7 @@ Schalter dagegen sind der Zustand selbst.
 from __future__ import annotations
 
 import json
+from datetime import datetime
 import logging
 import re
 import threading
@@ -58,6 +59,16 @@ SCHALTER = [
     ("fluchtweg", "Rollos Fluchtweg-Freigabe", "mdi:fire-alert"),
     ("trockenlauf_schalter", "Rollos Trockenlauf schalten", "mdi:test-tube"),
 ]
+
+
+def _uhrzeit(iso: str | None) -> str | None:
+    """Aus einem Zeitstempel die reine Uhrzeit – mehr passt nicht in eine Kachel."""
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(str(iso)).strftime("%H:%M")
+    except ValueError:
+        return None
 
 
 def _slug(text: str) -> str:
@@ -398,9 +409,13 @@ class Publisher:
             status = "Urlaub"
         else:
             beschattet = [r for r in rollos if r.get("zustand") == "beschattung"]
-            aktive = [r for r in rollos if r.get("zustand") not in ("aus", "gesperrt")]
+            # „aktiv" hieß hier immer „der Planer fährt es" – gelesen wurde es
+            # als „das Rollo funktioniert". Ein Rollo mit abgeschalteter
+            # Automatik ist aber nicht kaputt, es wird nur nicht gefahren.
+            mit = [r for r in rollos if r.get("zustand") not in ("aus", "gesperrt")]
             status = (f"{len(beschattet)} Rollos beschattet" if beschattet
-                      else f"{len(aktive)} von {len(rollos)} Rollos aktiv")
+                      else "Alle Rollos mit Automatik" if len(mit) == len(rollos)
+                      else f"{len(mit)} von {len(rollos)} Rollos mit Automatik")
 
         sonne = bericht.get("sonne") or {}
         self._zustand("status", status, {
@@ -506,6 +521,11 @@ class Publisher:
                 "beschattet": rollo.get("beschattet", False),
                 "fenster_offen": rollo.get("fenster_offen") or [],
                 "zeitplan": rollo.get("plan") or "",
+                # Wann der geltende Schaltpunkt fällig war. Ohne diese Angabe
+                # liest sich die Begründung wie ein Vorhaben statt wie ein
+                # Vorgang: „zu um Sonnenuntergang … dann offen um 10:00" klingt
+                # nach zwei Terminen, von denen der erste längst vorbei ist.
+                "zuletzt_uhrzeit": _uhrzeit(rollo.get("punkt_zeit")),
                 "naechste_uhrzeit": rollo.get("naechste_uhrzeit"),
                 "naechste_stellung": zeige(rollo.get("naechste_stellung")),
                 "naechste_stellung_ha": rollo.get("naechste_stellung"),

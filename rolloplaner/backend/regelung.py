@@ -490,15 +490,21 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
         return ergebnis
 
     # 2. aus ------------------------------------------------------------------
+    # „Abgeschaltet" ist die Automatik, nicht das Rollo. Das Rollo hängt weiter
+    # da, meldet seine Stellung und lässt sich von Hand fahren – der Planer
+    # fasst es nur nicht mehr nach Plan an. Wer hier „Rollo ist abgeschaltet"
+    # liest, sucht nach einem Defekt, den es nicht gibt.
     if not rollo.get("aktiv", True):
-        ergebnis.update(zustand="aus", begruendung="Rollo ist abgeschaltet")
+        ergebnis.update(zustand="aus",
+                        begruendung="Automatik für dieses Rollo ist aus")
         return ergebnis
     if rollo.get("betriebsart") == "von_hand":
         ergebnis.update(zustand="von_hand",
                         begruendung="Ohne Zeitplan – wird von Hand gefahren")
         return ergebnis
     if not lage["automatik"]:
-        ergebnis.update(zustand="aus", begruendung="Automatik ist aus")
+        ergebnis.update(zustand="aus",
+                        begruendung="Automatik ist insgesamt aus")
         return ergebnis
     if plan is not None and not plan.get("aktiv", True):
         ergebnis.update(zustand="gesperrt",

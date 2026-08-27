@@ -900,7 +900,7 @@ function zeichneRollos(){
         const plan = plaene.get(r.plan);
         return `<tr>
           <td><b>${esc(rolloName(r))}</b>
-            ${r.aktiv ? "" : ' <span class="hinweis">(aus)</span>'}
+            ${r.aktiv ? "" : ' <span class="hinweis">(Automatik aus)</span>'}
             <div class="hinweis">${esc(r.entity_id)}</div></td>
           <td>${esc(artName.get(r.art) || r.art)}</td>
           <td>${r.betriebsart === "von_hand"
@@ -965,7 +965,10 @@ function zeichneRolloDialog(){
           <input type="text" name="raum" value="${esc(r.raum)}" maxlength="60"></label>
       </div>
       <label class="haken"><input type="checkbox" name="aktiv" ${r.aktiv ? "checked" : ""}>
-        Rollo ist eingeschaltet</label>
+        Automatik für dieses Rollo</label>
+      <p class="hinweis">Aus heißt: Der Planer fährt es nicht nach Plan. Es
+        bleibt in der Übersicht, meldet weiter seine Stellung, lässt sich von
+        Hand fahren und geht bei Rauchalarm trotzdem auf.</p>
       <label class="feld"><span>Betriebsart</span>
         ${auswahl("betriebsart", [["plan","Plan – auf und zu"],
                                   ["nur_schliessen","nur schließen"],

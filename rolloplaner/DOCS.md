@@ -133,7 +133,7 @@ eines einzelnen Rollos).
 | --- | --- | --- |
 | 1 | **Fluchtweg** | Ein Melder schlägt an – das Rollo fährt auf |
 | 1 | **Rauchsperre** | Alarm, aber dieses Rollo ist von der Freigabe ausgenommen |
-| 2 | **aus** | Das Rollo oder die Automatik ist abgeschaltet |
+| 2 | **aus** | Die Automatik ist abgeschaltet – für dieses Rollo oder insgesamt |
 | 3 | **gesperrt** | Der Zeitplan, dem es folgt, ist stillgelegt |
 | 4 | **Fenster offen** | Ein Kontakt ist offen – es wird nicht zugefahren |
 | 5 | **Urlaub** | Urlaubsprogramm statt Zeitplan |
@@ -343,6 +343,16 @@ Die Pfeiltasten in der Kachel sind **34 × 34 px mal Textskala** groß, bei der
 Vorgabe also gut 40 px. Vorher waren es 24 px – am Wandtablett kaum zu treffen.
 Sie wachsen mit der Schrift mit: Eine große Schrift deutet auf einen weiter
 entfernten Betrachter, und der zielt schlechter.
+
+### Ein Rollo ohne Automatik ist nicht abgeschaltet
+
+„Aus" heißt in diesem Add-on immer: **die Automatik** ist aus, nie das Rollo.
+Es bleibt in der Übersicht, meldet seine Stellung, lässt sich von Hand fahren
+und geht bei Rauchalarm trotzdem auf – der Planer fährt es nur nicht nach Plan.
+Deshalb heißt der Haken am Rollo *Automatik für dieses Rollo*, das Schild in
+der Kachel *Automatik aus* und die Kopfzeile *9 von 10 Rollos mit Automatik*.
+Vorher stand dort „Rollo ist abgeschaltet" und „9 von 10 Rollos aktiv", und
+beides las sich wie ein Defekt.
 
 ### Ein abgeschaltetes Rollo ist nicht verschwunden
 

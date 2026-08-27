@@ -1,5 +1,32 @@
 # Änderungen
 
+## 2.11.0 – 27.08.2026
+
+**Aufgeräumte Wortwahl: „aus" heißt die Automatik, nicht das Rollo.**
+
+An drei Stellen behauptete das Add-on, das Rollo sei abgeschaltet, während in
+Wirklichkeit nur seine Automatik aus war. Das Rollo hängt weiter da, meldet
+seine Stellung, lässt sich von Hand fahren und geht bei Rauchalarm trotzdem
+auf. Wer das liest, sucht nach einem Defekt, den es nicht gibt.
+
+* In der Kachel: *„Rollo ist abgeschaltet"* → **„Automatik für dieses Rollo
+  ist aus"**, das Schild *aus* → **Automatik aus**.
+* In der Kopfzeile: *„9 von 10 Rollos aktiv"* → **„9 von 10 Rollos mit
+  Automatik"** (und „Alle Rollos mit Automatik", wenn keins fehlt).
+* Im Add-on am Rollo: *„Rollo ist eingeschaltet"* → **„Automatik für dieses
+  Rollo"**, mit einem Satz darunter, was Ausschalten wirklich bedeutet.
+* Und die Automatik insgesamt heißt jetzt **„Automatik ist insgesamt aus"**,
+  damit sie nicht mit der eines einzelnen Rollos zu verwechseln ist.
+
+**Die Begründung in der Kachel sagt jetzt, wann sie gilt.**
+
+*„zu um Sonnenuntergang, spätestens 22:00 … dann offen um 10:00 Uhr"* las sich
+wie eine Folge von zwei Vorhaben – dabei ist das erste längst geschehen und nur
+das zweite steht bevor. Jetzt steht dort **„seit 20:09 Uhr: zu um
+Sonnenuntergang …"**. Die Uhrzeit ist der Zeitpunkt des geltenden
+Schaltpunkts; sie erscheint nur beim Zeitplan, denn „Fenster offen" oder
+„Handbetrieb bis 08:00" sind schon von sich aus eindeutig.
+
 ## 2.10.0 – 27.08.2026
 
 **Größere Tasten, und „Automatik aus" sieht nicht mehr nach „nicht verfügbar" aus.**

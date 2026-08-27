@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.10.0";
+const CARD_VERSION = "2.11.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -65,7 +65,7 @@ const TUERARTEN = ["balkontuer", "terrassentuer", "haustuer"];
 const ZUSTAND_TEXT = {
   beschattung: "Hitzeschutz", urlaub: "Urlaub", rauch: "Rauchsperre",
   fluchtweg: "Fluchtweg",
-  fenster: "Fenster offen", manuell: "Handbetrieb", aus: "aus",
+  fenster: "Fenster offen", manuell: "Handbetrieb", aus: "Automatik aus",
   gesperrt: "gesperrt", ohne_plan: "kein Plan", nur_schliessen: "nur schließen",
   von_hand: "von Hand",
 };
@@ -346,6 +346,15 @@ class RolloplanerCard extends HTMLElement {
     const schild = ZUSTAND_TEXT[zustand]
       ? `<span class="schild s-${zustand}">${ZUSTAND_TEXT[zustand]}</span>` : "";
 
+    // Die Begründung ist Vergangenheit, die Fußzeile Zukunft. Ohne die Uhrzeit
+    // davor las sich beides als Folge von Vorhaben: „zu um Sonnenuntergang …
+    // dann offen um 10:00 Uhr" klingt nach zwei Terminen, von denen der erste
+    // längst vorbei ist. Nur beim Zeitplan – „Fenster offen" oder „Handbetrieb
+    // bis 08:00" sind schon von sich aus eindeutig.
+    const grund = zustand === "plan" && attrs.zuletzt_uhrzeit && attrs.begruendung
+      ? `seit ${this._esc(attrs.zuletzt_uhrzeit)} Uhr: ${this._esc(attrs.begruendung)}`
+      : this._esc(attrs.begruendung || "");
+
     const inv = Boolean(attrs.prozent_invertiert);
     const dann = attrs.naechste_uhrzeit
       ? `dann ${stellungstext(attrs.naechste_stellung, inv)} um ${this._esc(attrs.naechste_uhrzeit)} Uhr`
@@ -372,7 +381,7 @@ class RolloplanerCard extends HTMLElement {
           <div class="namenzeile">
             <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>${schild}
           </div>
-          <div class="grund">${this._esc(attrs.begruendung || "")}</div>
+          <div class="grund">${grund}</div>
         </div>
         <div class="z1-wert">
           <span class="wert">${wert}<small>${Number.isNaN(zahl) ? "" : "%"}</small></span>
