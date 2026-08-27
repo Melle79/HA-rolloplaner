@@ -212,6 +212,27 @@ verschattet werden.
 Ohne Ausrichtung bleibt der Hitzeschutz wirkungslos: Der Planer kann nicht
 raten, und ein geratener Wert verschattet zur falschen Tageszeit.
 
+Die Ausrichtung ist eine **Gradzahl von 0 bis 359** (0 Nord, 90 Ost, 180 Süd,
+270 West), keine Auswahl aus acht Himmelsrichtungen. Krumme Werte sind der
+Normalfall: Ein Haus steht selten genau nach der Himmelsrichtung, und die 22
+Grad zwischen „Süd“ und „SSO“ sind am Nachmittag eine gute Stunde Sonne. Wer
+den Wert nicht schätzen will, kann ihn aus dem Gebäudeumriss rechnen — die
+Außenwände eines Hauses stehen in den Kartendaten.
+
+Der **Öffnungswinkel** sagt, wie weit die Sonne daneben stehen darf und
+trotzdem noch ins Fenster scheint (Vorgabe 90°, also 45° zu jeder Seite).
+
+### Wie weit zufahren?
+
+Die **Stellung beim Beschatten** steht unter *Einstellungen → Hitzeschutz* und
+gilt für alle Rollos. Wo ein einzelnes Rollo davon abweichen soll, trägt man im
+Rollo-Dialog unter *Stellung* einen eigenen Wert ein; leer heißt „die Vorgabe“.
+Ein Wohnzimmer, in dem man tagsüber sitzt, will vielleicht heller bleiben als
+ein Schlafzimmer, das nur kühl werden soll.
+
+Beide Felder folgen der eingestellten **Zählweise** – steht die Umkehrung an,
+heißt eine höhere Zahl „weiter zu“.
+
 Im Winter bleibt das Rollo offen, auch bei tiefstehender Sonne. Die wärmt kaum,
 und genau die will man haben.
 

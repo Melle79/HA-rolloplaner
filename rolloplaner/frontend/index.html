@@ -437,8 +437,15 @@ const GELTUNG = [["immer","immer"],["schultag","an Schultagen"],
                  ["schulfrei","an schulfreien Tagen"],
                  ["morgen_schultag","wenn morgen Schule ist"],
                  ["morgen_schulfrei","wenn morgen schulfrei ist"]];
-const RICHTUNGEN = [["0","Nord"],["45","Nordost"],["90","Ost"],["135","Südost"],
-                    ["180","Süd"],["225","Südwest"],["270","West"],["315","Nordwest"]];
+const STRICHE = ["N","NNO","NO","ONO","O","OSO","SO","SSO",
+                 "S","SSW","SW","WSW","W","WNW","NW","NNW"];
+/* Ein Fenster zeigt selten genau nach Süden. Steht ein Haus schräg zur
+   Himmelsrichtung – und das tun die meisten –, sind die 22 Grad Unterschied
+   zwischen „Süd“ und „SSO“ am Nachmittag eine gute Stunde Sonne. */
+function strich(grad){
+  if (grad === null || grad === undefined || grad === "") return "";
+  return STRICHE[Math.round(((Number(grad) % 360) + 360) % 360 / 22.5) % 16];
+}
 const ARTEN = [["fenster","Fenster"],["balkontuer","Balkontür"],
                ["terrassentuer","Terrassentür"],["dachfenster","Dachfenster"],
                ["haustuer","Haustür"]];
@@ -877,7 +884,7 @@ function zeichneRollos(){
                 : plan ? `<span class="planschild">${esc(plan.name)}</span>`
                 : `<span class="planschild eigen">${r.zeitplan.length} eigene Punkte</span>`}</td>
           <td class="hinweis">${r.beschattung && r.ausrichtung !== null
-                ? (RICHTUNGEN.find(([g]) => Number(g) === r.ausrichtung)?.[1] || r.ausrichtung + "°")
+                ? `${strich(r.ausrichtung)} ${r.ausrichtung}°`
                 : "–"}</td>
           <td class="knopfspalte"><button class="leise" data-rollo="${esc(r.entity_id)}">Bearbeiten</button></td>
         </tr>`;
@@ -958,8 +965,12 @@ function zeichneRolloDialog(){
 
     <div class="abschnitt"><h3>Hitzeschutz</h3>
       <div class="gitter g3">
-        <label class="feld"><span>Zeigt nach</span>
-          ${auswahl("ausrichtung", RICHTUNGEN, r.ausrichtung, "unbekannt")}</label>
+        <label class="feld"><span>Zeigt nach${r.ausrichtung === null
+            || r.ausrichtung === undefined ? "" : " (" + strich(r.ausrichtung) + ")"}</span>
+          <input type="number" name="ausrichtung" min="0" max="359" step="1"
+                 placeholder="unbekannt"
+                 value="${r.ausrichtung === null || r.ausrichtung === undefined
+                          ? "" : r.ausrichtung}"></label>
         <label class="feld"><span>Öffnungswinkel</span>
           <input type="number" name="oeffnungswinkel" value="${r.oeffnungswinkel}"
                  min="10" max="180" step="10"></label>
@@ -968,6 +979,13 @@ function zeichneRolloDialog(){
                  value="${r.beschattung_position === null || r.beschattung_position === undefined
                           ? "" : zeige(r.beschattung_position)}"></label>
       </div>
+      <p class="hinweis">Grad im Uhrzeigersinn: <b>0</b> Nord · <b>90</b> Ost ·
+        <b>180</b> Süd · <b>270</b> West. Krumme Werte sind erwünscht — ein Haus
+        steht selten genau nach der Himmelsrichtung, und 20 Grad Unterschied
+        sind am Nachmittag eine Stunde Sonne. Der <i>Öffnungswinkel</i> sagt, wie
+        weit die Sonne daneben stehen darf und trotzdem noch hereinscheint.
+        Die <i>Stellung</i> gilt nur für dieses Rollo; leer heißt: die Vorgabe
+        aus den Einstellungen.</p>
       <label class="haken"><input type="checkbox" name="beschattung" ${r.beschattung ? "checked" : ""}>
         Hitzeschutz für dieses Rollo</label>
       <p class="hinweis">Ohne Ausrichtung bleibt er wirkungslos – der Planer kann nicht

@@ -1,5 +1,25 @@
 # Änderungen
 
+## 2.6.0 – 27.08.2026
+
+**Die Ausrichtung ist jetzt eine Gradzahl, keine Auswahl aus acht Richtungen.**
+
+Das Feld *Zeigt nach* war ein Auswahlmenü mit Nord, Nordost, Ost … — und damit
+eine Falle: Stand am Rollo ein Wert dazwischen (aus dem Gebäudeumriss gerechnet
+etwa 166°), passte keine Option. Das Menü zeigte „unbekannt“, und wer den
+Dialog nur öffnete und speicherte, **löschte die Ausrichtung stillschweigend**.
+
+Jetzt steht dort ein Zahlenfeld von 0 bis 359 mit dem Himmelsstrich daneben
+(„Zeigt nach (SSO)“). Krumme Werte sind der Normalfall — ein Haus steht selten
+genau nach der Himmelsrichtung, und die 22 Grad zwischen Süd und SSO sind am
+Nachmittag eine gute Stunde Sonne. In der Rolloliste steht die Richtung
+entsprechend als „SSO 166°“ statt nur „Süd“.
+
+Unverändert, aber jetzt in der Anleitung beschrieben: **Wie weit beim Beschatten
+zugefahren wird**, steht unter *Einstellungen → Hitzeschutz* für alle Rollos und
+im Rollo-Dialog unter *Stellung* für ein einzelnes. Beide folgen der
+eingestellten Zählweise.
+
 ## 2.5.0 – 27.08.2026
 
 **Die Melder lassen sich jetzt auswählen.** Bisher stand unter *Rauchalarm* nur
