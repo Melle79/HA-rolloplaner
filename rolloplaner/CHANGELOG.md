@@ -1,5 +1,16 @@
 # Änderungen
 
+## 2.5.0 – 27.08.2026
+
+**Die Melder lassen sich jetzt auswählen.** Bisher stand unter *Rauchalarm* nur
+der Satz, dass ohne Auswahl alle Melder gelten – auswählen konnte man keine.
+Wer den Fluchtweg an bestimmte Melder hängen will, kann das nun.
+
+Keiner angehakt heißt weiterhin **alle**, und das bleibt die Vorgabe: Ein
+Melder, den man beim Auswählen übersieht, löst dann trotzdem aus. Wer auswählt,
+sollte wissen, warum – ein nicht angehakter Melder schlägt für den Planer
+niemals an.
+
 ## 2.4.1 – 27.08.2026
 
 **Der Trockenlauf meldete Handbetrieb, den es nicht gab.**

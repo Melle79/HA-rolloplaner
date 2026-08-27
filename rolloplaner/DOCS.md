@@ -163,8 +163,11 @@ solange der eingestellte Nachlauf läuft. Ohne sie führe der Planer beim nächs
 Takt seinen Abendplan durch und machte den Fluchtweg wieder zu. **Nicht
 abschalten.**
 
-Ohne Melderauswahl gelten alle `binary_sensor` der Geräteklasse *smoke* – auch
-CO-Melder, die als solche eingetragen sind.
+Welche Melder auslösen, steht unter *Einstellungen → Rauchalarm*. Keiner
+angehakt heißt **alle** `binary_sensor` der Geräteklasse *smoke* – auch
+CO-Melder, die als solche eingetragen sind. Das ist die sichere Vorgabe: Ein
+Melder, den man beim Auswählen übersieht, löst dann trotzdem aus. Ein nicht
+angehakter Melder schlägt für den Planer dagegen niemals an.
 
 ### Die Freigabe
 

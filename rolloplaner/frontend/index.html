@@ -1342,9 +1342,17 @@ function zeichneEinstellungen(){
       <label class="haken"><input type="checkbox" name="rauchsperre.aktiv"
         ${e.rauchsperre?.aktiv ? "checked" : ""}>
         Bei Rauch keinen Zeitplan mehr ausführen</label>
-      <p class="hinweis">Ohne Melderauswahl gelten alle Melder der Geräteklasse „Rauch“.
-        Das muss an bleiben: Sonst führe der Planer beim nächsten Takt seinen
-        Zeitplan durch und machte den Fluchtweg wieder zu.</p>
+      <p class="hinweis">Das muss an bleiben: Sonst führe der Planer beim nächsten
+        Takt seinen Zeitplan durch und machte den Fluchtweg wieder zu.</p>
+
+      <label class="feld" style="margin-top:var(--l3)"><span>Diese Melder lösen aus</span></label>
+      ${hakenliste("rauchsperre.melder", k.rauch || [], e.rauchsperre?.melder || [])}
+      <p class="hinweis">Keiner gewählt heißt <b>alle</b> – jeder
+        <code>binary_sensor</code> der Geräteklasse „Rauch“, CO-Melder
+        eingeschlossen. Das ist die sichere Vorgabe: Ein Melder, den man beim
+        Auswählen übersieht, löst dann trotzdem aus. Wer auswählt, sollte
+        wissen, warum – ein nicht angehakter Melder schlägt für den Planer
+        niemals an.</p>
 
       <label class="haken" style="margin-top:var(--l3)">
         <input type="checkbox" name="rauchsperre.fluchtweg"
@@ -1445,6 +1453,10 @@ async function einstellungenSpeichern(){
   });
   if (daten.wachhund) daten.wachhund.melden_an =
     daten.wachhund.melden_an ? [daten.wachhund.melden_an] : [];
+  // Eine Hakenliste sind viele Kästchen unter einem Namen – die Schleife oben
+  // macht daraus ein einzelnes Ja/Nein. Die Liste wird deshalb eigens geholt.
+  if (daten.rauchsperre) daten.rauchsperre.melder =
+    $$('input[name="rauchsperre.melder"]:checked', wurzel).map((el) => el.value);
   // Die Beschattungsstellung wurde in der angezeigten Zählweise eingegeben.
   // Achtung: Wird der Schalter im selben Zug umgelegt, gilt für die Eingabe
   // noch die alte Zählweise – deshalb hier `invertiert()` und nicht der neue
