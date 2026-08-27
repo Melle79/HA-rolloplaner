@@ -1,5 +1,15 @@
 # Änderungen
 
+## 2.12.1 – 28.08.2026
+
+**Aus einer Gruppe heraus ließ sich kein Rollo hinzufügen.**
+
+Zuweisen ging nur über den Abschnitt *Noch in keiner Gruppe* weiter unten – und
+der verschwand, sobald alle Rollos zugeordnet waren. Wer dann eine neue Gruppe
+anlegte, stand vor „Noch kein Rollo in dieser Gruppe" ohne einen Weg, das zu
+ändern. Jetzt hat jede Gruppe ein Feld **Rollo in diese Gruppe legen**; steckt
+das Rollo schon woanders, steht das dabei und es wird umgehängt statt kopiert.
+
 ## 2.12.0 – 27.08.2026
 
 **Obergruppen: eine Ebene über den Rollos, mit eigenem Zeitplan und eigener

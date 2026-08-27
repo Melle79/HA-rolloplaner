@@ -93,8 +93,8 @@ und eine Gruppe kann nicht auf ein gelöschtes Rollo oder einen gelöschten Plan
 zeigen. Ein Rollo ohne Gruppe fährt weiter nach seinem eigenen Zeitplan – ihm
 fehlt nur die Obergruppe.
 
-Im Reiter *Gruppen* legt man sie an, benennt sie, schiebt Rollos hinein und
-sortiert beides. **Die Reihenfolge dort ist die Reihenfolge in der Karte.** Der
+Im Reiter *Gruppen* legt man sie an, benennt sie, schiebt Rollos hinein
+(*Rollo in diese Gruppe legen*, direkt an der Gruppe) und sortiert beides. **Die Reihenfolge dort ist die Reihenfolge in der Karte.** Der
 Knopf *Vorschlag aus Home Assistant* macht aus den dort gepflegten **Etagen**
 einen Anfang – ohne Gruppenzeitplan, er ändert also kein Verhalten.
 

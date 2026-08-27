@@ -1530,6 +1530,24 @@ function zeichneGruppen(){
         </tbody>
       </table>
 
+      ${/* Hinzufügen gehört an die Gruppe, nicht in einen Abschnitt weiter
+            unten: Wer eine Gruppe vor sich hat, will von hier aus etwas
+            hineinlegen. Sind alle Rollos schon zugeordnet, verschwand die
+            Liste unten sogar ganz – dann führte gar kein Weg mehr hierher. */
+        ""}
+      <label class="feld" style="margin-top:var(--l3); max-width:420px">
+        <span>Rollo in diese Gruppe legen</span>
+        <select data-g-dazu="${i}">
+          <option value="">auswählen …</option>
+          ${(CONFIG?.rollos || []).map((r) => r.entity_id)
+            .filter((eid) => !g.rollos.includes(eid))
+            .map((eid) => {
+              const bei = GRUPPEN.findIndex((x) => x.rollos.includes(eid));
+              return `<option value="${esc(eid)}">${esc(rolloNameVon(eid))}${
+                bei >= 0 ? ` — bisher in „${esc(GRUPPEN[bei].name)}“` : ""}</option>`;
+            }).join("")}
+        </select></label>
+
       <div class="dlg-fuss" style="padding-left:0; padding-right:0">
         <button class="leise" data-g-hoch="${i}" ${i ? "" : "disabled"}>↑ Gruppe</button>
         <button class="leise" data-g-runter="${i}"
@@ -1580,6 +1598,19 @@ function gruppenVerdrahten(){
     const [i, j] = el.dataset.rZiel.split(":").map(Number);
     const [eid] = GRUPPEN[i].rollos.splice(j, 1);
     if (el.value !== "-") GRUPPEN[Number(el.value)].rollos.push(eid);
+    zeichneGruppen();
+  });
+  $$("[data-g-dazu]", wurzel).forEach((el) => el.onchange = () => {
+    if (!el.value) return;
+    const ziel = Number(el.dataset.gDazu);
+    // Ein Rollo gehört in höchstens eine Gruppe – also erst überall
+    // herausnehmen, dann hier einhängen. Sonst stünde es in zweien, und der
+    // Planer wüsste nicht, welcher Zeitplan gilt.
+    GRUPPEN.forEach((g) => {
+      const k = g.rollos.indexOf(el.value);
+      if (k >= 0) g.rollos.splice(k, 1);
+    });
+    GRUPPEN[ziel].rollos.push(el.value);
     zeichneGruppen();
   });
   $$("[data-frei-ziel]", wurzel).forEach((el) => el.onchange = () => {
