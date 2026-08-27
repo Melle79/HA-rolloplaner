@@ -95,11 +95,12 @@ def _sonnenstand_justieren(sonnenstand, sun: dict | None) -> None:
 
 
 def _rauchsperre(einstellungen: dict, index: dict, state: dict,
-                 jetzt: datetime) -> tuple[bool, str, bool]:
+                 jetzt: datetime) -> tuple[bool, str, bool, str]:
     """Schlägt gerade ein Rauchmelder an – oder hat er es eben noch getan?
 
-    Zurück kommen drei Dinge: ob die Sperre gilt, warum, und ob der Alarm
-    **akut** ist. Der Unterschied zählt: Die Sperre gilt auch im Nachlauf nach
+    Zurück kommen vier Dinge: ob die Sperre gilt, warum, ob der Alarm **akut**
+    ist, und wo er ist – der Ort gehört in die Überschrift der Nachricht, denn
+    auf einem Sperrbildschirm liest man die erste Zeile und sonst nichts. Der Unterschied zählt: Die Sperre gilt auch im Nachlauf nach
     der Entwarnung, der Fluchtweg wird dort aber nicht mehr aufgefahren – sonst
     führe der Planer eine halbe Stunde lang gegen jeden an, der hinter dem
     abgezogenen Alarm wieder zumachen will.
@@ -113,14 +114,16 @@ def _rauchsperre(einstellungen: dict, index: dict, state: dict,
     """
     sperre = einstellungen.get("rauchsperre") or {}
     if not sperre.get("aktiv", True):
-        return False, "", False
+        return False, "", False, ""
 
-    melder = sperre.get("melder") or []
+    melder = [m for m in (sperre.get("melder") or [])
+              if not ha_api.ist_eigene_entitaet(m)]
     if melder:
         kandidaten = [(eid, index.get(eid)) for eid in melder]
     else:
         kandidaten = [(eid, z) for eid, z in index.items()
                       if eid.startswith("binary_sensor.")
+                      and not ha_api.ist_eigene_entitaet(eid)
                       and ha_api.ist_rauchmelder(
                           eid, ((z.get("attributes") or {}).get("friendly_name") or ""),
                           (z.get("attributes") or {}).get("device_class"))]
@@ -129,18 +132,61 @@ def _rauchsperre(einstellungen: dict, index: dict, state: dict,
     if ausgeloest:
         nachlauf = int(sperre.get("nachlauf_min", 30))
         state["rauch_bis"] = _iso(jetzt + timedelta(minutes=nachlauf))
-        namen = []
-        for eid in ausgeloest[:3]:
-            zustand = index.get(eid) or {}
-            namen.append((zustand.get("attributes") or {}).get("friendly_name") or eid)
-        return True, "Rauchmelder: " + ", ".join(namen), True
+        orte = _melderorte(ausgeloest, index)
+        state["rauch_orte"] = orte
+        return True, "Rauchmelder: " + orte, True, orte
 
     bis = _aus_iso(state.get("rauch_bis"))
     if bis and jetzt < bis:
-        return True, f"Nachlauf der Rauchsperre bis {bis.strftime('%H:%M')} Uhr", False
+        return (True, f"Nachlauf der Rauchsperre bis {bis.strftime('%H:%M')} Uhr",
+                False, state.get("rauch_orte") or "")
     if bis:
         state["rauch_bis"] = None
-    return False, "", False
+        state["rauch_orte"] = None
+    return False, "", False, ""
+
+
+# Was am Namen eines Melders hinten dranhängt und nichts sagt. „RM Flur EG
+# Alarmstatus" ist auf einem Sperrbildschirm drei Wörter zu lang.
+_MELDER_BALLAST = ("alarmstatus", "alarm", "rauch", "smoke", "status")
+
+
+def _melderort(entity_id: str, index: dict, bereiche: dict | None = None) -> str:
+    """Wo dieser Melder hängt – möglichst als Raum, sonst als gekürzter Name.
+
+    Der Bereich aus Home Assistant ist die bessere Auskunft: „Flur 1.OG" sagt
+    im Ernstfall mehr als „RM Flur OG Alarmstatus", und er steht auch dann
+    richtig da, wenn der Melder einmal umbenannt wird.
+    """
+    bereich = (bereiche or {}).get(entity_id)
+    if bereich:
+        return bereich
+    name = ((index.get(entity_id) or {}).get("attributes") or {}).get(
+        "friendly_name") or entity_id
+    worte = [w for w in str(name).split() if w.lower() not in _MELDER_BALLAST]
+    # „RM" allein ist kein Ort – dann lieber den ganzen Namen als gar nichts.
+    return " ".join(worte) if len(worte) > 1 else str(name)
+
+
+def _melderorte(ausgeloest: list, index: dict, grenze: int = 4) -> str:
+    """Die Orte aller ausgelösten Melder, ohne Doppelungen.
+
+    Bei einem Brand schlagen mehrere an. Die Liste zu kürzen ist richtig – sie
+    stillschweigend zu kürzen nicht: „und 3 weitere" gehört dazu, sonst hält
+    man vier Melder für alles, was los ist.
+    """
+    try:
+        bereiche = ha_api.bereiche_je_entitaet(("binary_sensor",))
+    except Exception:  # noqa: BLE001 – im Ernstfall lieber ohne Bereiche melden
+        bereiche = {}
+    orte: list[str] = []
+    for eid in ausgeloest:
+        ort = _melderort(eid, index, bereiche)
+        if ort not in orte:
+            orte.append(ort)
+    if len(orte) <= grenze:
+        return ", ".join(orte)
+    return ", ".join(orte[:grenze]) + f" und {len(orte) - grenze} weitere"
 
 
 def _fluchtweg(config: dict, einstellungen: dict, index: dict, state: dict,
@@ -820,7 +866,8 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
     elif not urlaub:
         state["urlaub_seit"] = None
 
-    rauch, rauch_grund, akut = _rauchsperre(einstellungen, index, state, jetzt)
+    rauch, rauch_grund, akut, rauch_orte = _rauchsperre(
+        einstellungen, index, state, jetzt)
     # Ein Alarm ist neu, sobald ein Melder anschlägt und noch keiner lief.
     # Gemerkt wird das getrennt von der Fluchtweg-Freigabe: Gemeldet gehört ein
     # Rauchalarm auch dann, wenn die Freigabe abgeschaltet ist.
@@ -915,6 +962,7 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         "rauch": rauch,
         "rauch_grund": rauch_grund,
         "rauch_akut": akut,
+        "rauch_orte": rauch_orte,
         "rauch_neu": rauch_neu,
         "rauch_seit": state.get("rauch_seit"),
         "fluchtweg": fluchtweg,

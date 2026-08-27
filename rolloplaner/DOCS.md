@@ -205,6 +205,17 @@ Protokoll: was aufgefahren wurde, was schon offen stand und – zuerst – was
 **nicht** erreichbar war. Wer bei jedem Takt meldete, verschickte während eines
 Brandes im Minutentakt Nachrichten und begrübe die eine, auf die es ankommt.
 
+**In der Überschrift steht der Ort**, denn auf einem Sperrbildschirm liest man
+die erste Zeile und sonst nichts: *„Rauchalarm: Flur 1.OG"*. Genommen wird der
+**Bereich** aus Home Assistant – der sagt mehr als „RM Flur OG Alarmstatus" und
+stimmt auch nach einem Umbenennen noch. Hat ein Melder keinen Bereich, wird sein
+Name gekürzt. Schlagen mehrere an, stehen bis zu vier Orte da und danach
+„und N weitere“ – gekürzt wird, aber nicht stillschweigend.
+
+Darunter steht, **was schiefging, zuerst**: nicht erreichbar, bleibt zu,
+ausgenommen – und erst dann, was aufgefahren ist. Wer im Ernstfall aufs Telefon
+sieht, muss wissen, welches Fenster zu bleibt, nicht welche neun offen sind.
+
 Wohin, steht im Reiter unter *Meldeweg*. Das ist ein **eigener** Weg, nicht der
 des Wächters: Wer den Wächter stummschaltet, weil ihn die Hinderniswarnungen
 nerven, will deswegen keinen Brand verschweigen. Ist keiner angehakt, gilt

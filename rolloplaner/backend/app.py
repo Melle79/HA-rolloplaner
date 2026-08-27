@@ -116,29 +116,44 @@ def _rauchalarm_melden(bericht: dict, einstellungen: dict) -> None:
 
     freigabe = bericht.get("fluchtweg") or {}
     grund = bericht.get("rauch_grund") or "Rauchalarm"
-    zeilen = [grund]
+    zeilen = []
 
     if not freigabe.get("aktiv"):
         zeilen.append("Die Fluchtweg-Freigabe ist AUS – es fährt kein Rollo auf.")
     else:
-        for titel, schluessel in (("Aufgefahren", "gefahren"),
-                                  ("Stand schon offen", "offen"),
-                                  ("NICHT erreichbar", "fehlt"),
-                                  ("Ausgenommen", "uebergangen")):
+        # Was schiefging, steht oben. Wer im Ernstfall aufs Telefon sieht, muss
+        # zuerst wissen, welches Fenster zu bleibt – nicht, welche neun offen
+        # sind.
+        for beschriftung, schluessel in (("NICHT erreichbar", "fehlt"),
+                                         ("Bleibt zu", "aufgegeben"),
+                                         ("Ausgenommen", "uebergangen"),
+                                         ("Aufgefahren", "gefahren"),
+                                         ("Stand schon offen", "offen")):
             if freigabe.get(schluessel):
-                zeilen.append(f"{titel}: " + ", ".join(freigabe[schluessel]))
+                zeilen.append(f"{beschriftung}: " + ", ".join(freigabe[schluessel]))
         if bericht.get("trockenlauf"):
             zeilen.append("Trockenlauf – es ist nichts wirklich gefahren.")
 
-    logbuch.eintragen("", "Rauchalarm", " · ".join(zeilen), art="fehler")
-    titel = ("Rauchalarm – Rollos fahren auf" if freigabe.get("aktiv")
-             else "Rauchalarm – Fluchtweg-Freigabe ist aus")
+    # Das Protokoll hat keine Überschrift, dort gehört der Grund dazu.
+    logbuch.eintragen("", "Rauchalarm", " · ".join([grund] + zeilen), art="fehler")
+
+    # In der Nachricht steht der Ort schon in der Überschrift – ihn darunter zu
+    # wiederholen kostet die eine Zeile, die auf einem Sperrbildschirm noch zu
+    # sehen ist.
+    orte = bericht.get("rauch_orte") or ""
+    titel = f"Rauchalarm: {orte}" if orte else "Rauchalarm"
+    if not freigabe.get("aktiv"):
+        titel += " – Freigabe ist aus"
+    text = "\n".join(zeilen) if zeilen else "Kein Rollo betroffen."
+    if not orte:
+        text = grund + "\n" + text
+
     wege = store.rauch_meldewege(einstellungen)
     if not wege:
         _LOGGER.error("Rauchalarm, aber kein Meldeweg eingestellt: %s", grund)
         return
     for dienst in wege:
-        ha_api.notify(dienst, titel, "\n".join(zeilen))
+        ha_api.notify(dienst, titel, text)
 
 
 def _stoerungen_melden(stoerungen: list, state: dict, einstellungen: dict) -> None:

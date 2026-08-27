@@ -694,12 +694,67 @@ def test_rauchsperre_trennt_akut_von_nachlauf():
         "attributes": {"friendly_name": "RM Flur", "device_class": "smoke"}}}
     state = {}
     jetzt = datetime(2026, 8, 27, 3, 0)
-    assert regelung._rauchsperre(einstellungen, index, state, jetzt) \
-        == (True, "Rauchmelder: RM Flur", True)
+    sperre, grund, akut, orte = regelung._rauchsperre(
+        einstellungen, index, state, jetzt)
+    assert (sperre, akut, orte) == (True, True, "RM Flur")
+    assert grund == "Rauchmelder: RM Flur"
     index["binary_sensor.rm_flur_rauch"]["state"] = "off"
-    sperre, grund, akut = regelung._rauchsperre(
+    sperre, grund, akut, orte = regelung._rauchsperre(
         einstellungen, index, state, jetzt + timedelta(minutes=5))
     assert sperre and not akut and "Nachlauf" in grund
+    assert orte == "RM Flur", "der Ort muss den Nachlauf überleben"
+
+
+def test_der_eigene_melder_zaehlt_nicht_als_rauchmelder():
+    """Sonst hielte sich der erste Alarm für immer.
+
+    Das Add-on legt selbst einen `binary_sensor` „Rauchsperre" an. Der geht bei
+    Alarm an – und trüge er zur Erkennung bei, bliebe der Alarm nach der
+    Entwarnung stehen, weil der eigene Melder ihn am Leben hielte. Der Planer
+    führe nie wieder einen Zeitplan aus.
+    """
+    einstellungen = store.validate_einstellungen(dict(store.STANDARD_EINSTELLUNGEN))
+    def melder(eid, name, an, klasse):
+        return {"entity_id": eid, "state": "on" if an else "off",
+                "attributes": {"friendly_name": name, "device_class": klasse}}
+    echt = melder("binary_sensor.rm_flur_rauch", "RM Flur", True, "smoke")
+    eigen = melder("binary_sensor.rolloplaner_rauchsperre",
+                   "Rolloplaner Rollos Rauchsperre", False, "safety")
+    index = {m["entity_id"]: m for m in (echt, eigen)}
+    state = {}
+    start = datetime(2026, 8, 27, 3, 0)
+
+    sperre, _, akut, _ = regelung._rauchsperre(einstellungen, index, state, start)
+    assert sperre and akut
+    echt["state"] = "off"
+    eigen["state"] = "on"                    # so setzt MQTT ihn nach dem Alarm
+    sperre, _, akut, _ = regelung._rauchsperre(
+        einstellungen, index, state, start + timedelta(minutes=1))
+    assert sperre and not akut, "Nachlauf, aber nicht mehr akut"
+    sperre, _, akut, _ = regelung._rauchsperre(
+        einstellungen, index, state, start + timedelta(minutes=40))
+    assert not sperre and not akut, "nach dem Nachlauf muss der Alarm vorbei sein"
+
+    # Auch eine ausdrückliche Auswahl darf sich nicht selbst enthalten.
+    eigene_wahl = store.validate_einstellungen(
+        {**store.STANDARD_EINSTELLUNGEN,
+         "rauchsperre": {**store.STANDARD_EINSTELLUNGEN["rauchsperre"],
+                         "melder": ["binary_sensor.rolloplaner_rauchsperre"]}})
+    sperre, _, akut, _ = regelung._rauchsperre(
+        eigene_wahl, index, {}, start + timedelta(minutes=41))
+    assert not sperre and not akut
+
+
+def test_melderort_nimmt_den_bereich_und_kuerzt_den_namen():
+    """Im Ernstfall zählt der Ort, nicht die Gerätebezeichnung."""
+    index = {"binary_sensor.rm_flur_og_rauch": {
+        "entity_id": "binary_sensor.rm_flur_og_rauch",
+        "attributes": {"friendly_name": "RM Flur OG Alarmstatus"}}}
+    # Mit Bereich gewinnt der Bereich …
+    assert regelung._melderort("binary_sensor.rm_flur_og_rauch", index,
+                               {"binary_sensor.rm_flur_og_rauch": "Flur 1.OG"}) == "Flur 1.OG"
+    # … ohne Bereich fällt der Ballast aus dem Namen.
+    assert regelung._melderort("binary_sensor.rm_flur_og_rauch", index, {}) == "RM Flur OG"
 
 
 def test_meldeweg_faellt_auf_den_waechter_zurueck():

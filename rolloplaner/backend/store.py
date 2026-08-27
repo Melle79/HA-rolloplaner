@@ -779,6 +779,7 @@ def load_state() -> dict:
     # Seit wann der Alarm läuft – unabhängig davon, ob die Fluchtweg-Freigabe
     # eingeschaltet ist. Daran hängt, dass je Alarm genau einmal gemeldet wird.
     state.setdefault("rauch_seit", None)
+    state.setdefault("rauch_orte", None)
     # Tagesversatz der Urlaubssimulation: je Raum und Schaltpunkt eine Zahl,
     # die einmal am Tag neu gewürfelt wird.
     state.setdefault("simulation", {"tag": None, "versatz": {}})

@@ -317,6 +317,17 @@ def ist_fensterkontakt(entity_id: str, name: str, klasse: str | None) -> bool:
     return any(wort in text for wort in FENSTER_WORTE)
 
 
+# Was das Add-on selbst über MQTT anlegt. Diese Entitäten gehören in keine
+# Auswahlliste – und schon gar nicht unter die Rauchmelder: Der eigene Melder
+# „Rauchsperre" geht bei Alarm an. Zählte er als Rauchmelder, hielte sich der
+# Alarm von da an selbst, und der Planer führe nie wieder einen Zeitplan aus.
+EIGENES_PRAEFIX = "rolloplaner_"
+
+
+def ist_eigene_entitaet(entity_id: str) -> bool:
+    return entity_id.split(".", 1)[-1].startswith(EIGENES_PRAEFIX)
+
+
 def ist_rauchmelder(entity_id: str, name: str, klasse: str | None) -> bool:
     if klasse in ("smoke", "gas"):
         return True
@@ -359,7 +370,7 @@ def sensor_candidates(states: list[dict] | None = None,
             eintrag = {"entity_id": eid, "name": name, "wert": as_float(s.get("state"))}
             aussen.append(eintrag)
             raumtemp.append(eintrag)
-        elif domain == "binary_sensor":
+        elif domain == "binary_sensor" and not ist_eigene_entitaet(eid):
             eintrag = {"entity_id": eid, "name": name,
                        "bereich": bereiche.get(eid, ""),
                        "zustand": s.get("state")}

@@ -1,5 +1,31 @@
 # Änderungen
 
+## 2.8.0 – 27.08.2026
+
+**Der eigene Melder des Planers zählte als Rauchmelder – der erste Alarm hätte
+nie geendet.**
+
+Das Add-on legt über MQTT einen `binary_sensor` „Rollos Rauchsperre" an. Die
+Melder-Erkennung geht über den Namen, und in „Rauchsperre" steckt „Rauch": Der
+eigene Melder galt als Rauchmelder. Er geht bei Alarm an — und hielt damit den
+Alarm am Leben, auch lange nachdem der echte Melder wieder aus war. Der Planer
+hätte ab dem ersten Rauchalarm **nie wieder einen Zeitplan ausgeführt**, und
+die Fluchtweg-Freigabe hätte weiter nachgefasst. Aufgefallen wäre es erst im
+Ernstfall. Eigene Entitäten sind jetzt aus jeder Melder- und Kontaktliste
+ausgeschlossen, auch aus einer ausdrücklichen Auswahl.
+
+**Die Meldung sagt jetzt, wo es brennt.**
+
+* **In der Überschrift steht der Ort** – „Rauchalarm: Flur 1.OG" –, denn auf
+  einem Sperrbildschirm liest man die erste Zeile und sonst nichts. Genommen
+  wird der **Bereich** aus Home Assistant; der sagt mehr als „RM Flur OG
+  Alarmstatus" und stimmt auch nach einem Umbenennen noch.
+* **Mehrere Melder werden alle genannt**, bis zu vier Orte, danach „und N
+  weitere". Vorher waren es stumm die ersten drei.
+* **Was schiefging, steht oben**: nicht erreichbar, bleibt zu, ausgenommen –
+  und erst dann, was aufgefahren ist. Wer im Ernstfall aufs Telefon sieht, muss
+  wissen, welches Fenster zu bleibt, nicht welche neun offen sind.
+
 ## 2.7.0 – 27.08.2026
 
 **Der Rauchalarm hat einen eigenen Reiter und einen eigenen Meldeweg.**
