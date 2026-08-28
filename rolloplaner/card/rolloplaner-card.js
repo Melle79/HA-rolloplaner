@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.12.0";
+const CARD_VERSION = "2.13.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -33,8 +33,11 @@ const DEFAULTS = {
   show_stoerungen: true,
   show_helfer: true,        // die Helfer, an denen die Schaltpunkte hängen
   allow_fahren: true,
-  raeume: null,             // null = alle, sonst Liste von Raumnamen
-  gruppieren: true,         // nach Raum ordnen
+  // null = alle. Sonst eine Liste von Gruppennamen: Sie bestimmt zugleich,
+  // **welche** gezeigt werden und **in welcher Reihenfolge**.
+  gruppen: null,
+  raeume: null,             // Vorgänger von `gruppen`, bleibt gültig
+  gruppieren: true,         // nach Gruppe ordnen
   // Schriftgröße. Die Karte hängt bei uns auch an einem Wandtablett im Flur,
   // und was am Schreibtisch klein und aufgeräumt wirkt, ist aus anderthalb
   // Metern nicht mehr zu lesen.
@@ -108,6 +111,7 @@ class RolloplanerCard extends HTMLElement {
   getCardSize() { return 4 + (this._rolloAnzahl || 0); }
 
   static getStubConfig() { return { ...DEFAULTS }; }
+  static getConfigElement() { return document.createElement("rolloplaner-card-editor"); }
 
   set hass(hass) {
     this._hass = hass;
@@ -143,7 +147,7 @@ class RolloplanerCard extends HTMLElement {
   }
 
   _rollosSammeln(hass) {
-    const gewuenscht = this._config.raeume;
+    const gewuenscht = this._config.gruppen || this._config.raeume;
     return Object.keys(hass.states)
       .filter((e) => e.startsWith("sensor.rolloplaner_rollo_"))
       .map((e) => {
@@ -159,14 +163,29 @@ class RolloplanerCard extends HTMLElement {
             .replace(/^Rolloplaner\s+/, "").replace(/^Rollo\s+/, ""),
           raum: sensor.attributes.raum || "",
           gruppe: sensor.attributes.gruppe || "",
+          platz: Number(sensor.attributes.gruppe_platz ?? 999),
           sensor,
           schalter: hass.states[schalterId] || null,
           hitzeschutz: hass.states[sonnenId] || null,
         };
       })
-      .filter((r) => !gewuenscht || gewuenscht.includes(r.raum))
-      .sort((a, b) => (a.raum || "").localeCompare(b.raum || "", "de")
-                      || a.name.localeCompare(b.name, "de"));
+      .filter((r) => (!gewuenscht || gewuenscht.includes(r.gruppe || r.raum)))
+      .sort((a, b) => {
+        // Steht eine Reihenfolge in der Konfiguration, gilt sie. Sonst zählt
+        // die Reihenfolge aus dem Add-on – dort ordnet man die Gruppen –, und
+        // erst zuletzt das Alphabet.
+        const ka = a.gruppe || a.raum || "";
+        const kb = b.gruppe || b.raum || "";
+        if (gewuenscht) {
+          const d = gewuenscht.indexOf(ka) - gewuenscht.indexOf(kb);
+          if (d) return d;
+        } else if (ka !== kb) {
+          return ka.localeCompare(kb, "de");
+        }
+        // Innerhalb einer Gruppe zählt der Platz, den das Add-on vergibt –
+        // dort sortiert man die Rollos, und dort ist es auch gemeint.
+        return (a.platz - b.platz) || a.name.localeCompare(b.name, "de");
+      });
   }
 
   // ------------------------------------------------------------- Bedienen ---
@@ -827,6 +846,157 @@ class RolloplanerCard extends HTMLElement {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Der Editor – die Karte einstellen, ohne YAML zu schreiben.
+
+   Bewusst ohne Fremdbausteine: Ein Karteneditor, der `ha-form` oder Lit
+   voraussetzt, geht kaputt, sobald Home Assistant daran etwas ändert. Reines
+   DOM überlebt das.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const SCHALTER_FELDER = [
+  ["show_funktionen", "Die Knöpfe oben (Automatik, Hitzeschutz, Urlaub, Fluchtweg)"],
+  ["show_naechster", "Nächster Wechsel im ganzen Haus"],
+  ["show_stoerungen", "Störungen melden"],
+  ["show_helfer", "Freigabeschalter an den Kacheln"],
+  ["allow_fahren", "Pfeiltasten zum Fahren"],
+  ["gruppieren", "Nach Gruppen ordnen"],
+];
+
+class RolloplanerCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = { ...DEFAULTS, ...config };
+    this._zeichnen();
+  }
+
+  set hass(hass) { this._hass = hass; this._zeichnen(); }
+
+  /* Welche Gruppen gibt es? Aus den Sensoren des Planers – so steht im Editor
+     immer das, was das Add-on gerade führt, ohne zweite Konfiguration. */
+  _gruppen() {
+    const gefunden = [];
+    for (const eid of Object.keys(this._hass?.states || {})) {
+      if (!eid.startsWith("sensor.rolloplaner_rollo_")) continue;
+      const a = this._hass.states[eid].attributes || {};
+      const name = a.gruppe || a.raum || "";
+      if (name && !gefunden.includes(name)) gefunden.push(name);
+    }
+    gefunden.sort((a, b) => a.localeCompare(b, "de"));
+    // Was in der Konfiguration steht, kommt zuerst – in ihrer Reihenfolge.
+    const gewaehlt = this._config.gruppen || this._config.raeume || null;
+    if (!gewaehlt) return gefunden.map((n) => ({ name: n, an: true }));
+    return [...gewaehlt.filter((n) => gefunden.includes(n)).map((n) => ({ name: n, an: true })),
+            ...gefunden.filter((n) => !gewaehlt.includes(n)).map((n) => ({ name: n, an: false }))];
+  }
+
+  _melden(aenderung) {
+    this._config = { ...this._config, ...aenderung };
+    this.dispatchEvent(new CustomEvent("config-changed", {
+      detail: { config: this._config }, bubbles: true, composed: true,
+    }));
+    this._zeichnen();
+  }
+
+  _zeichnen() {
+    if (!this._config) return;
+    const c = this._config;
+    const gruppen = this._gruppen();
+    const alleAn = gruppen.every((g) => g.an);
+
+    this.innerHTML = `<style>
+      .rp-e{display:flex; flex-direction:column; gap:14px; padding:4px 0}
+      .rp-e label{display:flex; flex-direction:column; gap:4px; font-size:.85rem;
+        color:var(--secondary-text-color)}
+      .rp-e input[type=text], .rp-e select{padding:8px 10px; border-radius:8px;
+        border:1px solid var(--divider-color); background:var(--card-background-color);
+        color:var(--primary-text-color); font:inherit; font-size:.95rem}
+      .rp-e .haken{flex-direction:row; align-items:center; gap:10px;
+        color:var(--primary-text-color); font-size:.92rem; cursor:pointer}
+      .rp-e .haken input{margin:0}
+      .rp-e h4{margin:6px 0 0; font-size:.8rem; letter-spacing:.06em;
+        text-transform:uppercase; color:var(--secondary-text-color); font-weight:600}
+      .rp-e .zeile{display:flex; align-items:center; gap:8px; padding:5px 8px;
+        border:1px solid var(--divider-color); border-radius:8px}
+      .rp-e .zeile span{flex:1 1 auto; color:var(--primary-text-color); font-size:.92rem}
+      .rp-e .zeile button{border:none; background:none; cursor:pointer; padding:4px 8px;
+        border-radius:6px; color:var(--secondary-text-color); font-size:1rem}
+      .rp-e .zeile button:hover{background:rgba(127,127,127,.18)}
+      .rp-e .hinweis{font-size:.78rem; color:var(--secondary-text-color); margin:0}
+    </style>
+    <div class="rp-e">
+      <label>Überschrift
+        <input type="text" id="rp-titel" value="${(c.title || "").replace(/"/g, "&quot;")}"></label>
+
+      <label>Schriftgröße
+        <select id="rp-groesse">
+          ${Object.keys(TEXTSKALA).map((k) => `<option value="${k}"
+            ${c.textgroesse === k ? "selected" : ""}>${k} (${TEXTSKALA[k]}×)</option>`).join("")}
+        </select></label>
+      <p class="hinweis">Größer heißt auch breitere Kacheln und größere
+        Tasten – gedacht für ein Wandtablett, das man aus anderthalb Metern
+        abliest.</p>
+
+      <h4>Was die Karte zeigt</h4>
+      ${SCHALTER_FELDER.map(([feld, text]) => `<label class="haken">
+        <input type="checkbox" data-feld="${feld}" ${c[feld] ? "checked" : ""}>
+        ${text}</label>`).join("")}
+
+      <h4>Gruppen: Auswahl und Reihenfolge</h4>
+      ${gruppen.length ? gruppen.map((g, i) => `<div class="zeile">
+        <input type="checkbox" data-gruppe="${g.name.replace(/"/g, "&quot;")}"
+               ${g.an ? "checked" : ""}>
+        <span>${g.name}</span>
+        <button data-hoch="${i}" ${i ? "" : "disabled"} title="nach oben">↑</button>
+        <button data-runter="${i}" ${i === gruppen.length - 1 ? "" : ""}
+                ${i === gruppen.length - 1 ? "disabled" : ""} title="nach unten">↓</button>
+      </div>`).join("")
+        : `<p class="hinweis">Noch keine Gruppen gefunden. Der Planer legt sie
+             im Reiter <i>Gruppen</i> an.</p>`}
+      <p class="hinweis">${alleAn
+        ? "Alle Gruppen werden gezeigt. Die Reihenfolge hier gilt vor der aus dem Add-on."
+        : "Nur die angehakten Gruppen erscheinen auf dieser Karte."}</p>
+    </div>`;
+
+    this.querySelector("#rp-titel").onchange = (e) =>
+      this._melden({ title: e.target.value });
+    this.querySelector("#rp-groesse").onchange = (e) =>
+      this._melden({ textgroesse: e.target.value });
+    this.querySelectorAll("[data-feld]").forEach((el) => {
+      el.onchange = () => this._melden({ [el.dataset.feld]: el.checked });
+    });
+
+    const reihenfolge = () => [...this.querySelectorAll("[data-gruppe]")]
+      .map((el) => el.dataset.gruppe);
+    const gewaehlte = () => [...this.querySelectorAll("[data-gruppe]")]
+      .filter((el) => el.checked).map((el) => el.dataset.gruppe);
+
+    this.querySelectorAll("[data-gruppe]").forEach((el) => {
+      el.onchange = () => {
+        const an = gewaehlte();
+        // Alle angehakt und in der Reihenfolge des Alphabets heißt: keine
+        // Einschränkung. Dann bleibt `gruppen` leer, und die Karte folgt der
+        // Ordnung aus dem Add-on.
+        const alle = reihenfolge();
+        this._melden({ gruppen: an.length === alle.length ? null : an, raeume: null });
+      };
+    });
+    const schieben = (von, nach) => {
+      const alle = reihenfolge();
+      const [x] = alle.splice(von, 1);
+      alle.splice(nach, 0, x);
+      const an = new Set(gewaehlte());
+      this._melden({ gruppen: alle.filter((n) => an.has(n)), raeume: null });
+    };
+    this.querySelectorAll("[data-hoch]").forEach((el) => {
+      el.onclick = () => schieben(Number(el.dataset.hoch), Number(el.dataset.hoch) - 1);
+    });
+    this.querySelectorAll("[data-runter]").forEach((el) => {
+      el.onclick = () => schieben(Number(el.dataset.runter), Number(el.dataset.runter) + 1);
+    });
+  }
+}
+
+customElements.define("rolloplaner-card-editor", RolloplanerCardEditor);
 customElements.define("rolloplaner-card", RolloplanerCard);
 
 window.customCards = window.customCards || [];

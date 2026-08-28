@@ -426,12 +426,17 @@ def test_kein_backtick_im_stilblock_der_karte():
     """
     karte = (pathlib.Path(__file__).parent.parent / "card"
              / "rolloplaner-card.js").read_text(encoding="utf-8")
-    stil = karte[karte.index("  _stil() {"):]
+    # Genau der Stilblock der Karte, nicht irgendein <style> in der Datei: Der
+    # Editor bringt seinen eigenen mit, und dessen Backticks sind in Ordnung –
+    # sie stehen in ${…}-Ausdrücken. Geprüft wird von `_stil()` bis zum
+    # Ende seines Templates; dazwischen gehört genau der öffnende Backtick.
+    anfang = karte.index("  _stil() {")
+    stil = karte[anfang:karte.index("</style>", anfang)]
     anzahl = stil.count("`")
-    if anzahl != 2:
-        zeilen = [z.strip()[:70] for z in stil.splitlines() if "`" in z][2:]
+    if anzahl != 1:
+        zeilen = [z.strip()[:70] for z in stil.splitlines() if "`" in z][1:]
         raise AssertionError(
-            f"{anzahl} Backticks im Stilblock (2 sind richtig): " + "; ".join(zeilen))
+            f"{anzahl} Backticks im Stilblock (1 ist richtig): " + "; ".join(zeilen))
 
 
 def test_karte_ist_gueltiges_javascript():

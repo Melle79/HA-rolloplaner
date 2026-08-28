@@ -537,6 +537,8 @@ class Publisher:
             self._zustand(key, str(angezeigt) if angezeigt is not None else "unknown", {
                 "cover": rollo["entity_id"],
                 "raum": rollo.get("raum") or "",
+                "gruppe": rollo.get("gruppe") or "",
+                "gruppe_platz": rollo.get("gruppe_platz", 999),
                 "art": rollo.get("art") or "fenster",
                 "stellung_ha": ziel,
                 "ist": rollo.get("ist"),

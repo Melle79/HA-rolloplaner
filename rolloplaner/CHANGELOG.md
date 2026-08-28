@@ -1,5 +1,26 @@
 # Änderungen
 
+## 2.13.0 – 28.08.2026
+
+**Die Karte lässt sich jetzt in der Oberfläche einstellen, ohne YAML.**
+
+Unter *Karte bearbeiten* steht ein Editor: Überschrift, Schriftgröße, sechs
+Schalter für das, was die Karte zeigt, und eine Liste der Gruppen zum An- und
+Abhaken **und Sortieren**. Die Reihenfolge dort gilt vor der aus dem Add-on;
+hakt man alle an, ohne zu verschieben, folgt die Karte wieder dem Add-on.
+
+Gebaut ohne Fremdbausteine – ein Editor, der `ha-form` oder Lit voraussetzt,
+geht kaputt, sobald Home Assistant daran etwas ändert.
+
+* Neue Kartenoption **`gruppen`**: Sie bestimmt zugleich, welche Gruppen
+  erscheinen und in welcher Reihenfolge. Der Vorgänger `raeume` gilt weiter.
+* **Innerhalb einer Gruppe zählt jetzt der Platz aus dem Add-on.** Wer die
+  Rollos im Reiter *Gruppen* sortiert, meint damit die Karte – vorher fiel sie
+  aufs Alphabet zurück, und das Sortieren blieb wirkungslos.
+* Der Testfall gegen Backticks im Stilblock war zu grob geworden: Er fand den
+  `<style>` des Editors statt den der Karte. Er prüft jetzt genau den Block von
+  `_stil()` – nachgewiesen, dass er einen echten Fehler weiterhin fängt.
+
 ## 2.12.1 – 28.08.2026
 
 **Aus einer Gruppe heraus ließ sich kein Rollo hinzufügen.**

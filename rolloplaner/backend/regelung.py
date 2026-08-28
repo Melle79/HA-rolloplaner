@@ -478,6 +478,10 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
         "raum": rollo.get("raum") or "",
         "gruppe": (gruppe or {}).get("name") or "",
         "gruppe_id": (gruppe or {}).get("id") or "",
+        # Der Platz in der Gruppe. Wer die Rollos im Add-on sortiert, meint
+        # damit die Karte – ohne diese Zahl fiele sie aufs Alphabet zurück.
+        "gruppe_platz": ((gruppe or {}).get("rollos") or []).index(eid)
+                        if gruppe and eid in (gruppe.get("rollos") or []) else 999,
         "hitzeschutz": bool(rollo.get("beschattung")),
         "ausrichtung": rollo.get("ausrichtung"),
         "art": rollo.get("art") or "fenster",

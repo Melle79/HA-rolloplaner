@@ -394,6 +394,21 @@ und der nächste Schaltpunkt. Vorher lag die halbe Deckkraft über der ganzen
 Kachel – das las sich wie „nicht verfügbar", obwohl Stellung, Name und Tasten
 weiter stimmen und das Rollo sich von Hand fahren lässt.
 
+### Einstellen ohne YAML
+
+Die Karte bringt einen **Editor** mit: In Home Assistant unter *Karte
+bearbeiten* stehen dort Überschrift, Schriftgröße, was die Karte zeigt, und
+eine Liste der Gruppen zum **An- und Abhaken und Sortieren**. Die Reihenfolge
+dort gilt vor der aus dem Add-on; sind alle angehakt und unverschoben, folgt
+die Karte dem Add-on.
+
+In YAML heißt das `gruppen: [...]` – die Liste bestimmt zugleich, **welche**
+Gruppen erscheinen und **in welcher Reihenfolge**. Der Vorgänger `raeume` gilt
+weiter.
+
+Innerhalb einer Gruppe zählt der Platz, den das Add-on vergibt: Wer die Rollos
+im Reiter *Gruppen* sortiert, meint damit die Karte.
+
 ### Schriftgröße
 
 Die Karte hängt hier auch an einem Wandtablett im Flur, und was am Schreibtisch
