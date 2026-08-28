@@ -394,6 +394,19 @@ und der nächste Schaltpunkt. Vorher lag die halbe Deckkraft über der ganzen
 Kachel – das las sich wie „nicht verfügbar", obwohl Stellung, Name und Tasten
 weiter stimmen und das Rollo sich von Hand fahren lässt.
 
+### Das Zimmer
+
+Seit die **Obergruppe** die Überschrift stellt, ist das Zimmer eine eigene
+Angabe. Die Kartenoption `zimmer` bestimmt, wie es erscheint:
+
+* **`schild`** (Vorgabe) – ein kleines Schild am Namen, das entfällt, wo der
+  Name das Zimmer schon nennt („Rollo Küche" im Zimmer „Küche" zweimal zu
+  lesen, hilft niemandem).
+* **`ueberschrift`** – eine Zwischenzeile innerhalb der Gruppe. Trennt sauber,
+  kostet aber Platz: Jedes Zimmer fängt eine neue Reihe an, und ein Zimmer mit
+  einem Rollo lässt den Rest der Reihe leer.
+* **`aus`** – gar nicht.
+
 ### Einstellen ohne YAML
 
 Die Karte bringt einen **Editor** mit: In Home Assistant unter *Karte

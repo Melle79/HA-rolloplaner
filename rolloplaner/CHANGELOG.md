@@ -1,5 +1,18 @@
 # Änderungen
 
+## 2.13.1 – 28.08.2026
+
+**Das Zimmer lässt sich in der Karte wählen.** Neue Option `zimmer`, auch im
+Editor: als **Schild** am Namen (Vorgabe, entfällt wo der Name es schon nennt),
+als **Zwischenüberschrift** in der Gruppe, oder **gar nicht**. Die
+Zwischenüberschrift trennt sauber, kostet aber Platz – jedes Zimmer fängt eine
+neue Reihe an.
+
+**Der Gruppen-Reiter war unaufgeräumt.** Das Auswahlfeld „verschieben nach …"
+lief über die ganze Breite und zog die Zeile auseinander; ein Feld, das man
+selten braucht, soll nicht das Bild bestimmen. Feste Breite, Pfeile daneben,
+Trennlinien über die ganze Zeile.
+
 ## 2.13.0 – 28.08.2026
 
 **Die Karte lässt sich jetzt in der Oberfläche einstellen, ohne YAML.**

@@ -269,6 +269,17 @@
     background:var(--flaeche3); color:var(--leise)}
   .planschild.eigen{background:transparent; border:1px dashed var(--linie)}
   td.knopfspalte{text-align:right; white-space:nowrap}
+  /* Im Gruppen-Reiter zog das Auswahlfeld die Zeile über die ganze Breite
+     auseinander – ein Feld, das man selten braucht, soll nicht das Bild
+     bestimmen. Es bekommt eine feste Breite, die Pfeile rücken daneben. */
+  .gruppenzeile{display:flex; align-items:center; gap:var(--l3);
+    padding:var(--l2) 0; border-bottom:1px solid var(--linie)}
+  .gruppenzeile:last-of-type{border-bottom:none}
+  .gruppenzeile .g-name{flex:1 1 auto; min-width:0}
+  .gruppenzeile .g-name b{display:block; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap}
+  .gruppenzeile .g-pfeile{display:flex; gap:2px; flex:none}
+  .gruppenzeile select{flex:none; width:210px; max-width:40vw}
   tr.raumzeile td{font-size:.72rem; text-transform:uppercase; letter-spacing:.13em;
     color:var(--leise); font-weight:600; padding-top:var(--l4);
     border-bottom:1px solid var(--linie)}
@@ -1511,24 +1522,23 @@ function zeichneGruppen(){
         Rollo dieser Gruppe nach Plan. Von Hand und bei Rauchalarm fahren sie
         weiter.</p>
 
-      <table class="liste" style="margin-top:var(--l3)">
-        <tbody>
-          ${g.rollos.length ? g.rollos.map((eid, j) => `<tr>
-            <td><b>${esc(rolloNameVon(eid))}</b>
-                <div class="hinweis">${esc(eid)}</div></td>
-            <td class="knopfspalte" style="white-space:nowrap">
+      <div style="margin-top:var(--l3)">
+        ${g.rollos.length ? g.rollos.map((eid, j) => `<div class="gruppenzeile">
+            <div class="g-name"><b>${esc(rolloNameVon(eid))}</b>
+              <div class="hinweis">${esc(eid)}</div></div>
+            <div class="g-pfeile">
               <button class="leise" data-r-hoch="${i}:${j}" ${j ? "" : "disabled"}>↑</button>
               <button class="leise" data-r-runter="${i}:${j}"
                       ${j === g.rollos.length - 1 ? "disabled" : ""}>↓</button>
-              <select data-r-ziel="${i}:${j}">
-                <option value="">verschieben nach …</option>
-                ${ziele(eid, i)}
-                <option value="-">— aus der Gruppe nehmen —</option>
-              </select>
-            </td></tr>`).join("")
-            : `<tr><td colspan="2" class="leerhinweis">Noch kein Rollo in dieser Gruppe.</td></tr>`}
-        </tbody>
-      </table>
+            </div>
+            <select data-r-ziel="${i}:${j}">
+              <option value="">verschieben nach …</option>
+              ${ziele(eid, i)}
+              <option value="-">— aus der Gruppe nehmen —</option>
+            </select>
+          </div>`).join("")
+          : `<p class="leerhinweis">Noch kein Rollo in dieser Gruppe.</p>`}
+      </div>
 
       ${/* Hinzufügen gehört an die Gruppe, nicht in einen Abschnitt weiter
             unten: Wer eine Gruppe vor sich hat, will von hier aus etwas
@@ -1558,13 +1568,13 @@ function zeichneGruppen(){
 
   if (frei.length) {
     html += `<div class="abschnitt"><h3>Noch in keiner Gruppe</h3>
-      <table class="liste"><tbody>${frei.map((eid) => `<tr>
-        <td><b>${esc(rolloNameVon(eid))}</b><div class="hinweis">${esc(eid)}</div></td>
-        <td class="knopfspalte">
-          <select data-frei-ziel="${esc(eid)}">
-            <option value="">in eine Gruppe legen …</option>
-            ${GRUPPEN.map((g, i) => `<option value="${i}">${esc(g.name)}</option>`).join("")}
-          </select></td></tr>`).join("")}</tbody></table>
+      ${frei.map((eid) => `<div class="gruppenzeile">
+        <div class="g-name"><b>${esc(rolloNameVon(eid))}</b>
+          <div class="hinweis">${esc(eid)}</div></div>
+        <select data-frei-ziel="${esc(eid)}">
+          <option value="">in eine Gruppe legen …</option>
+          ${GRUPPEN.map((g, i) => `<option value="${i}">${esc(g.name)}</option>`).join("")}
+        </select></div>`).join("")}
       <p class="hinweis">Ein Rollo ohne Gruppe fährt weiter nach seinem eigenen
         Zeitplan – es fehlt ihm nur die Obergruppe.</p></div>`;
   }

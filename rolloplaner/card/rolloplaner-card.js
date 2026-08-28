@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.13.0";
+const CARD_VERSION = "2.13.1";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -38,6 +38,12 @@ const DEFAULTS = {
   gruppen: null,
   raeume: null,             // Vorgänger von `gruppen`, bleibt gültig
   gruppieren: true,         // nach Gruppe ordnen
+  // Wie das Zimmer erscheint. „schild" hängt es als kleines Schild an den
+  // Namen und lässt es weg, wo der Name es schon nennt. „ueberschrift" macht
+  // eine Zwischenzeile innerhalb der Gruppe daraus – dann fängt jedes Zimmer
+  // eine neue Reihe an, was Platz kostet, aber sauber trennt. „aus" lässt es
+  // ganz weg.
+  zimmer: "schild",         // schild | ueberschrift | aus
   // Schriftgröße. Die Karte hängt bei uns auch an einem Wandtablett im Flur,
   // und was am Schreibtisch klein und aufgeräumt wirkt, ist aus anderthalb
   // Metern nicht mehr zu lesen.
@@ -338,10 +344,14 @@ class RolloplanerCard extends HTMLElement {
           if (!nachGruppe.has(titel)) nachGruppe.set(titel, []);
           nachGruppe.get(titel).push(r);
         });
+        const alsUeberschrift =
+          (this._config.zimmer ?? DEFAULTS.zimmer) === "ueberschrift";
         rolloHtml = `<div class="raeume">${[...nachGruppe].map(([titel, liste]) =>
           `<section class="raumgruppe">
             <div class="raumtitel">${this._esc(titel)}</div>
-            <div class="gruppe">${liste.map((r) => this._rollo(r)).join("")}</div>
+            <div class="gruppe">${
+              alsUeberschrift ? this._mitZimmern(liste)
+                              : liste.map((r) => this._rollo(r)).join("")}</div>
           </section>`).join("")}</div>`;
       } else {
         rolloHtml = `<div class="raeume">${rollos.map((r) => this._rollo(r)).join("")}</div>`;
@@ -380,7 +390,8 @@ class RolloplanerCard extends HTMLElement {
     // entfällt, wo der Name ihn schon enthält: „Rollo Küche" im Raum „Küche"
     // zweimal zu lesen, hilft niemandem.
     const raum = attrs.raum || "";
-    const raumSchild = raum && !r.name.toLowerCase().includes(raum.toLowerCase())
+    const raumSchild = (this._config.zimmer ?? DEFAULTS.zimmer) === "schild"
+      && raum && !r.name.toLowerCase().includes(raum.toLowerCase())
       ? `<span class="raumschild">${this._esc(raum)}</span>` : "";
 
     // Die Begründung ist Vergangenheit, die Fußzeile Zukunft. Ohne die Uhrzeit
@@ -480,6 +491,24 @@ class RolloplanerCard extends HTMLElement {
     return `<button class="chip ${an ? "an" : ""}" data-schalter="${h.entity_id}"
       data-an="${an ? "0" : "1"}" title="${this._esc(titel)}"
       ><span class="c-text">${this._esc(text)}</span></button>`;
+  }
+
+  /* Die Rollos einer Gruppe, nach Zimmer mit Zwischenüberschrift.
+
+     Die Überschrift läuft über alle Spalten – damit fängt jedes Zimmer eine
+     neue Reihe an. Das ist der Preis dieser Ansicht: Ein Zimmer mit einem
+     Rollo lässt den Rest der Reihe leer. Wer das nicht will, nimmt das
+     Zimmerschild am Namen. */
+  _mitZimmern(liste) {
+    const nachZimmer = new Map();
+    liste.forEach((r) => {
+      const zimmer = r.raum || "Ohne Zimmer";
+      if (!nachZimmer.has(zimmer)) nachZimmer.set(zimmer, []);
+      nachZimmer.get(zimmer).push(r);
+    });
+    return [...nachZimmer].map(([zimmer, rollos]) =>
+      `<div class="zimmertitel">${this._esc(zimmer)}</div>${
+        rollos.map((r) => this._rollo(r)).join("")}`).join("");
   }
 
   _helfer(helfer, rolloName) {
@@ -618,6 +647,12 @@ class RolloplanerCard extends HTMLElement {
       .f-titel{font-size:calc(.7rem * var(--skala)); letter-spacing:.06em; text-transform:uppercase;
         color:var(--secondary-text-color); opacity:.8; margin-bottom:6px}
       .f-liste{display:flex; gap:5px; flex-wrap:wrap; align-items:center}
+      /* Die Zwischenüberschrift je Zimmer läuft über alle Spalten des
+         Gruppenrasters – sonst stünde sie als schmale Kachel dazwischen. */
+      .zimmertitel{grid-column:1 / -1; font-size:calc(.66rem * var(--skala));
+        letter-spacing:.09em; text-transform:uppercase; font-weight:600;
+        color:var(--secondary-text-color); opacity:.75;
+        padding:6px 0 0}
       .raumtitel{font-size:calc(.68rem * var(--skala)); letter-spacing:.09em; text-transform:uppercase;
         color:var(--secondary-text-color); opacity:.85; font-weight:600;
         padding:8px 0 4px; border-bottom:1px solid var(--divider-color);
@@ -936,6 +971,20 @@ class RolloplanerCardEditor extends HTMLElement {
         Tasten – gedacht für ein Wandtablett, das man aus anderthalb Metern
         abliest.</p>
 
+      <label>Zimmer
+        <select id="rp-zimmer">
+          <option value="schild" ${c.zimmer === "schild" ? "selected" : ""}
+            >als Schild am Rollo</option>
+          <option value="ueberschrift" ${c.zimmer === "ueberschrift" ? "selected" : ""}
+            >als Zwischenüberschrift in der Gruppe</option>
+          <option value="aus" ${c.zimmer === "aus" ? "selected" : ""}
+            >gar nicht</option>
+        </select></label>
+      <p class="hinweis">Als Schild bleibt es platzsparend und entfällt, wo der
+        Name das Zimmer schon nennt. Als Zwischenüberschrift trennt es sauber,
+        aber jedes Zimmer fängt eine neue Reihe an – ein Zimmer mit einem Rollo
+        lässt den Rest der Reihe leer.</p>
+
       <h4>Was die Karte zeigt</h4>
       ${SCHALTER_FELDER.map(([feld, text]) => `<label class="haken">
         <input type="checkbox" data-feld="${feld}" ${c[feld] ? "checked" : ""}>
@@ -961,6 +1010,8 @@ class RolloplanerCardEditor extends HTMLElement {
       this._melden({ title: e.target.value });
     this.querySelector("#rp-groesse").onchange = (e) =>
       this._melden({ textgroesse: e.target.value });
+    this.querySelector("#rp-zimmer").onchange = (e) =>
+      this._melden({ zimmer: e.target.value });
     this.querySelectorAll("[data-feld]").forEach((el) => {
       el.onchange = () => this._melden({ [el.dataset.feld]: el.checked });
     });
