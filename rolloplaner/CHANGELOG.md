@@ -1,5 +1,18 @@
 # Änderungen
 
+## 2.13.2 – 28.08.2026
+
+**Die Zimmer-Zwischenüberschriften rissen kachelgroße Löcher in die Karte.**
+
+Die Überschrift stand als Gitterzelle über alle Spalten im selben Raster wie
+die Kacheln – und erbte damit deren Zeilenhöhe, weil `grid-auto-rows:1fr` alle
+Zeilen gleich hoch macht. Zwischen „KÜCHE" und der Küchenkachel klaffte eine
+ganze Kachelhöhe. Jetzt bekommt jedes Zimmer sein **eigenes** Raster: Die
+Kacheln eines Zimmers sind gleich hoch, alle fluchten in denselben Spalten, und
+die Überschrift ist so hoch wie eine Überschrift.
+
+**Im Gruppen-Reiter klebte das Auswahlfeld am Rand.** Rechts ist jetzt Luft.
+
 ## 2.13.1 – 28.08.2026
 
 **Das Zimmer lässt sich in der Karte wählen.** Neue Option `zimmer`, auch im

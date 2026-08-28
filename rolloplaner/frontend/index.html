@@ -273,13 +273,15 @@
      auseinander – ein Feld, das man selten braucht, soll nicht das Bild
      bestimmen. Es bekommt eine feste Breite, die Pfeile rücken daneben. */
   .gruppenzeile{display:flex; align-items:center; gap:var(--l3);
-    padding:var(--l2) 0; border-bottom:1px solid var(--linie)}
+    padding:var(--l2) var(--l3) var(--l2) 0; border-bottom:1px solid var(--linie)}
   .gruppenzeile:last-of-type{border-bottom:none}
   .gruppenzeile .g-name{flex:1 1 auto; min-width:0}
   .gruppenzeile .g-name b{display:block; overflow:hidden; text-overflow:ellipsis;
     white-space:nowrap}
   .gruppenzeile .g-pfeile{display:flex; gap:2px; flex:none}
   .gruppenzeile select{flex:none; width:210px; max-width:40vw}
+  /* Rechts Luft lassen: Ohne sie klebt das Auswahlfeld am Rand der Tafel. */
+  .gruppenzeile > :last-child{margin-right:var(--l2)}
   tr.raumzeile td{font-size:.72rem; text-transform:uppercase; letter-spacing:.13em;
     color:var(--leise); font-weight:600; padding-top:var(--l4);
     border-bottom:1px solid var(--linie)}

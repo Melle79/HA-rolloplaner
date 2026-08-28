@@ -402,9 +402,13 @@ Angabe. Die Kartenoption `zimmer` bestimmt, wie es erscheint:
 * **`schild`** (Vorgabe) – ein kleines Schild am Namen, das entfällt, wo der
   Name das Zimmer schon nennt („Rollo Küche" im Zimmer „Küche" zweimal zu
   lesen, hilft niemandem).
-* **`ueberschrift`** – eine Zwischenzeile innerhalb der Gruppe. Trennt sauber,
-  kostet aber Platz: Jedes Zimmer fängt eine neue Reihe an, und ein Zimmer mit
-  einem Rollo lässt den Rest der Reihe leer.
+* **`ueberschrift`** – eine Zwischenzeile innerhalb der Gruppe. Jedes Zimmer
+  bekommt dabei sein **eigenes** Raster: Die Kacheln eines Zimmers sind gleich
+  hoch und fluchten mit denen der anderen, über Zimmer hinweg dürfen die Höhen
+  sich unterscheiden. (Die Überschrift in dasselbe Raster zu setzen, ging
+  schief – sie erbte die Zeilenhöhe einer Kachel, und zwischen den Zimmern
+  klafften kachelgroße Löcher.) Ein Zimmer mit einem Rollo lässt den Rest
+  seiner Reihe leer; das ist der Preis dieser Ansicht.
 * **`aus`** – gar nicht.
 
 ### Einstellen ohne YAML

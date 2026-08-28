@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.13.1";
+const CARD_VERSION = "2.13.2";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -349,9 +349,9 @@ class RolloplanerCard extends HTMLElement {
         rolloHtml = `<div class="raeume">${[...nachGruppe].map(([titel, liste]) =>
           `<section class="raumgruppe">
             <div class="raumtitel">${this._esc(titel)}</div>
-            <div class="gruppe">${
-              alsUeberschrift ? this._mitZimmern(liste)
-                              : liste.map((r) => this._rollo(r)).join("")}</div>
+            ${alsUeberschrift
+              ? `<div class="zimmerliste">${this._mitZimmern(liste)}</div>`
+              : `<div class="gruppe">${liste.map((r) => this._rollo(r)).join("")}</div>`}
           </section>`).join("")}</div>`;
       } else {
         rolloHtml = `<div class="raeume">${rollos.map((r) => this._rollo(r)).join("")}</div>`;
@@ -495,10 +495,14 @@ class RolloplanerCard extends HTMLElement {
 
   /* Die Rollos einer Gruppe, nach Zimmer mit Zwischenüberschrift.
 
-     Die Überschrift läuft über alle Spalten – damit fängt jedes Zimmer eine
-     neue Reihe an. Das ist der Preis dieser Ansicht: Ein Zimmer mit einem
-     Rollo lässt den Rest der Reihe leer. Wer das nicht will, nimmt das
-     Zimmerschild am Namen. */
+     Jedes Zimmer bekommt sein **eigenes** Raster. Der erste Versuch setzte die
+     Überschrift als Gitterzelle über alle Spalten in dasselbe Raster – und
+     bekam damit die Zeilenhöhe einer Kachel verpasst, weil `grid-auto-rows:1fr`
+     alle Zeilen gleich hoch macht. Zwischen den Zimmern klafften daraufhin
+     kachelgroße Löcher.
+
+     Die Spalten fluchten trotzdem: Alle Raster rechnen mit derselben
+     Spaltenbreite in derselben Breite. */
   _mitZimmern(liste) {
     const nachZimmer = new Map();
     liste.forEach((r) => {
@@ -507,8 +511,10 @@ class RolloplanerCard extends HTMLElement {
       nachZimmer.get(zimmer).push(r);
     });
     return [...nachZimmer].map(([zimmer, rollos]) =>
-      `<div class="zimmertitel">${this._esc(zimmer)}</div>${
-        rollos.map((r) => this._rollo(r)).join("")}`).join("");
+      `<div class="zimmerblock">
+        <div class="zimmertitel">${this._esc(zimmer)}</div>
+        <div class="gruppe">${rollos.map((r) => this._rollo(r)).join("")}</div>
+      </div>`).join("");
   }
 
   _helfer(helfer, rolloName) {
@@ -647,12 +653,12 @@ class RolloplanerCard extends HTMLElement {
       .f-titel{font-size:calc(.7rem * var(--skala)); letter-spacing:.06em; text-transform:uppercase;
         color:var(--secondary-text-color); opacity:.8; margin-bottom:6px}
       .f-liste{display:flex; gap:5px; flex-wrap:wrap; align-items:center}
-      /* Die Zwischenüberschrift je Zimmer läuft über alle Spalten des
-         Gruppenrasters – sonst stünde sie als schmale Kachel dazwischen. */
-      .zimmertitel{grid-column:1 / -1; font-size:calc(.66rem * var(--skala));
+      /* Zimmerblöcke stehen untereinander; jeder bringt sein eigenes Raster
+         mit, damit die Überschrift nicht die Zeilenhöhe einer Kachel erbt. */
+      .zimmerliste{display:flex; flex-direction:column; gap:2px}
+      .zimmertitel{font-size:calc(.66rem * var(--skala));
         letter-spacing:.09em; text-transform:uppercase; font-weight:600;
-        color:var(--secondary-text-color); opacity:.75;
-        padding:6px 0 0}
+        color:var(--secondary-text-color); opacity:.75; padding:6px 0 4px}
       .raumtitel{font-size:calc(.68rem * var(--skala)); letter-spacing:.09em; text-transform:uppercase;
         color:var(--secondary-text-color); opacity:.85; font-weight:600;
         padding:8px 0 4px; border-bottom:1px solid var(--divider-color);
