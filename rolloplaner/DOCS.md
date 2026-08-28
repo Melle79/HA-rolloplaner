@@ -1,8 +1,10 @@
 # Rolloplaner
 
 Rollladensteuerung für Home Assistant: je Rollo ein Zeitplan, der nach Uhrzeit
-**oder** nach dem Stand der Sonne schaltet, dazu Hitzeschutz, Urlaubssimulation
-und eine Rauchsperre.
+**oder** nach dem Stand der Sonne schaltet, Obergruppen für alles, was
+zusammengehört, Hitzeschutz nach Sonnenrichtung, Urlaubssimulation, eine
+Fenstersperre – und bei Rauchalarm eine Fluchtweg-Freigabe, die jedes Rollo
+auffährt.
 
 ## Wie der Planer denkt
 
@@ -22,6 +24,11 @@ Jedes Rollo führt deshalb seine eigenen Angaben:
 Und es folgt einem **benannten Zeitplan**, den sich mehrere Rollos teilen –
 oder einem eigenen. Ein Zeitplan gehört keinem Raum, sondern allen, die ihm
 folgen.
+
+Darüber liegt die **Obergruppe** – bei uns die Etage. Sie ersetzt nichts: Jedes
+Rollo behält seinen Zeitplan. Sie kann zusätzlich einen eigenen haben, der für
+alle ihre Rollos gilt, und sie trägt den Freigabeschalter für den ganzen
+Schnitt. Siehe [Obergruppen](#obergruppen).
 
 **Der Raum** kommt aus Home Assistant und steuert nichts. Er ordnet die
 Anzeige: Er ist der Ort, an dem man ein Rollo sucht.
@@ -145,9 +152,7 @@ die Zählweise von Home Assistant.
 
 ## Die Regelkette
 
-Der erste Treffer gewinnt:
-
-Gerechnet wird **je Rollo**:
+Gerechnet wird **je Rollo**, und der erste Treffer gewinnt.
 
 **Betriebsarten** je Rollo: *Plan* (auf und zu), *nur schließen* (öffnet nie von
 selbst), *nur von Hand* (kein Zeitplan, und das ist Absicht – der Planer zeigt
@@ -159,7 +164,7 @@ eines einzelnen Rollos).
 | 1 | **Fluchtweg** | Ein Melder schlägt an – das Rollo fährt auf |
 | 1 | **Rauchsperre** | Alarm, aber dieses Rollo ist von der Freigabe ausgenommen |
 | 2 | **aus** | Die Automatik ist abgeschaltet – für dieses Rollo oder insgesamt |
-| 3 | **gesperrt** | Der Zeitplan, dem es folgt, ist stillgelegt |
+| 3 | **gesperrt** | Der Zeitplan, dem es folgt, ist stillgelegt – oder seine Obergruppe ist aus, oder ihr Freigabeschalter steht auf aus |
 | 4 | **Fenster offen** | Ein Kontakt ist offen – es wird nicht zugefahren |
 | 5 | **Urlaub** | Urlaubsprogramm statt Zeitplan |
 | 6 | **Hitzeschutz** | Die Sonne steht in *diesem* Fenster und es ist warm |
@@ -360,14 +365,94 @@ eines, das zweimal am Tag fährt, meldet sich auch nur zweimal am Tag.
 | `sensor.rolloplaner_naechster_wechsel` | Der nächste Schaltpunkt im ganzen Haus, als fertiger Text |
 | `sensor.rolloplaner_rollo_<name>` | Zielstellung dieses Rollos in Prozent, mit Begründung |
 | `switch.rolloplaner_rollo_<name>_an` | Automatik dieses Rollos |
+| `switch.rolloplaner_rollo_<name>_hitzeschutz` | Hitzeschutz dieses Rollos |
 | `switch.rolloplaner_plan_<name>` | Automatik eines gemeinsamen Zeitplans |
 | `switch.rolloplaner_automatik` | Automatik insgesamt |
-| `switch.rolloplaner_beschattung` | Hitzeschutz |
+| `switch.rolloplaner_beschattung` | Hitzeschutz insgesamt |
 | `switch.rolloplaner_urlaubssimulation` | Urlaubssimulation |
 | `switch.rolloplaner_fluchtweg` | Fluchtweg-Freigabe |
 | `binary_sensor.rolloplaner_rauchsperre` | Sperre aktiv |
 | `binary_sensor.rolloplaner_fluchtweg_offen` | Freigabe läuft gerade; Attribute sagen, was auffuhr und was nicht |
 | `binary_sensor.rolloplaner_stoerung` | Ein Antrieb meldet sich nicht oder hängt |
+| `binary_sensor.rolloplaner_trockenlauf` | Der Planer rechnet, fährt aber nichts |
+
+Die eigenen Schalter des Planers (Reiter *Schalter*) kommen als
+`switch.rolloplaner_<name>` beziehungsweise `select.rolloplaner_<name>` dazu.
+
+**Die entity_id entsteht einmal beim Anlegen und folgt keiner Umbenennung.**
+Wer einen Schalter umbenennt, ändert den Anzeigenamen; die Kennung bleibt. Das
+Add-on schlägt sie deshalb nach, statt sie aus dem Namen zurückzurechnen – wer
+das täte, zeigte nach einer Umbenennung auf eine Entität, die es nicht gibt.
+
+## Die Karte
+
+Je Rollo eine Kachel. Geordnet wird nach **Obergruppe**: Ihr Name ist die
+Überschrift über die volle Breite, darunter läuft **ein** Raster – alle Kacheln
+gleich breit, gleich hoch, in sauberen Spalten.
+
+Das war einmal anders: Bis Fassung 2.12 war jeder Raum ein eigener Block, und
+ein Block war so breit, wie er Kacheln hatte. Bei 1280 px war die Kachel eines
+Ein-Rollo-Zimmers 619 px breit, die daneben 413 – gleiche Dinge in
+verschiedenen Größen, und die Karte sah unruhig aus.
+
+Zu sehen sind Name, die Stellung als Zahl – und ein **simulierter Rollladen**, der zeigt, wie weit der Panzer heruntersteht. Ein Balken sagt
+„65 %“, aber nicht, ob das Rollo dabei oben oder unten ist; das Bild sagt es
+ohne Umweg, und beim Fahren läuft es sichtbar mit.
+
+Vor einer **Tür** sieht der Rollladen anders aus als vor einem **Fenster**: Die
+Tür reicht bis zur Bodenlinie hinunter und hat einen Flügelrahmen mit Griff,
+das Fenster hängt darüber in der Wand. Gezeichnet wird nach der **Art** des
+Rollos – die steht im Rollo-Dialog und wird beim Übernehmen aus dem Namen
+geraten.
+
+Das Add-on bringt seine Lovelace-Karte selbst mit; eine getrennte Installation
+über HACS ist nicht nötig. Beim Start wird sie nach `www/` kopiert und als
+Ressource registriert.
+
+```yaml
+type: custom:rolloplaner-card
+```
+
+Alle Angaben sind freiwillig:
+
+```yaml
+type: custom:rolloplaner-card
+title: Rollos
+show_funktionen: true     # die Schalter oben
+show_raeume: true
+show_naechster: true
+show_stoerungen: true
+show_helfer: true         # die Helfer, an denen die Schaltpunkte hängen
+allow_fahren: true        # Auf/Zu je Rollo
+gruppieren: true          # nach Obergruppe ordnen
+textgroesse: gross        # klein | normal | gross | riesig – oder eine Zahl
+zimmer: schild            # schild | ueberschrift | aus
+gruppen: [Erdgeschoss, Obergeschoß]   # welche und in welcher Reihenfolge
+```
+
+Einstellen lässt sich das alles auch **ohne YAML** – siehe
+[Einstellen ohne YAML](#einstellen-ohne-yaml).
+
+**Die Helfer je Rollo**: Hängt ein Schaltpunkt an einem `input_boolean` oder
+einem `input_select`, zeigt die Karte ihn bei dem Rollo an und lässt ihn dort
+bedienen – als Chip mit Punkt für an/aus, als Auswahlliste bei mehreren
+Stellungen. So lässt sich „die Terrassentür heute mal offen lassen“ dort
+erledigen, wo man ohnehin hinsieht.
+
+Auf dem Chip steht nicht der Name des Schalters, sondern **was er freigibt**:
+*öffnen*, *schließen*, *auf und zu* oder *alles*. Abgeleitet wird das aus den
+Schaltpunkten, an denen er hängt. „Öffnen Nele“ sagt nur, wie der Schalter
+heißt; „öffnen“ sagt, was ausfällt, wenn man ihn ausschaltet. Der volle Name
+steht im Tooltip.
+
+Ein Schalter, der über **ein Zimmer hinaus** wirkt, steht nicht in den Kacheln,
+sondern einmal oben unter *Gilt für mehrere Rollos*. Sonst sähe er in jeder
+Kachel aus wie ein eigener – und wer ihn bei einem Rollo ausschaltet, wundert
+sich, warum er beim anderen auch weg ist. Es ist derselbe Schalter.
+
+Ist die Karte bereits aus einer anderen Quelle eingebunden (etwa HACS), legt
+das Add-on **nichts** an und schreibt nur einen Hinweis ins Protokoll: Zwei
+Registrierungen desselben Elements legen das Dashboard lahm.
 
 ### Bedienung mit dem Finger
 
@@ -446,67 +531,6 @@ und die Umbruchschwelle. Sonst wüchse der Text in eine Kachel hinein, die
 gleich breit bleibt, und jeder zweite Name stünde abgeschnitten da. Nach oben
 begrenzt die Kartenbreite: Auf einem Telefon im Hochformat bleibt eine Spalte,
 egal wie groß die Schrift steht.
-
-## Die Karte
-
-Je Rollo eine Kachel, nach Raum geordnet. **Jeder Raum ist ein Block**, und die
-Blöcke fließen nebeneinander – ein Zimmer mit einem Rollo ist ein schmaler
-Block, eines mit dreien ein breiter. So bleibt die Ordnung nach Räumen
-sichtbar, ohne dass neben jedem kleinen Raum die halbe Karte leer bleibt.
-
-Zu sehen sind Name, die Stellung als Zahl – und ein **simulierter Rollladen**, der zeigt, wie weit der Panzer heruntersteht. Ein Balken sagt
-„65 %“, aber nicht, ob das Rollo dabei oben oder unten ist; das Bild sagt es
-ohne Umweg, und beim Fahren läuft es sichtbar mit.
-
-Vor einer **Tür** sieht der Rollladen anders aus als vor einem **Fenster**: Die
-Tür reicht bis zur Bodenlinie hinunter und hat einen Flügelrahmen mit Griff,
-das Fenster hängt darüber in der Wand. Gezeichnet wird nach der **Art** des
-Rollos – die steht im Rollo-Dialog und wird beim Übernehmen aus dem Namen
-geraten.
-
-Das Add-on bringt seine Lovelace-Karte selbst mit; eine getrennte Installation
-über HACS ist nicht nötig. Beim Start wird sie nach `www/` kopiert und als
-Ressource registriert.
-
-```yaml
-type: custom:rolloplaner-card
-```
-
-Alle Angaben sind freiwillig:
-
-```yaml
-type: custom:rolloplaner-card
-title: Rollos
-show_funktionen: true     # die Schalter oben
-show_raeume: true
-show_naechster: true
-show_stoerungen: true
-show_helfer: true         # die Helfer, an denen die Schaltpunkte hängen
-allow_fahren: true        # Auf/Zu je Rollo
-gruppieren: true          # nach Raum ordnen
-raeume: [Küche, Wohnzimmer]   # welche Räume – ohne Angabe: alle
-```
-
-**Die Helfer je Rollo**: Hängt ein Schaltpunkt an einem `input_boolean` oder
-einem `input_select`, zeigt die Karte ihn bei dem Rollo an und lässt ihn dort
-bedienen – als Chip mit Punkt für an/aus, als Auswahlliste bei mehreren
-Stellungen. So lässt sich „die Terrassentür heute mal offen lassen“ dort
-erledigen, wo man ohnehin hinsieht.
-
-Auf dem Chip steht nicht der Name des Schalters, sondern **was er freigibt**:
-*öffnen*, *schließen*, *auf und zu* oder *alles*. Abgeleitet wird das aus den
-Schaltpunkten, an denen er hängt. „Öffnen Nele“ sagt nur, wie der Schalter
-heißt; „öffnen“ sagt, was ausfällt, wenn man ihn ausschaltet. Der volle Name
-steht im Tooltip.
-
-Ein Schalter, der über **einen Raum hinaus** wirkt, steht nicht in den Kacheln,
-sondern einmal oben unter *Gilt für mehrere Rollos*. Sonst sähe er in jeder
-Kachel aus wie ein eigener – und wer ihn bei einem Rollo ausschaltet, wundert
-sich, warum er beim anderen auch weg ist. Es ist derselbe Schalter.
-
-Ist die Karte bereits aus einer anderen Quelle eingebunden (etwa HACS), legt
-das Add-on **nichts** an und schreibt nur einen Hinweis ins Protokoll: Zwei
-Registrierungen desselben Elements legen das Dashboard lahm.
 
 ## Trockenlauf
 

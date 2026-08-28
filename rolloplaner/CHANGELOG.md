@@ -1,5 +1,28 @@
 # Änderungen
 
+## 2.14.0 – 28.08.2026
+
+**Handbuch und README auf den Stand gebracht.** Kein neues Verhalten, aber die
+Beschreibung stimmte an mehreren Stellen nicht mehr mit dem überein, was das
+Add-on tut.
+
+* **Das Handbuch war durcheinandergeraten.** Fünf Abschnitte über die Karte –
+  Bedienung mit dem Finger, Zimmer, Schriftgröße, Einstellen ohne YAML, und was
+  „Automatik aus" bedeutet – standen **vor** der Überschrift *Die Karte* und
+  hingen damit unter *Entitäten*. Ein Nebenschaden der vielen Einschübe der
+  letzten Tage.
+* Die **Entitätentabelle** war unvollständig: Es fehlten der Hitzeschutz je
+  Rollo und der Trockenlauf-Melder. Dazu ein Absatz darüber, dass eine
+  entity_id einmal beim Anlegen entsteht und **keiner Umbenennung folgt** – der
+  Fehler, der gestern einen Schalter von der Karte verschwinden ließ.
+* Die **Regelkette** kannte die Obergruppen noch nicht: Rang 3 nennt jetzt auch
+  „Gruppe ist aus" und „Freigabeschalter der Gruppe steht auf aus".
+* Die **Kartenbeschreibung** beschrieb noch die Raumblöcke von vor 2.12, samt
+  der Beispielkonfiguration mit `raeume:`. Jetzt Obergruppen, `gruppen:`,
+  `textgroesse:` und `zimmer:`.
+* Die **README** war beim Stand von Anfang der Woche stehengeblieben: keine
+  Obergruppen, keine Fluchtweg-Freigabe, kein Karteneditor.
+
 ## 2.13.2 – 28.08.2026
 
 **Die Zimmer-Zwischenüberschriften rissen kachelgroße Löcher in die Karte.**
