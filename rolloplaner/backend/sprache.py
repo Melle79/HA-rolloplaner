@@ -65,6 +65,7 @@ TEXTE: dict[str, dict[str, str]] = {
         "zustand.beobachten": "beobachten",
         "zustand.abgelehnt": "Fahrbefehl abgelehnt",
         "zustand.von_hand_erkannt": "von Hand gefahren",
+        "zustand.urlaub_zu": "Urlaub – geschlossen",
 
         # ── Hitzeschutz ───────────────────────────────────────────────────
         "hitze.grund": "Sonne steht im Fenster ({azimut}°, {hoehe}° hoch), "
@@ -143,6 +144,7 @@ TEXTE: dict[str, dict[str, str]] = {
         "zustand.beobachten": "watching",
         "zustand.abgelehnt": "Command refused",
         "zustand.von_hand_erkannt": "moved by hand",
+        "zustand.urlaub_zu": "Holiday – kept closed",
 
         "hitze.grund": "Sun on this window ({azimut}°, {hoehe}° high), "
                        "{temperatur} °C outside",

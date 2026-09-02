@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.14.0";
+const CARD_VERSION = "2.15.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -52,32 +52,168 @@ const DEFAULTS = {
 
 const TEXTSKALA = {klein: 0.9, normal: 1, gross: 1.2, riesig: 1.45};
 
+/* ── Die Sprache der Karte ──────────────────────────────────────────────
+   Dieselbe Bauart wie im Add-on: eine Tabelle je Sprache, Deutsch als
+   Rückfallebene. Eine dritte Sprache ist ein weiterer Eintrag hier.
+
+   Welche gilt, entscheidet der Betrachter, nicht das Add-on: Home Assistant
+   reicht seine Sprache durch (hass.locale.language). Auf dem Wandtablett
+   steht Deutsch, ein englischsprachiger Gast sieht dieselbe Karte auf
+   Englisch, und niemand muss etwas umstellen. Die Sätze, die der Planer
+   selbst formuliert, folgen dagegen seiner eigenen Einstellung – steht die
+   auf „wie Home Assistant", fällt beides zusammen. */
+const SPRACHEN = {
+  de: {
+    "fn.automatik": "Automatik", "fn.hitzeschutz": "Hitzeschutz",
+    "fn.urlaub": "Urlaub", "fn.fluchtweg": "Fluchtweg",
+    "wirkung.oeffnen": "öffnen", "wirkung.schliessen": "schließen",
+    "wirkung.beides": "auf und zu", "wirkung.raum": "alles",
+    "zustand.beschattung": "Hitzeschutz", "zustand.urlaub": "Urlaub",
+    "zustand.rauch": "Rauchsperre", "zustand.fluchtweg": "Fluchtweg",
+    "zustand.fenster": "Fenster offen", "zustand.manuell": "Handbetrieb",
+    "zustand.aus": "Automatik aus", "zustand.gesperrt": "gesperrt",
+    "zustand.ohne_plan": "kein Plan", "zustand.nur_schliessen": "nur schließen",
+    "zustand.von_hand": "von Hand",
+    "stellung.auf": "offen", "stellung.zu": "zu",
+    "leer": "Noch kein Rollo eingerichtet.",
+    "geteilt": "Gilt für mehrere Rollos",
+    "gibt_frei": "gibt frei",
+    "ohne_gruppe": "Ohne Gruppe", "ohne_zimmer": "Ohne Zimmer",
+    "dann": "dann {was} um {zeit} Uhr",
+    "seit": "seit {zeit} Uhr: {satz}",
+    "sonnenaufgang": "Sonnenaufgang", "sonnenuntergang": "Sonnenuntergang",
+    "zeitplan": "Zeitplan",
+    "titel.automatik": "Automatik für {name}",
+    "titel.hitzeschutz": "Hitzeschutz für {name} (Fenster zeigt nach {grad}°)",
+    "titel.auf": "ganz auffahren", "titel.zu": "ganz zufahren",
+    "alarm.offen": "Rauchalarm – Fluchtweg offen.",
+    "alarm.entwarnung": "Entwarnung – Fluchtweg bleibt offen.",
+    "alarm.sperre": "Rauchsperre – der Planer fasst gerade kein Rollo an.",
+    "alarm.freigabe_aus": "Die Fluchtweg-Freigabe ist aus – bei Rauchalarm fährt kein Rollo auf.",
+    "alarm.nicht_erreichbar": "Nicht erreichbar", "alarm.bleibt_zu": "Bleibt zu",
+    "alarm.ausgenommen": "Ausgenommen", "alarm.aufgefahren": "Aufgefahren",
+    // ── Der Editor ──
+    "e.titel": "Überschrift", "e.groesse": "Schriftgröße",
+    "e.groesse.hinweis": "Größer heißt auch breitere Kacheln und größere Tasten – "
+      + "gedacht für ein Wandtablett, das man aus anderthalb Metern abliest.",
+    "e.zimmer": "Zimmer",
+    "e.zimmer.schild": "als Schild am Rollo",
+    "e.zimmer.ueberschrift": "als Zwischenüberschrift in der Gruppe",
+    "e.zimmer.aus": "gar nicht",
+    "e.zimmer.hinweis": "Als Schild bleibt es platzsparend und entfällt, wo der Name "
+      + "das Zimmer schon nennt. Als Zwischenüberschrift trennt es sauber, aber jedes "
+      + "Zimmer fängt eine neue Reihe an.",
+    "e.zeigt": "Was die Karte zeigt",
+    "e.f.show_funktionen": "Die Knöpfe oben (Automatik, Hitzeschutz, Urlaub, Fluchtweg)",
+    "e.f.show_naechster": "Nächster Wechsel im ganzen Haus",
+    "e.f.show_stoerungen": "Störungen melden",
+    "e.f.show_helfer": "Freigabeschalter an den Kacheln",
+    "e.f.allow_fahren": "Pfeiltasten zum Fahren",
+    "e.f.gruppieren": "Nach Gruppen ordnen",
+    "e.gruppen": "Gruppen: Auswahl und Reihenfolge",
+    "e.gruppen.keine": "Noch keine Gruppen gefunden. Der Planer legt sie im Reiter "
+      + "Gruppen an.",
+    "e.gruppen.alle": "Alle Gruppen werden gezeigt. Die Reihenfolge hier gilt vor "
+      + "der aus dem Add-on.",
+    "e.gruppen.auswahl": "Nur die angehakten Gruppen erscheinen auf dieser Karte.",
+    "e.hoch": "nach oben", "e.runter": "nach unten",
+  },
+  en: {
+    "fn.automatik": "Automation", "fn.hitzeschutz": "Heat shield",
+    "fn.urlaub": "Holiday", "fn.fluchtweg": "Escape route",
+    "wirkung.oeffnen": "opening", "wirkung.schliessen": "closing",
+    "wirkung.beides": "open and close", "wirkung.raum": "everything",
+    "zustand.beschattung": "Heat shield", "zustand.urlaub": "Holiday",
+    "zustand.rauch": "Smoke lock", "zustand.fluchtweg": "Escape route",
+    "zustand.fenster": "Window open", "zustand.manuell": "Manual",
+    "zustand.aus": "Automation off", "zustand.gesperrt": "locked",
+    "zustand.ohne_plan": "no schedule", "zustand.nur_schliessen": "close only",
+    "zustand.von_hand": "by hand",
+    "stellung.auf": "open", "stellung.zu": "closed",
+    "leer": "No cover set up yet.",
+    "geteilt": "Applies to several covers",
+    "gibt_frei": "releases",
+    "ohne_gruppe": "No group", "ohne_zimmer": "No room",
+    "dann": "then {was} at {zeit}",
+    "seit": "since {zeit}: {satz}",
+    "sonnenaufgang": "Sunrise", "sonnenuntergang": "Sunset",
+    "zeitplan": "Schedule",
+    "titel.automatik": "Automation for {name}",
+    "titel.hitzeschutz": "Heat shield for {name} (window faces {grad}°)",
+    "titel.auf": "open fully", "titel.zu": "close fully",
+    "alarm.offen": "Smoke alarm – escape route open.",
+    "alarm.entwarnung": "All clear – escape route stays open.",
+    "alarm.sperre": "Smoke lock – the planner is not touching any cover.",
+    "alarm.freigabe_aus": "The escape route release is off – no cover will open on a smoke alarm.",
+    "alarm.nicht_erreichbar": "Not reachable", "alarm.bleibt_zu": "Stays closed",
+    "alarm.ausgenommen": "Excluded", "alarm.aufgefahren": "Opened",
+    "e.titel": "Heading", "e.groesse": "Text size",
+    "e.groesse.hinweis": "Larger also means wider tiles and bigger buttons – meant "
+      + "for a wall tablet read from a metre and a half away.",
+    "e.zimmer": "Room",
+    "e.zimmer.schild": "as a badge on the cover",
+    "e.zimmer.ueberschrift": "as a subheading inside the group",
+    "e.zimmer.aus": "not at all",
+    "e.zimmer.hinweis": "As a badge it saves space and is dropped where the name "
+      + "already says the room. As a subheading it separates cleanly, but every room "
+      + "starts a new row.",
+    "e.zeigt": "What the card shows",
+    "e.f.show_funktionen": "The buttons on top (automation, heat shield, holiday, escape route)",
+    "e.f.show_naechster": "Next change in the whole house",
+    "e.f.show_stoerungen": "Report faults",
+    "e.f.show_helfer": "Release switches on the tiles",
+    "e.f.allow_fahren": "Arrow buttons for moving",
+    "e.f.gruppieren": "Order by group",
+    "e.gruppen": "Groups: selection and order",
+    "e.gruppen.keine": "No groups found yet. The planner creates them in the Groups tab.",
+    "e.gruppen.alle": "All groups are shown. The order here takes precedence over "
+      + "the one from the add-on.",
+    "e.gruppen.auswahl": "Only the ticked groups appear on this card.",
+    "e.hoch": "move up", "e.runter": "move down",
+  },
+};
+
+let _sprache = "de";
+
+function spracheSetzen(hass) {
+  const roh = (hass && (hass.locale?.language || hass.language)) || "de";
+  const kurz = String(roh).split("-")[0].toLowerCase();
+  _sprache = SPRACHEN[kurz] ? kurz : "de";
+}
+
+/* Fehlt ein Schlüssel, kommt der deutsche Text – nie der nackte Schlüssel.
+   Eine halbfertige Übersetzung soll eine halbfertige Karte ergeben, keine
+   kaputte. */
+function t(schluessel, werte) {
+  const vorlage = SPRACHEN[_sprache]?.[schluessel] ?? SPRACHEN.de[schluessel]
+                  ?? schluessel;
+  if (!werte) return vorlage;
+  return vorlage.replace(/\{(\w+)\}/g, (ganz, name) =>
+    werte[name] !== undefined ? werte[name] : ganz);
+}
+
 const FUNKTIONEN = [
-  ["switch.rolloplaner_automatik", "Automatik", "mdi:home-automation"],
-  ["switch.rolloplaner_beschattung", "Hitzeschutz", "mdi:sun-thermometer"],
-  ["switch.rolloplaner_urlaubssimulation", "Urlaub", "mdi:shield-home"],
-  ["switch.rolloplaner_fluchtweg", "Fluchtweg", "mdi:fire-alert"],
+  ["switch.rolloplaner_automatik", "fn.automatik", "mdi:home-automation"],
+  ["switch.rolloplaner_beschattung", "fn.hitzeschutz", "mdi:sun-thermometer"],
+  ["switch.rolloplaner_urlaubssimulation", "fn.urlaub", "mdi:shield-home"],
+  ["switch.rolloplaner_fluchtweg", "fn.fluchtweg", "mdi:fire-alert"],
 ];
 
 /* Was ein Helfer freigibt – abgeleitet aus den Schaltpunkten, an denen er
    hängt. „raum“ ist der Freigabeschalter des ganzen Raumes. */
 const WIRKUNG = {
-  oeffnen: "öffnen",
-  schliessen: "schließen",
-  beides: "auf und zu",
-  raum: "alles",
+  oeffnen: "wirkung.oeffnen",
+  schliessen: "wirkung.schliessen",
+  beides: "wirkung.beides",
+  raum: "wirkung.raum",
 };
 
 // Welche Arten bis zum Boden gehen – die werden als Tür gezeichnet.
 const TUERARTEN = ["balkontuer", "terrassentuer", "haustuer"];
 
-const ZUSTAND_TEXT = {
-  beschattung: "Hitzeschutz", urlaub: "Urlaub", rauch: "Rauchsperre",
-  fluchtweg: "Fluchtweg",
-  fenster: "Fenster offen", manuell: "Handbetrieb", aus: "Automatik aus",
-  gesperrt: "gesperrt", ohne_plan: "kein Plan", nur_schliessen: "nur schließen",
-  von_hand: "von Hand",
-};
+const ZUSTAENDE = ["beschattung", "urlaub", "rauch", "fluchtweg", "fenster",
+                  "manuell", "aus", "gesperrt", "ohne_plan", "nur_schliessen",
+                  "von_hand"];
 
 /* Der Rollladen vor einem Fenster oder einer Tür – siehe die Erklärung im
    Stilblock weiter unten. */
@@ -104,8 +240,8 @@ function stellungstext(p, invertiert) {
   if (Number.isNaN(n)) return "–";
   const offen = invertiert ? n <= 0 : n >= 100;
   const zu = invertiert ? n >= 100 : n <= 0;
-  if (offen) return "offen";
-  if (zu) return "zu";
+  if (offen) return t("stellung.auf");
+  if (zu) return t("stellung.zu");
   return `${n} %`;
 }
 
@@ -120,6 +256,7 @@ class RolloplanerCard extends HTMLElement {
   static getConfigElement() { return document.createElement("rolloplaner-card-editor"); }
 
   set hass(hass) {
+    spracheSetzen(hass);
     this._hass = hass;
     const status = hass.states["sensor.rolloplaner_status"];
     const rollos = this._rollosSammeln(hass);
@@ -127,11 +264,13 @@ class RolloplanerCard extends HTMLElement {
     // Nur neu zeichnen, wenn sich wirklich etwas geändert hat – sonst klappt
     // jede Auswahlliste zu, während man noch darin liest.
     const signatur = JSON.stringify([
+      _sprache,
       status && status.state,
       FUNKTIONEN.map(([e]) => hass.states[e] && hass.states[e].state),
       rollos.map((r) => [r.sensor.state, r.sensor.attributes.zustand,
                          r.sensor.attributes.prozent_invertiert,
                          r.sensor.attributes.begruendung,
+                         (r.sensor.attributes.begruendungen || {})[_sprache],
                          r.sensor.attributes.naechste_uhrzeit,
                          (r.sensor.attributes.helfer || []).map(
                            (h) => [h.entity_id, hass.states[h.entity_id]
@@ -243,9 +382,9 @@ class RolloplanerCard extends HTMLElement {
         <div class="k-status">${this._esc(status.state)}</div>
       </div>
       <div class="k-rechts">
-        ${a.sonnenaufgang ? `<span title="Sonnenaufgang">
+        ${a.sonnenaufgang ? `<span title="${t('sonnenaufgang')}">
           <ha-icon icon="mdi:weather-sunset-up"></ha-icon>${this._uhr(a.sonnenaufgang)}</span>` : ""}
-        ${a.sonnenuntergang ? `<span title="Sonnenuntergang">
+        ${a.sonnenuntergang ? `<span title="${t('sonnenuntergang')}">
           <ha-icon icon="mdi:weather-sunset-down"></ha-icon>${this._uhr(a.sonnenuntergang)}</span>` : ""}
         ${a.aussentemperatur !== null && a.aussentemperatur !== undefined
           ? `<span><ha-icon icon="mdi:thermometer"></ha-icon>${a.aussentemperatur} °C</span>` : ""}
@@ -261,17 +400,16 @@ class RolloplanerCard extends HTMLElement {
         ? `<div class="${klasse || ""}">${titel}: ${this._esc(liste.join(", "))}</div>` : "";
       warnung += `<div class="warnung rauch">
         <ha-icon icon="mdi:fire-alert"></ha-icon>
-        <div><b>${f.akut === false ? "Entwarnung – Fluchtweg bleibt offen."
-                                  : "Rauchalarm – Fluchtweg offen."}</b>
+        <div><b>${t(f.akut === false ? "alarm.entwarnung" : "alarm.offen")}</b>
         ${this._esc(f.grund || rauch?.attributes?.grund || "")}
-        ${zeile("Nicht erreichbar", f.nicht_erreichbar, "schwer")}
-        ${zeile("Bleibt zu", f.aufgegeben, "schwer")}
-        ${zeile("Ausgenommen", f.ausgenommen)}
-        ${zeile("Aufgefahren", f.geoeffnet)}</div></div>`;
+        ${zeile(t("alarm.nicht_erreichbar"), f.nicht_erreichbar, "schwer")}
+        ${zeile(t("alarm.bleibt_zu"), f.aufgegeben, "schwer")}
+        ${zeile(t("alarm.ausgenommen"), f.ausgenommen)}
+        ${zeile(t("alarm.aufgefahren"), f.geoeffnet)}</div></div>`;
     } else if (rauch && rauch.state === "on") {
       warnung += `<div class="warnung rauch">
         <ha-icon icon="mdi:smoke-detector-variant-alert"></ha-icon>
-        <div>Rauchsperre – der Planer fasst gerade kein Rollo an.
+        <div>${t("alarm.sperre")}
         ${this._esc(rauch.attributes.grund || "")}</div></div>`;
     }
     // Ein abgeschalteter Fluchtweg fällt sonst erst im Brandfall auf. Ein
@@ -279,7 +417,7 @@ class RolloplanerCard extends HTMLElement {
     if (c.show_funktionen && fluchtwegSchalter && fluchtwegSchalter.state === "off") {
       warnung += `<div class="warnung">
         <ha-icon icon="mdi:fire-alert"></ha-icon>
-        <div>Die Fluchtweg-Freigabe ist aus – bei Rauchalarm fährt kein Rollo auf.</div></div>`;
+        <div>${t("alarm.freigabe_aus")}</div></div>`;
     }
     if (c.show_stoerungen && stoerung && stoerung.state === "on") {
       warnung += `<div class="warnung">
@@ -295,8 +433,8 @@ class RolloplanerCard extends HTMLElement {
         if (!zustand) return "";
         const an = zustand.state === "on";
         return `<button class="fn ${an ? "an" : ""}" data-schalter="${entityId}"
-                        data-an="${an ? "0" : "1"}" title="${name}">
-          <ha-icon icon="${icon}"></ha-icon><span>${name}</span></button>`;
+                        data-an="${an ? "0" : "1"}" title="${t(name)}">
+          <ha-icon icon="${icon}"></ha-icon><span>${t(name)}</span></button>`;
       }).join("");
       if (knoepfe) funktionen = `<div class="funktionen">${knoepfe}</div>`;
     }
@@ -317,7 +455,7 @@ class RolloplanerCard extends HTMLElement {
       const geteilt = (a.freigaben || []).filter((f) => this._hass.states[f.entity_id]);
       if (geteilt.length) {
         freigabenHtml = `<div class="freigaben">
-          <div class="f-titel">Gilt für mehrere Rollos</div>
+          <div class="f-titel">${t("geteilt")}</div>
           <div class="f-liste">${geteilt.map((f) => this._chip(f, true)).join("")}</div>
         </div>`;
       }
@@ -326,7 +464,7 @@ class RolloplanerCard extends HTMLElement {
     let rolloHtml = "";
     if (c.show_raeume) {
       if (!rollos.length) {
-        rolloHtml = `<div class="rand"><div class="leer">Noch kein Rollo eingerichtet.</div></div>`;
+        rolloHtml = `<div class="rand"><div class="leer">${t("leer")}</div></div>`;
       } else if (c.gruppieren) {
         // Zwei Ebenen: Die Obergruppe – bei uns die Etage – ist die
         // Überschrift, der Raum steht am Rollo. Vorher war der Raum der Block,
@@ -340,7 +478,7 @@ class RolloplanerCard extends HTMLElement {
         // an der Kachel – dort, wo er hingehört.
         const nachGruppe = new Map();
         rollos.forEach((r) => {
-          const titel = r.gruppe || r.raum || "Ohne Gruppe";
+          const titel = r.gruppe || r.raum || t("ohne_gruppe");
           if (!nachGruppe.has(titel)) nachGruppe.set(titel, []);
           nachGruppe.get(titel).push(r);
         });
@@ -383,8 +521,8 @@ class RolloplanerCard extends HTMLElement {
     // Das Schild nur, wenn es etwas zu sagen hat: „Zeitplan“ an jedem der
     // sieben Räume ist keine Auskunft, sondern Grundrauschen – und es verdeckt
     // die eine Zeile, auf der wirklich „Hitzeschutz“ steht.
-    const schild = ZUSTAND_TEXT[zustand]
-      ? `<span class="schild s-${zustand}">${ZUSTAND_TEXT[zustand]}</span>` : "";
+    const schild = ZUSTAENDE.includes(zustand)
+      ? `<span class="schild s-${zustand}">${t("zustand." + zustand)}</span>` : "";
 
     // Der Raum steht seit der Umstellung auf Obergruppen an der Kachel. Er
     // entfällt, wo der Name ihn schon enthält: „Rollo Küche" im Raum „Küche"
@@ -399,13 +537,19 @@ class RolloplanerCard extends HTMLElement {
     // dann offen um 10:00 Uhr" klingt nach zwei Terminen, von denen der erste
     // längst vorbei ist. Nur beim Zeitplan – „Fenster offen" oder „Handbetrieb
     // bis 08:00" sind schon von sich aus eindeutig.
-    const grund = zustand === "plan" && attrs.zuletzt_uhrzeit && attrs.begruendung
-      ? `seit ${this._esc(attrs.zuletzt_uhrzeit)} Uhr: ${this._esc(attrs.begruendung)}`
-      : this._esc(attrs.begruendung || "");
+    // Der Planer liefert seine Begründung in jeder Sprache mit; genommen wird
+    // die des Betrachters. Fehlt sie, gilt der Satz in der Sprache des Add-ons
+    // – lieber ein deutscher Satz als gar keiner.
+    const begruendung = (attrs.begruendungen || {})[_sprache] || attrs.begruendung;
+    const grund = zustand === "plan" && attrs.zuletzt_uhrzeit && begruendung
+      ? t("seit", {zeit: this._esc(attrs.zuletzt_uhrzeit),
+                   satz: this._esc(begruendung)})
+      : this._esc(begruendung || "");
 
     const inv = Boolean(attrs.prozent_invertiert);
     const dann = attrs.naechste_uhrzeit
-      ? `dann ${stellungstext(attrs.naechste_stellung, inv)} um ${this._esc(attrs.naechste_uhrzeit)} Uhr`
+      ? t("dann", {was: stellungstext(attrs.naechste_stellung, inv),
+                   zeit: this._esc(attrs.naechste_uhrzeit)})
       : "";
 
     const knoepfe = c.allow_fahren && attrs.cover ? `
@@ -415,7 +559,7 @@ class RolloplanerCard extends HTMLElement {
               title="schließen"><ha-icon icon="mdi:arrow-down"></ha-icon></button>` : "";
     const kippe = r.schalter ? `<button class="tipp ${an ? "an" : ""}"
         data-schalter="${r.schalter.entity_id}" data-an="${an ? "0" : "1"}"
-        title="Automatik für ${this._esc(r.name)}">
+        title="${this._esc(t("titel.automatik", {name: r.name}))}">
         <ha-icon icon="mdi:${an ? "robot" : "robot-off"}"></ha-icon></button>` : "";
 
     // Ein Knopf für den Hitzeschutz dieses Rollos – aber nur, wo eine
@@ -427,8 +571,8 @@ class RolloplanerCard extends HTMLElement {
       ? `<button class="tipp ${r.hitzeschutz.state === "on" ? "an" : ""}"
           data-schalter="${r.hitzeschutz.entity_id}"
           data-an="${r.hitzeschutz.state === "on" ? "0" : "1"}"
-          title="Hitzeschutz für ${this._esc(r.name)} (Fenster zeigt nach ${
-            this._esc(String(attrs.ausrichtung))}°)">
+          title="${this._esc(t("titel.hitzeschutz", {name: r.name,
+            grad: String(attrs.ausrichtung)}))}">
           <ha-icon icon="mdi:sun-thermometer"></ha-icon></button>` : "";
 
     const zahl = Number(r.sensor.state);
@@ -444,7 +588,7 @@ class RolloplanerCard extends HTMLElement {
               // Heißt der Zeitplan wie der Raum, steht dasselbe Wort zweimal
               // nebeneinander. Einmal reicht.
               attrs.zeitplan && attrs.zeitplan !== raum
-                ? `<span class="planschild" title="Zeitplan">${
+                ? `<span class="planschild" title="${t('zeitplan')}">${
                     this._esc(attrs.zeitplan)}</span>` : ""}
           </div>
           <div class="grund">${grund}</div>
@@ -470,7 +614,8 @@ class RolloplanerCard extends HTMLElement {
     const zustand = this._hass.states[h.entity_id];
     if (!zustand) return "";
     const wirkungen = h.wirkungen || [h.wirkung];
-    const wirkungstext = wirkungen.map((w) => WIRKUNG[w] || w).join(" und ");
+    const wirkungstext = wirkungen.map((w) => WIRKUNG[w] ? t(WIRKUNG[w]) : w)
+      .join(t("wirkung.beides") === "open and close" ? " and " : " und ");
     const betrifft = h.rollos ? `\n${h.rollos.join(", ")}` : "";
     const titel = `${h.name} – gibt ${wirkungstext} frei${betrifft}\n${h.entity_id}`;
 
@@ -506,7 +651,7 @@ class RolloplanerCard extends HTMLElement {
   _mitZimmern(liste) {
     const nachZimmer = new Map();
     liste.forEach((r) => {
-      const zimmer = r.raum || "Ohne Zimmer";
+      const zimmer = r.raum || t("ohne_zimmer");
       if (!nachZimmer.has(zimmer)) nachZimmer.set(zimmer, []);
       nachZimmer.get(zimmer).push(r);
     });
@@ -524,7 +669,8 @@ class RolloplanerCard extends HTMLElement {
     // Teil, der etwas sagt: In der Kachel „Terrassentür“ ist „Terrassentür
     // schliessen“ zu drei Vierteln Wiederholung, und die Kachel ist schmal.
     const wirkung = (h) => (h.wirkungen || [h.wirkung])
-      .map((w) => WIRKUNG[w] || w).join(" und ");
+      .map((w) => WIRKUNG[w] ? t(WIRKUNG[w]) : w)
+      .join(_sprache === "de" ? " und " : " and ");
     const zaehler = {};
     helfer.forEach((h) => { const w = wirkung(h); zaehler[w] = (zaehler[w] || 0) + 1; });
     const teile = helfer.map((h) => {
@@ -537,7 +683,7 @@ class RolloplanerCard extends HTMLElement {
     // wäre eine Kachel ohne Schalter niedriger als ihre Nachbarn, und die
     // Fußzeile säße in jeder Kachel woanders.
     if (!teile) return `<div class="chipzeile"></div>`;
-    return `<div class="chipzeile"><span class="c-titel">gibt frei</span>${teile}</div>`;
+    return `<div class="chipzeile"><span class="c-titel">${t("gibt_frei")}</span>${teile}</div>`;
   }
 
   _kurzname(name) {
@@ -895,14 +1041,8 @@ class RolloplanerCard extends HTMLElement {
    DOM überlebt das.
    ═══════════════════════════════════════════════════════════════════════ */
 
-const SCHALTER_FELDER = [
-  ["show_funktionen", "Die Knöpfe oben (Automatik, Hitzeschutz, Urlaub, Fluchtweg)"],
-  ["show_naechster", "Nächster Wechsel im ganzen Haus"],
-  ["show_stoerungen", "Störungen melden"],
-  ["show_helfer", "Freigabeschalter an den Kacheln"],
-  ["allow_fahren", "Pfeiltasten zum Fahren"],
-  ["gruppieren", "Nach Gruppen ordnen"],
-];
+const SCHALTER_FELDER = ["show_funktionen", "show_naechster", "show_stoerungen",
+                         "show_helfer", "allow_fahren", "gruppieren"];
 
 class RolloplanerCardEditor extends HTMLElement {
   setConfig(config) {
@@ -910,7 +1050,7 @@ class RolloplanerCardEditor extends HTMLElement {
     this._zeichnen();
   }
 
-  set hass(hass) { this._hass = hass; this._zeichnen(); }
+  set hass(hass) { spracheSetzen(hass); this._hass = hass; this._zeichnen(); }
 
   /* Welche Gruppen gibt es? Aus den Sensoren des Planers – so steht im Editor
      immer das, was das Add-on gerade führt, ohne zweite Konfiguration. */
@@ -992,9 +1132,9 @@ class RolloplanerCardEditor extends HTMLElement {
         lässt den Rest der Reihe leer.</p>
 
       <h4>Was die Karte zeigt</h4>
-      ${SCHALTER_FELDER.map(([feld, text]) => `<label class="haken">
+      ${SCHALTER_FELDER.map((feld) => `<label class="haken">
         <input type="checkbox" data-feld="${feld}" ${c[feld] ? "checked" : ""}>
-        ${text}</label>`).join("")}
+        ${t("e.f." + feld)}</label>`).join("")}
 
       <h4>Gruppen: Auswahl und Reihenfolge</h4>
       ${gruppen.length ? gruppen.map((g, i) => `<div class="zeile">

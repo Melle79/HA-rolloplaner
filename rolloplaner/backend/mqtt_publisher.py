@@ -549,6 +549,11 @@ class Publisher:
                 "prozent_invertiert": invertiert,
                 "zustand": rollo.get("zustand"),
                 "begruendung": rollo.get("begruendung"),
+                # Dieselbe Auskunft in jeder Sprache: Die Karte spricht die
+                # ihres Betrachters, das Add-on die eigene. Ohne das stünde in
+                # einer englischen Karte ein deutscher Satz.
+                "begruendungen": rollo.get("begruendungen") or {},
+                "naechste_punkte": rollo.get("naechste_punkte") or {},
                 "beschattet": rollo.get("beschattet", False),
                 "fenster_offen": rollo.get("fenster_offen") or [],
                 "zeitplan": rollo.get("plan") or "",

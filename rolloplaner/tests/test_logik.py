@@ -440,6 +440,33 @@ def test_kein_backtick_im_stilblock_der_karte():
             f"{anzahl} Backticks im Stilblock (1 ist richtig): " + "; ".join(zeilen))
 
 
+def test_die_karte_kennt_in_beiden_sprachen_dieselben_schluessel():
+    """Derselbe Wächter wie im Backend, nur für die Karte.
+
+    Fehlt dort ein Schlüssel, fällt die Stelle ins Deutsche zurück – und das
+    merkt am wenigsten der, der die Sprache nicht spricht.
+    """
+    import re
+    karte = (pathlib.Path(__file__).parent.parent / "card"
+             / "rolloplaner-card.js").read_text(encoding="utf-8")
+    tabellen = {}
+    for code in ("de", "en"):
+        block = re.search(rf"\n  {code}: \{{(.*?)\n  \}},\n", karte, re.S)
+        assert block, f"Sprachtabelle {code} nicht gefunden"
+        tabellen[code] = {schluessel: wert for schluessel, wert
+                          in re.findall(r'"([a-z][\w.]*)":\s*("[^"]*")', block.group(1))}
+    deutsch = set(tabellen["de"])
+    for code, tabelle in tabellen.items():
+        assert not deutsch - set(tabelle), f"{code}: es fehlen {sorted(deutsch - set(tabelle))}"
+        assert not set(tabelle) - deutsch, f"{code}: unbekannt {sorted(set(tabelle) - deutsch)}"
+    # Und die Platzhalter müssen zueinander passen.
+    for schluessel, deutsch_wert in tabellen["de"].items():
+        erwartet = set(re.findall(r"\{(\w+)\}", deutsch_wert))
+        for code, tabelle in tabellen.items():
+            hier = set(re.findall(r"\{(\w+)\}", tabelle[schluessel]))
+            assert hier == erwartet, f"{code}/{schluessel}: {hier} statt {erwartet}"
+
+
 def test_karte_ist_gueltiges_javascript():
     """Ein Syntaxfehler in der Karte fällt sonst erst im Dashboard auf – und
     dort sieht man nur, dass nichts kommt."""

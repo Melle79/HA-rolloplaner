@@ -1,5 +1,36 @@
 # Änderungen
 
+## 2.15.0 – 28.08.2026
+
+**Der Planer spricht Deutsch und Englisch.**
+
+* **Die Karte folgt dem Betrachter** (`hass.locale.language`): Auf dem
+  Wandtablett steht Deutsch, ein englischsprachiger Gast sieht dieselbe Karte
+  auf Englisch. Niemand muss etwas umstellen.
+* **Das Add-on folgt Home Assistant** oder der neuen Einstellung
+  *Einstellungen → Sprache*. Danach richtet sich Protokoll und die Meldung bei
+  Rauchalarm.
+* **Der Planer liefert seine Begründungen in jeder Sprache mit.** Ohne das
+  stünde in einer englischen Karte ein deutscher Satz – der erste Anlauf sah
+  genau so aus („since 19:55: zu um Sonnenuntergang"), und halb übersetzt ist
+  schlechter als gar nicht.
+
+Der schwierige Teil war nicht die Menge, sondern der Satzbau: „zu um
+Sonnenuntergang, spätestens 22:00 wenn morgen schulfrei ist" heißt auf Englisch
+„closed at sunset, no later than 22:00 when tomorrow is a day off" – andere
+Wortstellung, andere Fügung. Deshalb steht je Sprache die ganze Vorlage da,
+nicht eine Wörterliste.
+
+Gebaut ohne `gettext`: Die Texte stehen als Tabelle je Sprache, damit eine
+dritte Sprache **nur eine Tabelle** ist – keine Werkzeugkette, keine
+`.po`-Dateien, kein Übersetzungslauf beim Bauen. Deutsch ist die Rückfallebene;
+fehlt ein Schlüssel, kommt der deutsche Text und nie der nackte Schlüssel.
+Drei Tests wachen darüber, dass die Tabellen dieselben Schlüssel und dieselben
+Platzhalter führen – die zwei Fehler, die man sonst erst bemerkt, wenn jemand
+die Sprache spricht.
+
+**Die Oberfläche des Add-ons ist noch deutsch** – sie folgt als Nächstes.
+
 ## 2.14.0 – 28.08.2026
 
 **Handbuch und README auf den Stand gebracht.** Kein neues Verhalten, aber die

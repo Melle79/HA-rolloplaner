@@ -403,40 +403,40 @@ def _beschattung_pruefen(rollo: dict, einstellungen: dict, index: dict,
     """
     global_ = einstellungen.get("beschattung") or {}
     if not global_.get("aktiv", True) or not rollo.get("beschattung"):
-        return False, "", None
+        return False, ("", {}), None
     if rollo.get("ausrichtung") is None:
-        return False, "", None
+        return False, ("", {}), None
 
     elevation, azimut = sonnenstand.stand(jetzt)
     if not sonnenmodul.sonne_steht_im_fenster(
             azimut, elevation, rollo.get("ausrichtung"),
             float(rollo.get("oeffnungswinkel") or 90),
             float(global_.get("min_elevation", 12.0))):
-        return False, "", None
+        return False, ("", {}), None
 
     aussen = _temperatur(einstellungen.get("aussen_entity"), index)
     if aussen is None:
-        return False, "", None
+        return False, ("", {}), None
     schwelle = float(global_.get("ab_temperatur", 24.0))
     if war_beschattet:
         schwelle -= float(global_.get("hysterese", 1.5))
     if aussen < schwelle:
-        return False, "", None
+        return False, ("", {}), None
 
     if rollo.get("raumtemp") and rollo.get("raumtemp_ab") is not None:
         innen = _temperatur(rollo["raumtemp"], index)
         if innen is not None and innen < float(rollo["raumtemp_ab"]):
-            return False, "", None
+            return False, ("", {}), None
 
     if global_.get("nur_wenn_niemand_da") and _jemand_da(rollo, index):
-        return False, "", None
+        return False, ("", {}), None
 
     position = rollo.get("beschattung_position")
     if position is None:
         position = int(global_.get("position", 35))
-    grund = sprache.t("hitze.grund", azimut=f"{azimut:.0f}",
-                      hoehe=f"{elevation:.0f}", temperatur=f"{aussen:.1f}")
-    return True, grund, int(position)
+    werte = {"azimut": f"{azimut:.0f}", "hoehe": f"{elevation:.0f}",
+             "temperatur": f"{aussen:.1f}"}
+    return True, (sprache.t("hitze.grund", **werte), werte), int(position)
 
 
 def _temperatur(entity_id: str | None, index: dict) -> float | None:
@@ -521,10 +521,11 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
         freigabe = lage.get("fluchtweg") or {}
         if (freigabe.get("aktiv") and rollo.get("aktiv", True)
                 and rollo.get("fluchtweg", True)):
-            ergebnis.update(zustand="fluchtweg",
-                            begruendung=sprache.t("zustand.fluchtweg", grund=lage["rauch_grund"]))
+            _grund(ergebnis, "fluchtweg", "zustand.fluchtweg",
+                   grund=lage["rauch_grund"])
         else:
-            ergebnis.update(zustand="rauch", begruendung=lage["rauch_grund"])
+            ergebnis.update(zustand="rauch", begruendung=lage["rauch_grund"],
+                            grund_schluessel="", grund_werte={})
         return ergebnis
 
     # 2. aus ------------------------------------------------------------------
@@ -533,24 +534,19 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
     # fasst es nur nicht mehr nach Plan an. Wer hier „Rollo ist abgeschaltet"
     # liest, sucht nach einem Defekt, den es nicht gibt.
     if not rollo.get("aktiv", True):
-        ergebnis.update(zustand="aus",
-                        begruendung=sprache.t("zustand.aus_rollo"))
+        _grund(ergebnis, "aus", "zustand.aus_rollo")
         return ergebnis
     if rollo.get("betriebsart") == "von_hand":
-        ergebnis.update(zustand="von_hand",
-                        begruendung=sprache.t("zustand.von_hand"))
+        _grund(ergebnis, "von_hand", "zustand.von_hand")
         return ergebnis
     if not lage["automatik"]:
-        ergebnis.update(zustand="aus",
-                        begruendung=sprache.t("zustand.aus_gesamt"))
+        _grund(ergebnis, "aus", "zustand.aus_gesamt")
         return ergebnis
     if plan is not None and not plan.get("aktiv", True):
-        ergebnis.update(zustand="gesperrt",
-                        begruendung=sprache.t("zustand.plan_aus", name=plan["name"]))
+        _grund(ergebnis, "gesperrt", "zustand.plan_aus", name=plan["name"])
         return ergebnis
     if gruppe is not None and not gruppe.get("aktiv", True):
-        ergebnis.update(zustand="gesperrt",
-                        begruendung=sprache.t("zustand.gruppe_aus", name=gruppe["name"]))
+        _grund(ergebnis, "gesperrt", "zustand.gruppe_aus", name=gruppe["name"])
         return ergebnis
     if gruppe is not None and gruppe.get("schalter"):
         # Ein eigener Schalter des Planers, kein fremder: Sein Stand steht in
@@ -558,15 +554,15 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
         # Schaltpunkten laufen.
         stand = lage["zustaende"].get(store.EIGEN_PREFIX + gruppe["schalter"])
         if stand is not None and str(stand).lower() in ("off", "aus", "false", "0"):
-            ergebnis.update(zustand="gesperrt",
-                            begruendung=sprache.t("zustand.gruppe_gesperrt", name=gruppe["name"]))
+            _grund(ergebnis, "gesperrt", "zustand.gruppe_gesperrt",
+                   name=gruppe["name"])
             return ergebnis
 
     if zustand is None:
-        ergebnis.update(zustand="fehlt", begruendung=sprache.t("zustand.fehlt"))
+        _grund(ergebnis, "fehlt", "zustand.fehlt")
         return ergebnis
     if zustand.get("state") == "unavailable":
-        ergebnis.update(zustand="fehlt", begruendung=sprache.t("zustand.unerreichbar"))
+        _grund(ergebnis, "fehlt", "zustand.unerreichbar")
         return ergebnis
 
     # Der Zeitplan ist die Grundlage; Urlaub und Hitzeschutz verschieben ihn.
@@ -580,10 +576,14 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
     ziel = None
     punkt_zeit = None
     beschreibung = ""
+    # Woraus die Begründung entstand – damit sie sich in jeder Sprache neu
+    # bauen lässt: entweder aus einem Schaltpunkt oder aus einem Textbaustein.
+    grund_punkt = None
     if treffer:
         punkt_zeit, punkt = treffer
         ziel = int(punkt["position"])
         beschreibung = zeitplanmodul.beschreibung(punkt, invertiert=invertiert)
+        grund_punkt = punkt
 
     if naechster:
         ergebnis["naechster_zeitpunkt"] = _iso(naechster[0])
@@ -600,7 +600,10 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
         if urlaub.get("modus") == "zu" or not rollo.get("urlaub_simulation", True):
             ziel = int(rollo.get("position_zu", 0))
             punkt_zeit = lage["urlaub_seit"] or punkt_zeit
-            beschreibung = "Urlaub – geschlossen"
+            beschreibung = sprache.t("zustand.urlaub_zu")
+            grund_punkt = None
+            ergebnis["grund_schluessel"] = "zustand.urlaub_zu"
+            ergebnis["grund_werte"] = {}
         elif anpassen is not None and treffer:
             versatz = int((punkt_zeit - _roh_zeitpunkt(
                 treffer[1], punkt_zeit, kalender, sonnenstand)).total_seconds() // 60)
@@ -609,7 +612,7 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
 
     # 4. Hitzeschutz ----------------------------------------------------------
     war_beschattet = bool(rollo_state.get("beschattet"))
-    beschatten, beschattungsgrund, beschattungsposition = _beschattung_pruefen(
+    beschatten, (beschattungsgrund, beschattungswerte), beschattungsposition = _beschattung_pruefen(
         rollo, einstellungen, index, sonnenstand, jetzt, war_beschattet)
     if beschatten and ziel is not None and beschattungsposition < ziel:
         # Nur verdunkeln, nie aufziehen: Steht der Plan ohnehin auf „zu“,
@@ -617,18 +620,91 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
         ziel = beschattungsposition
         ergebnis["zustand"] = "beschattung"
         beschreibung = beschattungsgrund
+        grund_punkt = None
+        ergebnis["grund_schluessel"] = "hitze.grund"
+        ergebnis["grund_werte"] = dict(beschattungswerte)
         punkt_zeit = jetzt          # Pegel, kein Zeitpunkt – Flanke unten
     ergebnis["beschattet"] = beschatten
 
     if ziel is None:
-        ergebnis.update(zustand="ohne_plan",
-                        begruendung=sprache.t("zustand.ohne_plan"))
+        _grund(ergebnis, "ohne_plan", "zustand.ohne_plan")
         return ergebnis
 
     ergebnis["fenster_offen"] = _fenster_offen(rollo, index)
     ergebnis["begruendung"] = beschreibung
+    if grund_punkt is not None:
+        ergebnis["grund_punkt"] = grund_punkt
+        ergebnis["grund_invertiert"] = invertiert
     ergebnis["ziel"] = ziel
     ergebnis["punkt_zeit"] = _iso(punkt_zeit)
+    ergebnis["begruendungen"] = begruendungen(ergebnis)
+    ergebnis["naechste_punkte"] = naechste_punkte(
+        ergebnis, naechster[1] if naechster else None, invertiert)
+    return ergebnis
+
+
+def begruendungen(ergebnis: dict) -> dict:
+    """Die Begründung eines Rollos in **jeder** Sprache.
+
+    Die Karte spricht die Sprache ihres Betrachters, das Add-on die eigene.
+    Wer nur den fertigen Text ausliefert, bekommt eine englische Karte mit
+    deutschen Begründungen – halb übersetzt ist schlechter als gar nicht.
+
+    Gebaut wird aus dem, was die Regelkette mitgeführt hat: einem Schaltpunkt
+    (der häufigste Fall) oder einem Textbaustein samt Werten. Ist beides nicht
+    da, bleibt der fertige Satz für alle Sprachen stehen.
+    """
+    vorher = sprache.aktuell()
+    fertig = ergebnis.get("begruendung") or ""
+    punkt = ergebnis.get("grund_punkt")
+    schluessel = ergebnis.get("grund_schluessel")
+    werte = ergebnis.get("grund_werte") or {}
+    aus = {}
+    try:
+        for code in sprache.sprachen():
+            sprache.setze(code)
+            if punkt is not None:
+                aus[code] = zeitplanmodul.beschreibung(
+                    punkt, invertiert=bool(ergebnis.get("grund_invertiert")))
+            elif schluessel:
+                aus[code] = sprache.t(schluessel, **werte)
+            else:
+                aus[code] = fertig
+    finally:
+        sprache.setze(vorher)
+    return aus
+
+
+def naechste_punkte(ergebnis: dict, punkt: dict | None, invertiert: bool) -> dict:
+    """Denselben Dienst für den nächsten Schaltpunkt."""
+    if punkt is None:
+        return {}
+    vorher = sprache.aktuell()
+    aus = {}
+    try:
+        for code in sprache.sprachen():
+            sprache.setze(code)
+            aus[code] = zeitplanmodul.beschreibung(punkt, invertiert=invertiert)
+    finally:
+        sprache.setze(vorher)
+    return aus
+
+
+def _grund(ergebnis: dict, zustand: str | None, schluessel: str, **werte) -> dict:
+    """Zustand und Begründung setzen – und **womit** sie gebaut wurde.
+
+    Der fertige Satz allein reicht nicht: Die Karte spricht die Sprache ihres
+    Betrachters, das Add-on die eigene. Wer nur den fertigen Text ausliefert,
+    bekommt eine englische Karte mit deutschen Begründungen. Deshalb wird der
+    Baustein mitgeführt und beim Veröffentlichen in jeder Sprache gerendert.
+    """
+    if zustand is not None:
+        ergebnis["zustand"] = zustand
+    ergebnis["begruendung"] = sprache.t(schluessel, **werte)
+    ergebnis["grund_schluessel"] = schluessel
+    ergebnis["grund_werte"] = werte
+    ergebnis["grund_punkt"] = None
+    ergebnis["begruendungen"] = begruendungen(ergebnis)
     return ergebnis
 
 
@@ -803,7 +879,7 @@ def _rollo_stellen(rollo: dict, ergebnis: dict, einstellungen: dict, index: dict
     # „Nur schließen“: der Planer fährt zu, öffnet aber nie von selbst.
     if rollo.get("betriebsart") == "nur_schliessen" and ziel > int(rollo.get("position_zu", 0)):
         ergebnis["zustand"] = "nur_schliessen"
-        ergebnis["begruendung"] = sprache.t("zustand.nur_schliessen")
+        _grund(ergebnis, None, "zustand.nur_schliessen")
         rollo_state["letzter_punkt"] = _iso(punkt_zeit)
         return
 
@@ -814,8 +890,7 @@ def _rollo_stellen(rollo: dict, ergebnis: dict, einstellungen: dict, index: dict
     # Fenster offen: Zufahren wird unterdrückt, Öffnen bleibt erlaubt.
     if offen and ist is not None and ziel < ist:
         ergebnis["zustand"] = "fenster"
-        ergebnis["begruendung"] = sprache.t("zustand.fenster_offen",
-                                            liste=", ".join(offen))
+        _grund(ergebnis, None, "zustand.fenster_offen", liste=", ".join(offen))
         # Der Punkt bleibt offen. Sobald die Tür zugeht, wird er nachgeholt –
         # und zwar der dann *zuletzt fällige*.
         ergebnis["aufgeschoben"] = True
@@ -829,8 +904,8 @@ def _rollo_stellen(rollo: dict, ergebnis: dict, einstellungen: dict, index: dict
     if (einstellungen.get("manuell_respektieren") and manuell_bis
             and jetzt < manuell_bis and not neuer_punkt):
         ergebnis["zustand"] = "manuell"
-        ergebnis["begruendung"] = sprache.t(
-            "zustand.manuell", zeit=manuell_bis.strftime("%H:%M"))
+        _grund(ergebnis, None, "zustand.manuell",
+               zeit=manuell_bis.strftime("%H:%M"))
         return
 
     if ist is not None and abs(ist - ziel) <= TOLERANZ:

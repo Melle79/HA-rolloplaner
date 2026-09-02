@@ -355,6 +355,39 @@ sofern sie so heißen wie das Rollo.
 Die Schweigefrist steht bewusst hoch. Ein Rollladen meldet nur, wenn er fährt –
 eines, das zweimal am Tag fährt, meldet sich auch nur zweimal am Tag.
 
+## Sprache
+
+Der Planer spricht **Deutsch und Englisch**. Wer eine dritte Sprache will,
+ergänzt eine Tabelle in `backend/sprache.py` und eine in der Karte – kein
+`gettext`, keine `.po`-Dateien, kein Übersetzungslauf beim Bauen.
+
+**Zwei Stellen, zwei Regeln:**
+
+* **Das Add-on** folgt Home Assistant (dessen `language` aus `/api/config`,
+  beim Start gelesen) oder der Einstellung unter *Einstellungen → Sprache*.
+  Danach richtet sich alles, was der Planer selbst formuliert: Protokoll und
+  die Meldung bei Rauchalarm.
+* **Die Karte** folgt dem **Betrachter** (`hass.locale.language`). Auf dem
+  Wandtablett steht Deutsch, ein englischsprachiger Gast sieht dieselbe Karte
+  auf Englisch, und niemand muss etwas umstellen.
+
+Damit beides nicht auseinanderläuft, liefert der Planer seine Begründungen
+**in jeder Sprache** mit (Attribut `begruendungen`). Sonst stünde in einer
+englischen Karte ein deutscher Satz – halb übersetzt ist schlechter als gar
+nicht.
+
+Der schwierige Teil war nicht die Menge, sondern der Satzbau: Der Planer setzt
+seine Begründungen aus Bausteinen zusammen, und „zu um Sonnenuntergang,
+spätestens 22:00 wenn morgen schulfrei ist" heißt auf Englisch „closed at
+sunset, no later than 22:00 when tomorrow is a day off" – andere Wortstellung,
+andere Fügung. Deshalb steht je Sprache die ganze Vorlage da, nicht eine
+Wörterliste. Zwei Tests wachen darüber, dass beide Tabellen dieselben Schlüssel
+und dieselben Platzhalter führen; **Deutsch ist die Rückfallebene**, fehlt ein
+Schlüssel, kommt der deutsche Text und nie der nackte Schlüssel.
+
+**Die Oberfläche des Add-ons ist bisher deutsch.** Sie ist der Ort, an dem
+eingerichtet wird – die Übersetzung steht noch aus.
+
 ## Entitäten
 
 Über MQTT legt das Add-on ein Gerät „Rolloplaner“ an:
