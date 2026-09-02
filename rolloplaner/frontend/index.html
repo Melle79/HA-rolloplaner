@@ -1402,6 +1402,19 @@ function zeichneEinstellungen(){
       </div>
     </div>
 
+    <div class="abschnitt"><h3>Sprache</h3>
+      <label class="feld" style="max-width:320px"><span>Texte des Planers</span>
+        <select name="sprache">
+          <option value="" ${!e.sprache ? "selected" : ""}>wie Home Assistant</option>
+          <option value="de" ${e.sprache === "de" ? "selected" : ""}>Deutsch</option>
+          <option value="en" ${e.sprache === "en" ? "selected" : ""}>English</option>
+        </select></label>
+      <p class="hinweis">Gilt für alles, was der Planer selbst formuliert:
+        Begründungen in der Kachel, Protokoll und die Meldung bei Rauchalarm.
+        „Wie Home Assistant“ liest die dort eingestellte Sprache beim Start des
+        Add-ons – wer sie in Home Assistant ändert, startet das Add-on neu.</p>
+    </div>
+
     <div class="abschnitt"><h3>Woher der Planer weiß, welcher Tag ist</h3>
       <div class="gitter g2">
         <label class="feld"><span>Heute schulfrei</span>

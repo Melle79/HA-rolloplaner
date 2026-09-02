@@ -13,6 +13,8 @@ Zeitbedingung. Hier ist es ein Eintrag.
 """
 from __future__ import annotations
 
+import sprache
+
 from datetime import date, datetime, time, timedelta
 
 TAGE = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -227,31 +229,31 @@ def beschreibung(eintrag: dict, mit_bedingungen: bool = False,
         return eintrag["name"]
     art = eintrag.get("ausloeser") or "uhrzeit"
     if art == "uhrzeit":
-        wann = f"{eintrag.get('start', '??:??')} Uhr"
+        wann = sprache.t("punkt.uhrzeit", zeit=eintrag.get("start", "??:??"))
     else:
-        namen = {"sonnenaufgang": "Sonnenaufgang", "sonnenuntergang": "Sonnenuntergang",
-                 "daemmerung": "Dämmerung"}
-        wann = namen.get(art, art)
+        wann = sprache.t(f"punkt.{art}") if f"punkt.{art}" in sprache.TEXTE[
+            sprache.VORGABE] else art
         versatz = int(eintrag.get("versatz_min") or 0)
         if versatz:
-            wann += f" {versatz:+d} min"
+            wann += sprache.t("punkt.versatz", n=versatz)
         if eintrag.get("frueh"):
-            wann += f", frühestens {eintrag['frueh']}"
+            wann += sprache.t("punkt.fruehestens", zeit=eintrag["frueh"])
         if eintrag.get("spaet"):
-            wann += f", spätestens {eintrag['spaet']}"
+            wann += sprache.t("punkt.spaetestens", zeit=eintrag["spaet"])
     stellung = int(eintrag.get("position", 100))
     # „auf“ und „zu“ bleiben, wie sie sind – die Wörter hängen nicht an der
     # Zählweise. Nur die Zahl dazwischen dreht sich.
     if stellung >= 100:
-        was = "auf"
+        was = sprache.t("punkt.auf")
     elif stellung <= 0:
-        was = "zu"
+        was = sprache.t("punkt.zu")
     else:
-        was = f"{100 - stellung if invertiert else stellung} %"
-    geltung = {"schultag": " an Schultagen", "schulfrei": " an schulfreien Tagen",
-               "morgen_schultag": " wenn morgen Schule ist",
-               "morgen_schulfrei": " wenn morgen schulfrei ist"}
-    text = f"{was} um {wann}" + geltung.get(eintrag.get("gilt", "immer"), "")
+        was = sprache.t("punkt.prozent",
+                        n=100 - stellung if invertiert else stellung)
+    gilt = eintrag.get("gilt", "immer")
+    geltung = ("" if gilt == "immer"
+               else sprache.t(f"punkt.gilt.{gilt}"))
+    text = sprache.t("punkt.satz", was=was, wann=wann, geltung=geltung)
     if mit_bedingungen:
         for bedingung in eintrag.get("wenn") or []:
             text += (f" ({bedingung.get('entity', '').split('.')[-1]}"

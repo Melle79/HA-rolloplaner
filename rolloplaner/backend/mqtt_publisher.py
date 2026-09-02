@@ -17,6 +17,7 @@ import json
 from datetime import datetime
 import logging
 import re
+import sprache
 import threading
 
 import paho.mqtt.client as mqtt
@@ -424,23 +425,26 @@ class Publisher:
         if bericht.get("rauch"):
             # Im Alarm ist die Auskunft, die zählt, nicht „der Planer hält
             # still“, sondern ob der Fluchtweg offen ist.
-            status = ("Fluchtweg offen" if (bericht.get("fluchtweg") or {}).get("aktiv")
-                      else "Rauchsperre")
+            status = sprache.t("lage.fluchtweg_offen"
+                               if (bericht.get("fluchtweg") or {}).get("aktiv")
+                               else "lage.rauchsperre")
         elif not bericht.get("automatik"):
-            status = "Automatik aus"
+            status = sprache.t("lage.automatik_aus")
         elif bericht.get("trockenlauf"):
-            status = "Trockenlauf"
+            status = sprache.t("lage.trockenlauf")
         elif bericht.get("urlaub"):
-            status = "Urlaub"
+            status = sprache.t("lage.urlaub")
         else:
             beschattet = [r for r in rollos if r.get("zustand") == "beschattung"]
             # „aktiv" hieß hier immer „der Planer fährt es" – gelesen wurde es
             # als „das Rollo funktioniert". Ein Rollo mit abgeschalteter
             # Automatik ist aber nicht kaputt, es wird nur nicht gefahren.
             mit = [r for r in rollos if r.get("zustand") not in ("aus", "gesperrt")]
-            status = (f"{len(beschattet)} Rollos beschattet" if beschattet
-                      else "Alle Rollos mit Automatik" if len(mit) == len(rollos)
-                      else f"{len(mit)} von {len(rollos)} Rollos mit Automatik")
+            status = (sprache.t("lage.beschattet", n=len(beschattet)) if beschattet
+                      else sprache.t("lage.alle_mit_automatik")
+                      if len(mit) == len(rollos)
+                      else sprache.t("lage.mit_automatik", n=len(mit),
+                                     gesamt=len(rollos)))
 
         sonne = bericht.get("sonne") or {}
         self._zustand("status", status, {
@@ -506,7 +510,7 @@ class Publisher:
                                      "stellung": zeige(r.get("naechste_stellung"))}
                                     for r in naechste[:14]]})
         else:
-            self._zustand("naechster_wechsel", "kein Wechsel geplant", {})
+            self._zustand("naechster_wechsel", sprache.t("lage.kein_wechsel"), {})
 
         # Die Funktionsschalter spiegeln die Einstellungen wider.
         self._zustand("automatik", "ON" if einstellungen.get("automatik") else "OFF", {})

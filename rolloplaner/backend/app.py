@@ -22,6 +22,7 @@ import cardsync
 import ha_api
 import logbuch
 import regelung
+import sprache
 import store
 import uebernahme
 import wachhund
@@ -119,20 +120,21 @@ def _rauchalarm_melden(bericht: dict, einstellungen: dict) -> None:
     zeilen = []
 
     if not freigabe.get("aktiv"):
-        zeilen.append("Die Fluchtweg-Freigabe ist AUS – es fährt kein Rollo auf.")
+        zeilen.append(sprache.t("rauch.freigabe_aus"))
     else:
         # Was schiefging, steht oben. Wer im Ernstfall aufs Telefon sieht, muss
         # zuerst wissen, welches Fenster zu bleibt – nicht, welche neun offen
         # sind.
-        for beschriftung, schluessel in (("NICHT erreichbar", "fehlt"),
-                                         ("Bleibt zu", "aufgegeben"),
-                                         ("Ausgenommen", "uebergangen"),
-                                         ("Aufgefahren", "gefahren"),
-                                         ("Stand schon offen", "offen")):
+        for textschluessel, schluessel in (("rauch.nicht_erreichbar", "fehlt"),
+                                           ("rauch.bleibt_zu", "aufgegeben"),
+                                           ("rauch.ausgenommen", "uebergangen"),
+                                           ("rauch.aufgefahren", "gefahren"),
+                                           ("rauch.stand_offen", "offen")):
             if freigabe.get(schluessel):
-                zeilen.append(f"{beschriftung}: " + ", ".join(freigabe[schluessel]))
+                zeilen.append(sprache.t(textschluessel) + ": "
+                              + ", ".join(freigabe[schluessel]))
         if bericht.get("trockenlauf"):
-            zeilen.append("Trockenlauf – es ist nichts wirklich gefahren.")
+            zeilen.append(sprache.t("rauch.trockenlauf"))
 
     # Das Protokoll hat keine Überschrift, dort gehört der Grund dazu.
     logbuch.eintragen("", "Rauchalarm", " · ".join([grund] + zeilen), art="fehler")
@@ -141,10 +143,11 @@ def _rauchalarm_melden(bericht: dict, einstellungen: dict) -> None:
     # wiederholen kostet die eine Zeile, die auf einem Sperrbildschirm noch zu
     # sehen ist.
     orte = bericht.get("rauch_orte") or ""
-    titel = f"Rauchalarm: {orte}" if orte else "Rauchalarm"
+    titel = (sprache.t("rauch.titel", orte=orte) if orte
+             else sprache.t("rauch.titel_ohne_ort"))
     if not freigabe.get("aktiv"):
-        titel += " – Freigabe ist aus"
-    text = "\n".join(zeilen) if zeilen else "Kein Rollo betroffen."
+        titel += sprache.t("rauch.titel_freigabe_aus")
+    text = "\n".join(zeilen) if zeilen else sprache.t("rauch.nichts_betroffen")
     if not orte:
         text = grund + "\n" + text
 
@@ -942,13 +945,13 @@ def api_rauchalarm_probe():
         return jsonify({"fehler": "Kein Meldeweg eingestellt"}), 400
     sperre = einstellungen.get("rauchsperre") or {}
     melder = sperre.get("melder") or []
-    text = ("Probemeldung – es brennt nicht.\n"
-            "Bei einem echten Alarm käme hier, welche Rollos aufgefahren sind "
-            "und welche NICHT erreichbar waren.\n"
-            f"Fluchtweg-Freigabe: {'an' if sperre.get('fluchtweg', True) else 'AUS'}"
-            f" · Melder: {len(melder) if melder else 'alle'}")
+    text = sprache.t(
+        "rauch.probe_text",
+        freigabe=sprache.t("rauch.an" if sperre.get("fluchtweg", True)
+                           else "rauch.aus"),
+        melder=len(melder) if melder else sprache.t("rauch.alle"))
     erfolge = [d for d in wege
-               if ha_api.notify(d, "Rolloplaner – Probe Rauchalarm", text)]
+               if ha_api.notify(d, sprache.t("rauch.probe_titel"), text)]
     return jsonify({"gesendet": erfolge,
                     "fehlgeschlagen": [d for d in wege if d not in erfolge]})
 

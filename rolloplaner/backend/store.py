@@ -120,6 +120,10 @@ def anzeige_prozent(wert, invertiert: bool):
 # --------------------------------------------------------------- Vorgaben ----
 
 STANDARD_EINSTELLUNGEN = {
+    # Die Sprache aller Texte, die der Planer erzeugt: Begründungen in der
+    # Kachel, Protokoll, Meldungen. Leer heißt „wie Home Assistant" – dann
+    # fragt das Add-on beim Start nach der eingestellten Sprache.
+    "sprache": "",
     "automatik": True,
     "trockenlauf": True,          # sicherer Start: erst rechnen, nicht fahren
     "takt_sekunden": 120,
@@ -669,6 +673,7 @@ def validate_einstellungen(roh: dict) -> dict:
     for schluessel in ("schulfrei_entity", "schulfrei_morgen_entity", "urlaub_entity",
                        "sonne_entity", "aussen_entity"):
         e[schluessel] = str(e[schluessel] or "").strip()
+    e["sprache"] = str(e.get("sprache") or "").strip().lower()[:5]
     e["ignorierte_vorschlaege"] = sorted({
         str(x).strip() for x in (e.get("ignorierte_vorschlaege") or []) if str(x).strip()})
 

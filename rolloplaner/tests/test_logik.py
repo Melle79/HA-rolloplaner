@@ -23,6 +23,7 @@ except AttributeError:  # pragma: no cover – Windows
 import ha_api         # noqa: E402
 import regelung       # noqa: E402
 import sonne          # noqa: E402
+import sprache        # noqa: E402
 import store          # noqa: E402
 import uebernahme     # noqa: E402
 import zeitplan       # noqa: E402
@@ -474,6 +475,73 @@ def test_umbenannter_schalter_behaelt_seine_entitaet():
     # … und wo nichts zu finden ist, bleibt die Schätzung.
     assert regelung._eigene_entitaet({}, "switch", "Neuer Schalter") \
         == "switch.rolloplaner_neuer_schalter"
+
+
+# ------------------------------------------------------------ Sprache ----
+
+def test_der_satz_wird_je_sprache_neu_gebaut():
+    """Übersetzen heißt hier nicht Wörter tauschen.
+
+    „zu um Sonnenuntergang, spätestens 22:00 an Schultagen" hat auf Englisch
+    eine andere Wortstellung. Deshalb steht je Sprache die ganze Vorlage da,
+    nicht eine Wörterliste.
+    """
+    punkt = {"ausloeser": "sonnenuntergang", "start": "", "position": 0,
+             "gilt": "schultag", "tage": zeitplan.ALLE, "versatz_min": 0,
+             "frueh": "", "spaet": "22:00", "wenn": []}
+    try:
+        sprache.setze("de")
+        assert zeitplan.beschreibung(punkt) == \
+            "zu um Sonnenuntergang, spätestens 22:00 an Schultagen"
+        sprache.setze("en")
+        assert zeitplan.beschreibung(punkt) == \
+            "closed at sunset, no later than 22:00 on school days"
+        # Eine Uhrzeit trägt im Deutschen „Uhr", im Englischen nicht.
+        uhr = {**punkt, "ausloeser": "uhrzeit", "start": "08:30",
+               "gilt": "immer", "spaet": "", "position": 100}
+        assert zeitplan.beschreibung(uhr) == "open at 08:30"
+        sprache.setze("de")
+        assert zeitplan.beschreibung(uhr) == "auf um 08:30 Uhr"
+    finally:
+        sprache.setze("de")
+
+
+def test_unbekannte_sprache_faellt_auf_deutsch_zurueck():
+    """Eine halbfertige Übersetzung soll eine halbfertige Oberfläche ergeben,
+    keine kaputte."""
+    assert sprache.setze("kl-KL") == "de"
+    assert sprache.setze("en-GB") == "en", "das Gebietsschema zählt nicht mit"
+    assert sprache.setze(None) == "de"
+    assert sprache.setze("") == "de"
+    # Ein Schlüssel, den nur Deutsch kennt, kommt auf Englisch trotzdem an.
+    sprache.TEXTE["de"]["probe.nur_deutsch"] = "nur hier"
+    try:
+        assert sprache.t("probe.nur_deutsch", sprache="en") == "nur hier"
+    finally:
+        del sprache.TEXTE["de"]["probe.nur_deutsch"]
+        sprache.setze("de")
+
+
+def test_beide_sprachen_kennen_dieselben_schluessel():
+    """Sonst fällt eine Sprache stellenweise ins Deutsche zurück, ohne dass es
+    jemandem auffällt – am wenigsten dem, der die Sprache nicht spricht."""
+    deutsch = set(sprache.TEXTE["de"])
+    for code, tabelle in sprache.TEXTE.items():
+        fehlt = deutsch - set(tabelle)
+        zuviel = set(tabelle) - deutsch
+        assert not fehlt, f"{code}: es fehlen {sorted(fehlt)}"
+        assert not zuviel, f"{code}: unbekannt sind {sorted(zuviel)}"
+
+
+def test_platzhalter_stimmen_in_jeder_sprache_ueberein():
+    """Eine Vorlage mit einem Platzhalter, den der Aufrufer nicht liefert,
+    bliebe stumm – der Text käme unersetzt heraus."""
+    import re
+    for schluessel, deutsch in sprache.TEXTE["de"].items():
+        erwartet = set(re.findall(r"\{(\w+)", deutsch))
+        for code, tabelle in sprache.TEXTE.items():
+            hier = set(re.findall(r"\{(\w+)", tabelle.get(schluessel, "")))
+            assert hier == erwartet, f"{code}/{schluessel}: {hier} statt {erwartet}"
 
 
 # ------------------------------------------------------------ Gruppen ----

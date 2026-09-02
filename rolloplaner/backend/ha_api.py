@@ -357,6 +357,21 @@ def ist_eigene_entitaet(entity_id: str) -> bool:
     return entity_id.split(".", 1)[-1].startswith(EIGENES_PRAEFIX)
 
 
+def sprache_von_ha() -> str | None:
+    """Welche Sprache hat Home Assistant eingestellt?
+
+    Steht in seiner Konfiguration (``/api/config``) als ``language``. Schlägt
+    der Aufruf fehl, kommt nichts zurück – der Aufrufer entscheidet dann, und
+    Raten wäre hier schlimmer als Nichtstun.
+    """
+    try:
+        config = _request("GET", "/config")
+    except Exception:  # noqa: BLE001
+        return None
+    wert = (config or {}).get("language")
+    return str(wert).strip() or None if wert else None
+
+
 def ist_rauchmelder(entity_id: str, name: str, klasse: str | None) -> bool:
     if klasse in ("smoke", "gas"):
         return True

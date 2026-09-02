@@ -32,6 +32,7 @@ from datetime import datetime, timedelta
 
 import ha_api
 import sonne as sonnenmodul
+import sprache
 import store
 import zeitplan as zeitplanmodul
 
@@ -46,6 +47,21 @@ TOLERANZ = 6
 # lange braucht ein Rollladen für die volle Bahn. Ohne diese Frist hielte der
 # Planer sein eigenes, noch fahrendes Rollo für Handbetrieb.
 FAHRZEIT_MIN = 3
+
+
+_ha_sprache_cache: list = []
+
+
+def _ha_sprache() -> str | None:
+    """Die Sprache von Home Assistant – einmal geholt, dann gemerkt.
+
+    Sie ändert sich praktisch nie, und ein Aufruf je Takt wäre ein Aufruf zu
+    viel. Beim Neustart des Add-ons wird sie neu gelesen; wer sie in Home
+    Assistant umstellt, startet das Add-on neu oder trägt sie ausdrücklich ein.
+    """
+    if not _ha_sprache_cache:
+        _ha_sprache_cache.append(ha_api.sprache_von_ha())
+    return _ha_sprache_cache[0]
 
 
 def _jetzt() -> datetime:
@@ -134,11 +150,11 @@ def _rauchsperre(einstellungen: dict, index: dict, state: dict,
         state["rauch_bis"] = _iso(jetzt + timedelta(minutes=nachlauf))
         orte = _melderorte(ausgeloest, index)
         state["rauch_orte"] = orte
-        return True, "Rauchmelder: " + orte, True, orte
+        return True, sprache.t("rauch.melder", orte=orte), True, orte
 
     bis = _aus_iso(state.get("rauch_bis"))
     if bis and jetzt < bis:
-        return (True, f"Nachlauf der Rauchsperre bis {bis.strftime('%H:%M')} Uhr",
+        return (True, sprache.t("rauch.nachlauf", zeit=bis.strftime("%H:%M")),
                 False, state.get("rauch_orte") or "")
     if bis:
         state["rauch_bis"] = None
@@ -186,7 +202,8 @@ def _melderorte(ausgeloest: list, index: dict, grenze: int = 4) -> str:
             orte.append(ort)
     if len(orte) <= grenze:
         return ", ".join(orte)
-    return ", ".join(orte[:grenze]) + f" und {len(orte) - grenze} weitere"
+    return sprache.t("rauch.weitere", orte=", ".join(orte[:grenze]),
+                     n=len(orte) - grenze)
 
 
 def _fluchtweg(config: dict, einstellungen: dict, index: dict, state: dict,
@@ -417,8 +434,8 @@ def _beschattung_pruefen(rollo: dict, einstellungen: dict, index: dict,
     position = rollo.get("beschattung_position")
     if position is None:
         position = int(global_.get("position", 35))
-    grund = (f"Sonne steht im Fenster ({azimut:.0f}°, {elevation:.0f}° hoch), "
-             f"außen {aussen:.1f} °C")
+    grund = sprache.t("hitze.grund", azimut=f"{azimut:.0f}",
+                      hoehe=f"{elevation:.0f}", temperatur=f"{aussen:.1f}")
     return True, grund, int(position)
 
 
@@ -505,7 +522,7 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
         if (freigabe.get("aktiv") and rollo.get("aktiv", True)
                 and rollo.get("fluchtweg", True)):
             ergebnis.update(zustand="fluchtweg",
-                            begruendung="Fluchtweg offen – " + lage["rauch_grund"])
+                            begruendung=sprache.t("zustand.fluchtweg", grund=lage["rauch_grund"]))
         else:
             ergebnis.update(zustand="rauch", begruendung=lage["rauch_grund"])
         return ergebnis
@@ -517,23 +534,23 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
     # liest, sucht nach einem Defekt, den es nicht gibt.
     if not rollo.get("aktiv", True):
         ergebnis.update(zustand="aus",
-                        begruendung="Automatik für dieses Rollo ist aus")
+                        begruendung=sprache.t("zustand.aus_rollo"))
         return ergebnis
     if rollo.get("betriebsart") == "von_hand":
         ergebnis.update(zustand="von_hand",
-                        begruendung="Ohne Zeitplan – wird von Hand gefahren")
+                        begruendung=sprache.t("zustand.von_hand"))
         return ergebnis
     if not lage["automatik"]:
         ergebnis.update(zustand="aus",
-                        begruendung="Automatik ist insgesamt aus")
+                        begruendung=sprache.t("zustand.aus_gesamt"))
         return ergebnis
     if plan is not None and not plan.get("aktiv", True):
         ergebnis.update(zustand="gesperrt",
-                        begruendung=f"Zeitplan „{plan['name']}“ ist abgeschaltet")
+                        begruendung=sprache.t("zustand.plan_aus", name=plan["name"]))
         return ergebnis
     if gruppe is not None and not gruppe.get("aktiv", True):
         ergebnis.update(zustand="gesperrt",
-                        begruendung=f"Gruppe „{gruppe['name']}“ ist abgeschaltet")
+                        begruendung=sprache.t("zustand.gruppe_aus", name=gruppe["name"]))
         return ergebnis
     if gruppe is not None and gruppe.get("schalter"):
         # Ein eigener Schalter des Planers, kein fremder: Sein Stand steht in
@@ -542,14 +559,14 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
         stand = lage["zustaende"].get(store.EIGEN_PREFIX + gruppe["schalter"])
         if stand is not None and str(stand).lower() in ("off", "aus", "false", "0"):
             ergebnis.update(zustand="gesperrt",
-                            begruendung=f"Gruppe „{gruppe['name']}“ ist nicht freigegeben")
+                            begruendung=sprache.t("zustand.gruppe_gesperrt", name=gruppe["name"]))
             return ergebnis
 
     if zustand is None:
-        ergebnis.update(zustand="fehlt", begruendung="In Home Assistant nicht gefunden")
+        ergebnis.update(zustand="fehlt", begruendung=sprache.t("zustand.fehlt"))
         return ergebnis
     if zustand.get("state") == "unavailable":
-        ergebnis.update(zustand="fehlt", begruendung="Nicht erreichbar")
+        ergebnis.update(zustand="fehlt", begruendung=sprache.t("zustand.unerreichbar"))
         return ergebnis
 
     # Der Zeitplan ist die Grundlage; Urlaub und Hitzeschutz verschieben ihn.
@@ -605,7 +622,7 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
 
     if ziel is None:
         ergebnis.update(zustand="ohne_plan",
-                        begruendung="Kein Schaltpunkt eingerichtet")
+                        begruendung=sprache.t("zustand.ohne_plan"))
         return ergebnis
 
     ergebnis["fenster_offen"] = _fenster_offen(rollo, index)
@@ -779,14 +796,14 @@ def _rollo_stellen(rollo: dict, ergebnis: dict, einstellungen: dict, index: dict
     # dazugekommen ist.
     neuer_punkt = punkt_zeit is not None and (zuletzt is None or punkt_zeit > zuletzt)
     if not neuer_punkt and not beschattung_wechsel:
-        ergebnis["begruendung"] = ergebnis["begruendung"] or "unverändert"
+        ergebnis["begruendung"] = ergebnis["begruendung"] or sprache.t("zustand.unveraendert")
         _stellung_erfassen(rollo, ergebnis, index, state, jetzt, einstellungen)
         return
 
     # „Nur schließen“: der Planer fährt zu, öffnet aber nie von selbst.
     if rollo.get("betriebsart") == "nur_schliessen" and ziel > int(rollo.get("position_zu", 0)):
         ergebnis["zustand"] = "nur_schliessen"
-        ergebnis["begruendung"] = "Betriebsart „nur schließen“ – bleibt in Ruhe"
+        ergebnis["begruendung"] = sprache.t("zustand.nur_schliessen")
         rollo_state["letzter_punkt"] = _iso(punkt_zeit)
         return
 
@@ -797,7 +814,8 @@ def _rollo_stellen(rollo: dict, ergebnis: dict, einstellungen: dict, index: dict
     # Fenster offen: Zufahren wird unterdrückt, Öffnen bleibt erlaubt.
     if offen and ist is not None and ziel < ist:
         ergebnis["zustand"] = "fenster"
-        ergebnis["begruendung"] = "Offen: " + ", ".join(offen)
+        ergebnis["begruendung"] = sprache.t("zustand.fenster_offen",
+                                            liste=", ".join(offen))
         # Der Punkt bleibt offen. Sobald die Tür zugeht, wird er nachgeholt –
         # und zwar der dann *zuletzt fällige*.
         ergebnis["aufgeschoben"] = True
@@ -811,18 +829,20 @@ def _rollo_stellen(rollo: dict, ergebnis: dict, einstellungen: dict, index: dict
     if (einstellungen.get("manuell_respektieren") and manuell_bis
             and jetzt < manuell_bis and not neuer_punkt):
         ergebnis["zustand"] = "manuell"
-        ergebnis["begruendung"] = f"Handbetrieb bis {manuell_bis.strftime('%H:%M')} Uhr"
+        ergebnis["begruendung"] = sprache.t(
+            "zustand.manuell", zeit=manuell_bis.strftime("%H:%M"))
         return
 
     if ist is not None and abs(ist - ziel) <= TOLERANZ:
-        ergebnis["hinweis"] = "steht schon richtig"
+        ergebnis["hinweis"] = sprache.t("zustand.steht_richtig")
         rollo_state["letzter_punkt"] = _iso(punkt_zeit)
         rollo_state["beschattet"] = bool(ergebnis["beschattet"])
         rollo_state["ziel"] = ziel
         return
 
     if trockenlauf or beobachten:
-        ergebnis["hinweis"] = "Trockenlauf" if trockenlauf else "beobachten"
+        ergebnis["hinweis"] = sprache.t(
+            "zustand.trockenlauf" if trockenlauf else "zustand.beobachten")
         ergebnis["gefahren"] = True
     else:
         erfolg = ha_api.set_position(eid, ziel, zustand)
@@ -831,7 +851,7 @@ def _rollo_stellen(rollo: dict, ergebnis: dict, einstellungen: dict, index: dict
             rollo_state.update(ziel=ziel, gesetzt_am=_iso(jetzt),
                                grund=ergebnis["begruendung"], manuell_bis=None)
         else:
-            ergebnis["hinweis"] = "Fahrbefehl abgelehnt"
+            ergebnis["hinweis"] = sprache.t("zustand.abgelehnt")
 
     if ergebnis["gefahren"]:
         invertiert = bool(einstellungen.get("prozent_invertiert"))
@@ -886,7 +906,7 @@ def _stellung_erfassen(rollo: dict, ergebnis: dict, index: dict, state: dict,
             and not ha_api.faehrt(zustand)):
         if not rollo_state.get("manuell_bis"):
             rollo_state["manuell_bis"] = _iso(jetzt + timedelta(hours=stunden))
-        ergebnis["hinweis"] = "von Hand gefahren"
+        ergebnis["hinweis"] = sprache.t("zustand.von_hand_erkannt")
         ergebnis["zustand"] = "manuell"
 
 
@@ -900,6 +920,9 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
     Megabyte, alle zwei Minuten, für dieselbe Auskunft.
     """
     einstellungen = config["einstellungen"]
+    # Einmal je Takt: Alles, was danach an Text entsteht – Begründungen,
+    # Protokoll, Meldungen –, spricht dieselbe Sprache.
+    sprache.setze(einstellungen.get("sprache") or _ha_sprache())
     jetzt = _jetzt()
     bericht = {"zeit": _iso(jetzt), "rollos": [], "stoerungen": []}
 
