@@ -475,8 +475,15 @@ def test_die_karte_kennt_in_beiden_sprachen_dieselben_schluessel():
     for code in ("de", "en"):
         block = re.search(rf"\n  {code}: \{{(.*?)\n  \}},\n", karte, re.S)
         assert block, f"Sprachtabelle {code} nicht gefunden"
-        tabellen[code] = {schluessel: wert for schluessel, wert
-                          in re.findall(r'"([a-z][\w.]*)":\s*("[^"]*")', block.group(1))}
+        paare = re.findall(r'"([a-z][\w.]*)":\s*("[^"]*")', block.group(1))
+        # Derselbe stumme Fehler wie in der Oberfläche: JavaScript nimmt bei
+        # einem doppelt vergebenen Schlüssel den letzten, ein Wörterbuch hier
+        # ebenso – im Bild stünde also die ältere Fassung, und niemand merkt
+        # es. Einmal ist es genau so passiert.
+        namen = [n for n, _ in paare]
+        doppelt = sorted({n for n in namen if namen.count(n) > 1})
+        assert not doppelt, f"{code}: doppelt vergeben {doppelt}"
+        tabellen[code] = dict(paare)
     deutsch = set(tabellen["de"])
     for code, tabelle in tabellen.items():
         assert not deutsch - set(tabelle), f"{code}: es fehlen {sorted(deutsch - set(tabelle))}"

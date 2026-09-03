@@ -394,6 +394,8 @@ def _befehl(payload: dict) -> None:
     was = payload.get("befehl")
     if was == "fahren":
         _rollo_fahren(payload.get("rollo"), payload.get("position"))
+    elif was == "stop":
+        _rollo_stoppen(payload.get("rollo"))
     elif was == "takt":
         _sofort_rechnen()
     elif was == "handbetrieb_aufheben":

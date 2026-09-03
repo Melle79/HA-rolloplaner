@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.17.0";
+const CARD_VERSION = "2.18.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -33,6 +33,10 @@ const DEFAULTS = {
   show_stoerungen: true,
   show_helfer: true,        // die Helfer, an denen die Schaltpunkte hängen
   allow_fahren: true,
+  // Der Schieber für die Zwischenstellungen. Eine eigene Zeile in der Kachel,
+  // deshalb abschaltbar: Wer die Karte nur zum Nachsehen an die Wand hängt,
+  // will die Höhe nicht dafür ausgeben.
+  allow_schieber: true,
   // null = alle. Sonst eine Liste von Gruppennamen: Sie bestimmt zugleich,
   // **welche** gezeigt werden und **in welcher Reihenfolge**.
   gruppen: null,
@@ -84,6 +88,9 @@ const SPRACHEN = {
     "sonnenaufgang": "Sonnenaufgang", "sonnenuntergang": "Sonnenuntergang",
     "zeitplan": "Zeitplan",
     "titel.automatik": "Automatik für {name}",
+    "titel.halt": "{name} anhalten – der Planer lässt es dann stehen",
+    "titel.schieber": "{name}: Stellung wählen; gefahren wird beim Loslassen",
+    "plan.ziel": "Plan: {was}",
     "titel.hitzeschutz": "Hitzeschutz für {name} (Fenster zeigt nach {grad}°)",
     "titel.auf": "ganz auffahren", "titel.zu": "ganz zufahren",
     "alarm.offen": "Rauchalarm – Fluchtweg offen.",
@@ -108,7 +115,8 @@ const SPRACHEN = {
     "e.f.show_naechster": "Nächster Wechsel im ganzen Haus",
     "e.f.show_stoerungen": "Störungen melden",
     "e.f.show_helfer": "Freigabeschalter an den Kacheln",
-    "e.f.allow_fahren": "Pfeiltasten zum Fahren",
+    "e.f.allow_fahren": "Tasten zum Fahren (auf · Halt · zu)",
+    "e.f.allow_schieber": "Schieber für die Zwischenstellungen",
     "e.f.gruppieren": "Nach Gruppen ordnen",
     "e.gruppen": "Gruppen: Auswahl und Reihenfolge",
     "e.gruppen.keine": "Noch keine Gruppen gefunden. Der Planer legt sie im Reiter "
@@ -139,6 +147,9 @@ const SPRACHEN = {
     "sonnenaufgang": "Sunrise", "sonnenuntergang": "Sunset",
     "zeitplan": "Schedule",
     "titel.automatik": "Automation for {name}",
+    "titel.halt": "Stop {name} – the planner will then leave it alone",
+    "titel.schieber": "{name}: choose a position; it moves when you let go",
+    "plan.ziel": "Plan: {was}",
     "titel.hitzeschutz": "Heat shield for {name} (window faces {grad}°)",
     "titel.auf": "open fully", "titel.zu": "close fully",
     "alarm.offen": "Smoke alarm – escape route open.",
@@ -162,7 +173,8 @@ const SPRACHEN = {
     "e.f.show_naechster": "Next change in the whole house",
     "e.f.show_stoerungen": "Report faults",
     "e.f.show_helfer": "Release switches on the tiles",
-    "e.f.allow_fahren": "Arrow buttons for moving",
+    "e.f.allow_fahren": "Buttons for moving (open · stop · close)",
+    "e.f.allow_schieber": "Slider for the positions in between",
     "e.f.gruppieren": "Order by group",
     "e.gruppen": "Groups: selection and order",
     "e.gruppen.keine": "No groups found yet. The planner creates them in the Groups tab.",
@@ -267,7 +279,8 @@ class RolloplanerCard extends HTMLElement {
       _sprache,
       status && status.state,
       FUNKTIONEN.map(([e]) => hass.states[e] && hass.states[e].state),
-      rollos.map((r) => [r.sensor.state, r.sensor.attributes.zustand,
+      rollos.map((r) => [r.sensor.state, r.sensor.attributes.ist_anzeige,
+                         r.sensor.attributes.zustand,
                          r.sensor.attributes.prozent_invertiert,
                          r.sensor.attributes.begruendung,
                          (r.sensor.attributes.begruendungen || {})[_sprache],
@@ -287,8 +300,34 @@ class RolloplanerCard extends HTMLElement {
         && hass.states["binary_sensor.rolloplaner_rauchsperre"].state,
     ]);
     if (signatur === this._signatur) return;
+    // Ein Schieber, an dem gerade jemand zieht, darf nicht unter dem Finger
+    // neu gezeichnet werden – und auch nicht, solange das Rollo unterwegs
+    // ist. Die Signatur bleibt ungemerkt, damit der nächste Zustand die
+    // Karte nachholt.
+    if (this._schieberLaeuft()) return;
     this._signatur = signatur;
     this._render(status, rollos);
+  }
+
+  /* Was während der Schonfrist verworfen wurde, danach einmal nachholen.
+
+     Ohne das bliebe die Kachel stehen, bis Home Assistant von sich aus den
+     nächsten Zustand schickt – beim Planer ist das der nächste Takt, also bis
+     zu einer Minute. Man hätte gefahren und sähe eine Minute lang den alten
+     Stand. */
+  _nachholen() {
+    clearTimeout(this._nachhol);
+    this._nachhol = setTimeout(() => {
+      if (this._schieberLaeuft()) { this._nachholen(); return; }
+      this._signatur = null;
+      if (this._hass) this.hass = this._hass;
+    }, 15500);
+  }
+
+  _schieberLaeuft() {
+    if (Date.now() < (this._schieberBis || 0)) return true;
+    const el = this.shadowRoot && this.shadowRoot.activeElement;
+    return Boolean(el && el.type === "range");
   }
 
   _rollosSammeln(hass) {
@@ -348,9 +387,17 @@ class RolloplanerCard extends HTMLElement {
   _fahrbefehl(cover, position) {
     // Angesprochen wird die Entität des Rollos – sie ist der Schlüssel, unter
     // dem der Planer es führt.
+    this._befehl({ befehl: "fahren", rollo: cover, position });
+  }
+
+  _haltbefehl(cover) {
+    this._befehl({ befehl: "stop", rollo: cover });
+  }
+
+  _befehl(nutzlast) {
     this._hass.callService("mqtt", "publish", {
       topic: "rolloplaner/cmd",
-      payload: JSON.stringify({ befehl: "fahren", rollo: cover, position }),
+      payload: JSON.stringify(nutzlast),
     });
   }
 
@@ -510,6 +557,25 @@ class RolloplanerCard extends HTMLElement {
     this.shadowRoot.querySelectorAll("select[data-auswahl]").forEach((el) =>
       el.addEventListener("change", () =>
         this._auswaehlen(el.dataset.auswahl, el.value)));
+    this.shadowRoot.querySelectorAll("[data-stop]").forEach((el) =>
+      el.addEventListener("click", () => this._haltbefehl(el.dataset.stop)));
+    this.shadowRoot.querySelectorAll("[data-schieber]").forEach((el) => {
+      // Beim Ziehen läuft nur die Zahl mit. Jeder Zwischenwert als Fahrbefehl
+      // wären zwanzig Befehle für eine Fingerbewegung – der Antrieb ruckte,
+      // und im Protokoll stünde die ganze Bewegung.
+      el.addEventListener("input", () => {
+        this._schieberBis = Date.now() + 5000;
+        el.parentElement.querySelector(".s-wert").textContent = el.value + "%";
+      });
+      el.addEventListener("change", () => {
+        // Danach etwas Ruhe: Der Antrieb meldet seine neue Stellung erst, wenn
+        // er angekommen ist. Ohne die Frist spränge der Schieber beim nächsten
+        // Zeichnen auf den alten Wert zurück.
+        this._schieberBis = Date.now() + 15000;
+        this._fahrbefehl(el.dataset.schieber, Number(el.value));
+        this._nachholen();
+      });
+    });
   }
 
   _rollo(r) {
@@ -552,11 +618,20 @@ class RolloplanerCard extends HTMLElement {
                    zeit: this._esc(attrs.naechste_uhrzeit)})
       : "";
 
+    // auf · Halt · zu, in dieser Reihenfolge: So sitzt der Halt auf jedem
+    // Handsender, und die Hand findet ihn am Wandtablett, ohne hinzusehen.
+    // Den Halt gibt es nur, wo der Antrieb ihn beherrscht.
     const knoepfe = c.allow_fahren && attrs.cover ? `
       <button class="tipp" data-fahren="${attrs.cover}" data-position="100"
-              title="öffnen"><ha-icon icon="mdi:arrow-up"></ha-icon></button>
+              title="${this._esc(t("titel.auf"))}"
+              ><ha-icon icon="mdi:arrow-up"></ha-icon></button>
+      ${attrs.kann_stop === false ? "" : `<button class="tipp"
+              data-stop="${attrs.cover}"
+              title="${this._esc(t("titel.halt", {name: r.name}))}"
+              ><ha-icon icon="mdi:stop"></ha-icon></button>`}
       <button class="tipp" data-fahren="${attrs.cover}" data-position="0"
-              title="schließen"><ha-icon icon="mdi:arrow-down"></ha-icon></button>` : "";
+              title="${this._esc(t("titel.zu"))}"
+              ><ha-icon icon="mdi:arrow-down"></ha-icon></button>` : "";
     const kippe = r.schalter ? `<button class="tipp ${an ? "an" : ""}"
         data-schalter="${r.schalter.entity_id}" data-an="${an ? "0" : "1"}"
         title="${this._esc(t("titel.automatik", {name: r.name}))}">
@@ -575,13 +650,29 @@ class RolloplanerCard extends HTMLElement {
             grad: String(attrs.ausrichtung)}))}">
           <ha-icon icon="mdi:sun-thermometer"></ha-icon></button>` : "";
 
-    const zahl = Number(r.sensor.state);
+    // Die große Zahl sagt, **wo das Rollo steht** – der Sensor führt das Ziel
+    // des Planers. Solange beide zusammenfallen, ist das dasselbe; nach einem
+    // Halt gehen sie auseinander, und dann ist die wahre Stellung die
+    // Auskunft, nach der man sucht. Wohin der Planer will, steht darunter.
+    const zielAnzeige = Number(r.sensor.state);
+    const istAnzeige = attrs.ist_anzeige === null || attrs.ist_anzeige === undefined
+      ? NaN : Number(attrs.ist_anzeige);
+    const zahl = Number.isNaN(istAnzeige) ? zielAnzeige : istAnzeige;
     const wert = Number.isNaN(zahl) ? "–" : zahl;
+    // TOLERANZ des Planers: Darunter ist eine Abweichung kein Eingriff,
+    // sondern der Weg, den ein Antrieb beim Anhalten noch macht.
+    const weichtAb = !Number.isNaN(zielAnzeige) && !Number.isNaN(istAnzeige)
+      && Math.abs(zielAnzeige - istAnzeige) > 6;
+    const lage = weichtAb
+      ? t("plan.ziel", {was: stellungstext(zielAnzeige, inv)})
+      : stellungstext(zahl, inv);
 
     return `<div class="raum ${an ? "" : "ruht"}">
       <div class="z1">
-        ${rollobild(attrs.stellung_ha === null || attrs.stellung_ha === undefined
-                    ? r.sensor.state : attrs.stellung_ha, attrs.art)}
+        ${rollobild(attrs.ist === null || attrs.ist === undefined
+                    ? (attrs.stellung_ha === null || attrs.stellung_ha === undefined
+                       ? r.sensor.state : attrs.stellung_ha)
+                    : attrs.ist, attrs.art)}
         <div class="z1-text">
           <div class="namenzeile">
             <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>${raumSchild}${schild}${
@@ -595,10 +686,17 @@ class RolloplanerCard extends HTMLElement {
         </div>
         <div class="z1-wert">
           <span class="wert">${wert}<small>${Number.isNaN(zahl) ? "" : "%"}</small></span>
-          <span class="lage">${stellungstext(r.sensor.state, inv)}</span>
+          <span class="lage${weichtAb ? " plan" : ""}">${lage}</span>
         </div>
       </div>
       ${c.show_helfer ? this._helfer(attrs.helfer || [], r.name) : ""}
+      ${c.allow_schieber && attrs.cover && attrs.kann_stellung !== false
+        && !Number.isNaN(zahl) ? `<div class="z2s">
+        <input type="range" min="0" max="100" step="5" value="${zahl}"
+               data-schieber="${attrs.cover}"
+               title="${this._esc(t("titel.schieber", {name: r.name}))}">
+        <span class="s-wert">${zahl}%</span>
+      </div>` : ""}
       <div class="z3">
         <span class="dann">${dann}</span>
         <span class="knoepfe">${knoepfe}${sonne}${kippe}</span>
@@ -950,8 +1048,24 @@ class RolloplanerCard extends HTMLElement {
       .tipp.an{color:var(--an-farbe)}
       .tipp ha-icon{--mdc-icon-size:calc(22px * var(--skala)); display:block}
 
+      /* Der Schieber: eine Zeile fuer sich. Zwischen die Tasten gequetscht
+         traefe man am Wandtablett keine 50 %, sondern irgendetwas zwischen 30
+         und 70. Er waechst mit der Textskala mit – aus anderthalb Metern
+         bedient man ihn mit dem Daumen, nicht mit dem Zeigefinger. */
+      .z2s{display:flex; align-items:center; gap:calc(8px * var(--skala));
+        padding-top:calc(6px * var(--skala))}
+      .z2s input[type=range]{flex:1 1 auto; min-width:0; margin:0;
+        accent-color:var(--an-farbe); cursor:pointer;
+        height:calc(24px * var(--skala))}
+      .z2s .s-wert{flex:none; font-size:calc(.75rem * var(--skala));
+        color:var(--secondary-text-color); font-variant-numeric:tabular-nums;
+        min-width:calc(2.6em * var(--skala)); text-align:right}
+
       .z3{display:flex; align-items:center; gap:6px; margin-top:auto;
         padding-top:7px; font-size:calc(.75rem * var(--skala)); color:var(--secondary-text-color)}
+      /* „Plan: zu" steht nur da, wenn das Rollo woanders steht. Etwas
+         zurueckgenommen, damit die Zahl darueber die Hauptaussage bleibt. */
+      .lage.plan{opacity:.75; font-style:italic}
       .dann{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
         white-space:nowrap}
 
@@ -1042,7 +1156,8 @@ class RolloplanerCard extends HTMLElement {
    ═══════════════════════════════════════════════════════════════════════ */
 
 const SCHALTER_FELDER = ["show_funktionen", "show_naechster", "show_stoerungen",
-                         "show_helfer", "allow_fahren", "gruppieren"];
+                         "show_helfer", "allow_fahren", "allow_schieber",
+                         "gruppieren"];
 
 class RolloplanerCardEditor extends HTMLElement {
   setConfig(config) {

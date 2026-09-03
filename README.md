@@ -51,8 +51,10 @@ Rollladen** statt eines Balkens: Ein Balken sagt „65 %“, aber nicht, ob das
 Rollo dabei oben oder unten ist. Vor einer Tür sieht er anders aus als vor
 einem Fenster.
 
-Bedient wird direkt in der Kachel: auf, zu, Automatik, Hitzeschutz — und die
-Freigabeschalter, an denen die Schaltpunkte hängen. Eingestellt wird sie im
+Bedient wird direkt in der Kachel: **auf · Halt · zu** (der Halt in der Mitte,
+so wie auf jedem Handsender), ein **Schieber** für alles dazwischen, Automatik,
+Hitzeschutz — und die Freigabeschalter, an denen die Schaltpunkte hängen. Halt
+und Schieber erscheinen nur, wo der Antrieb sie beherrscht. Eingestellt wird sie im
 **Karteneditor**, ohne YAML: Schriftgröße (gedacht für ein Wandtablett), was
 sie zeigt, und welche Gruppen in welcher Reihenfolge erscheinen.
 

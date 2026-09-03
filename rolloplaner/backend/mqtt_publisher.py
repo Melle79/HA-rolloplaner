@@ -546,6 +546,14 @@ class Publisher:
                 "art": rollo.get("art") or "fenster",
                 "stellung_ha": ziel,
                 "ist": rollo.get("ist"),
+                # Dieselbe Stellung in der Zählweise, die angezeigt wird – die
+                # Karte soll das Umdrehen nicht ein zweites Mal nachbauen.
+                "ist_anzeige": zeige(rollo.get("ist")),
+                # Was der Antrieb kann. Ein Halt-Knopf vor einem Rollo, das
+                # nicht anhalten kann, behauptet, es ginge – und wer ihn
+                # drückt, sucht den Fehler beim Rollo statt beim Antrieb.
+                "kann_stellung": rollo.get("kann_stellung", True),
+                "kann_stop": rollo.get("kann_stop", True),
                 "prozent_invertiert": invertiert,
                 "zustand": rollo.get("zustand"),
                 "begruendung": rollo.get("begruendung"),

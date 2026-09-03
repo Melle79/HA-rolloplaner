@@ -1,5 +1,29 @@
 # Änderungen
 
+## 2.18.0 – 03.09.2026
+
+**Halt und Schieber jetzt auch in der Karte** – dort, wo im Flur wirklich
+bedient wird.
+
+* Die Tastenreihe heißt **auf · Halt · zu**, der Halt in der Mitte wie auf
+  jedem Handsender. Darunter ein **Schieber**, der mit der Textskala
+  mitwächst: Aus anderthalb Metern bedient man ihn mit dem Daumen.
+* **Im Karteneditor abschaltbar** (*Schieber für die Zwischenstellungen*) – er
+  kostet eine Zeile Höhe, und wer die Karte nur zum Nachsehen aufhängt, will
+  sie nicht ausgeben.
+* **Gefahren wird beim Loslassen.** Solange jemand zieht – und fünfzehn
+  Sekunden danach –, zeichnet sich die Karte nicht neu; was in der Zeit
+  ankam, holt sie anschließend von selbst nach.
+* **Die große Zahl sagt jetzt, wo das Rollo steht**, nicht mehr, wohin der
+  Planer es schickt. Nach einem Halt gehen beide auseinander, und dann ist die
+  wahre Stellung die gesuchte Auskunft. Das Ziel steht darunter: *Plan: zu* –
+  aber nur, wenn es mehr als sechs Prozentpunkte abweicht. Der Sensor selbst
+  führt unverändert das Ziel; die Stellung steht in seinem Attribut `ist`.
+* **Ein Wächter mehr:** Beim Einbauen hatte ich `titel.auf` ein zweites Mal
+  vergeben – JavaScript nimmt stillschweigend den letzten, und in der Karte
+  stand plötzlich „öffnen“ statt „ganz auffahren“. Der Prüflauf sieht das nun
+  auch für die Karte; für die Oberfläche gab es den Wächter schon.
+
 ## 2.17.0 – 03.09.2026
 
 **Halt und Schieber in der Übersicht.** Bisher gab es dort nur ganz auf und

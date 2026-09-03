@@ -521,10 +521,46 @@ Registrierungen desselben Elements legen das Dashboard lahm.
 
 ### Bedienung mit dem Finger
 
-Die Pfeiltasten in der Kachel sind **34 × 34 px mal Textskala** groß, bei der
+Die Tasten in der Kachel sind **34 × 34 px mal Textskala** groß, bei der
 Vorgabe also gut 40 px. Vorher waren es 24 px – am Wandtablett kaum zu treffen.
 Sie wachsen mit der Schrift mit: Eine große Schrift deutet auf einen weiter
 entfernten Betrachter, und der zielt schlechter.
+
+Die Reihe heißt **auf · Halt · zu** – der Halt in der Mitte, so wie auf jedem
+Handsender. Darunter liegt ein **Schieber** für alles dazwischen; er wächst
+ebenso mit der Textskala, weil man ihn aus anderthalb Metern mit dem Daumen
+bedient und nicht mit dem Zeigefinger. Beides lässt sich im Karteneditor
+abschalten (*Tasten zum Fahren*, *Schieber für die Zwischenstellungen*) – der
+Schieber kostet eine Zeile Höhe, und wer die Karte nur zum Nachsehen aufhängt,
+will sie nicht ausgeben.
+
+Gefahren wird **beim Loslassen**, nicht bei jedem Zwischenwert: Sonst wären
+zwanzig Fahrbefehle für eine Fingerbewegung unterwegs, der Antrieb ruckte, und
+im Protokoll stünde die ganze Bewegung. Solange jemand zieht – und noch
+fünfzehn Sekunden danach, bis der Antrieb angekommen ist und seine neue
+Stellung meldet – zeichnet sich die Karte nicht neu. Ein Schieber, den es
+einem unter dem Finger wegreißt, ist unbedienbar. Was in dieser Zeit an neuen
+Zuständen ankam, holt sie danach von selbst nach.
+
+Halt und Schieber erscheinen nur, wo der Antrieb sie beherrscht
+(`supported_features`). Ein Knopf, der nichts tut, ist schlimmer als keiner:
+Er behauptet, es ginge – und wer ihn drückt, sucht den Fehler beim Rollo statt
+beim Antrieb.
+
+### Die große Zahl: wo es steht, nicht wohin es soll
+
+Die Zahl an der Kachel sagt, **wo das Rollo steht**. Solange der Planer
+bekommt, was er will, ist das dasselbe wie sein Ziel – nach einem Halt gehen
+beide auseinander, und dann ist die wahre Stellung die Auskunft, nach der man
+sucht. Wohin der Planer will, steht in der Zeile darunter: *Plan: zu*. Sie
+erscheint nur, wenn beide mehr als sechs Prozentpunkte auseinanderliegen; das
+ist die Toleranz, mit der auch der Planer rechnet, denn darunter ist eine
+Abweichung kein Eingriff, sondern der Weg, den ein Antrieb beim Anhalten noch
+macht.
+
+Der **Sensor** führt weiter das Ziel des Planers – daran ändert sich nichts,
+sonst bekäme seine Verlaufskurve rückwirkend eine andere Bedeutung. Die
+tatsächliche Stellung steht in seinem Attribut `ist`.
 
 ### Ein Rollo ohne Automatik ist nicht abgeschaltet
 

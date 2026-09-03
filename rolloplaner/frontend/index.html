@@ -115,6 +115,9 @@
   .raum-kopf h3{font-size:.98rem; font-weight:600; flex:1; overflow-wrap:anywhere}
   .raum-kopf .rechts{display:flex; flex-direction:column; align-items:flex-end}
   .raum-kopf .lage{font-size:.72rem; color:var(--leise)}
+  /* „Plan: zu" steht nur da, wenn das Rollo woanders steht – etwas
+     zurückgenommen, damit die Zahl darüber die Hauptaussage bleibt. */
+  .raum-kopf .lage.plan{font-style:italic; opacity:.8}
   .raum-ziel{font-size:1.5rem; font-weight:300; letter-spacing:-.02em}
   .raum-ziel small{font-size:.8rem; color:var(--leise); margin-left:2px}
   .raum-grund{font-size:.82rem; color:var(--leise); min-height:2.4em}
@@ -507,6 +510,7 @@ let CONFIG = null, ENTITAETEN = null, BERICHT = null;
    spricht die Einrichtung dieselbe Sprache wie das, was sie einrichtet. */
 const UI = {
   de: {
+    "ka.plan_ziel": "Plan: {was}",
     "ka.abgelehnt": "Fahrbefehl abgelehnt",
     "ka.halt": "Halt",
     "ka.halt_titel": "Die Fahrt hier anhalten – der Planer lässt das Rollo dann stehen",
@@ -931,6 +935,7 @@ const UI = {
     "knopf.speichern": "Speichern",
   },
   en: {
+    "ka.plan_ziel": "Plan: {was}",
     "ka.abgelehnt": "Command refused",
     "ka.halt": "Stop",
     "ka.halt_titel": "Stop here – the planner will then leave the cover alone",
@@ -1590,20 +1595,28 @@ function kachel(rollo){
     ? t("ka.dann", {stellung: stellungstext(rollo.naechste_stellung),
                     zeit: esc(rollo.naechste_uhrzeit)}) : "";
   const hand = zustand === "manuell";
-  // Der Schieber zeigt, wo das Rollo **steht** – nicht, wohin der Planer es
-  // geschickt hat. Nach einem Halt gehen die beiden auseinander, und dann ist
-  // die wahre Stellung die, an der man weiterdreht.
-  const stand = rollo.ist ?? ziel ?? 0;
+  // Kachel und Schieber zeigen, wo das Rollo **steht** – nicht, wohin der
+  // Planer es geschickt hat. Solange beides zusammenfällt, ist das dasselbe;
+  // nach einem Halt gehen sie auseinander, und dann ist die wahre Stellung
+  // die Auskunft, nach der man sucht. Wohin der Planer will, steht darunter.
+  const stand = rollo.ist ?? ziel;
+  // 6 ist die TOLERANZ des Planers: Darunter ist eine Abweichung kein
+  // Eingriff, sondern der Weg, den ein Antrieb beim Anhalten noch macht.
+  const weichtAb = stand !== null && stand !== undefined
+    && ziel !== null && ziel !== undefined && Math.abs(stand - ziel) > 6;
   const plan = rollo.plan
     ? `<span class="planschild">${esc(rollo.plan)}</span>`
     : `<span class="planschild eigen">${t("ka.eigener_plan")}</span>`;
   return `<article class="raum ${zustand === "aus" ? "aus" : ""}">
     <div class="raum-kopf">
-      ${rollobild(ziel, rollo.art)}
+      ${rollobild(stand, rollo.art)}
       <h3>${esc(rollo.name)}</h3>
       <div class="rechts">
-        <span class="raum-ziel">${ziel === null || ziel === undefined ? "–" : zeige(ziel)}<small>%</small></span>
-        <span class="lage">${stellungstext(ziel)}</span>
+        <span class="raum-ziel">${stand === null || stand === undefined
+          ? "–" : zeige(stand)}<small>%</small></span>
+        <span class="lage${weichtAb ? " plan" : ""}">${weichtAb
+          ? t("ka.plan_ziel", {was: stellungstext(ziel)})
+          : stellungstext(stand)}</span>
       </div>
     </div>
     <div style="display:flex; gap:var(--l2); flex-wrap:wrap; align-items:center">
@@ -1613,9 +1626,9 @@ function kachel(rollo){
     </div>
     <p class="raum-grund">${esc(rollo.begruendung || "")}</p>
     ${rollo.kann_stellung === false ? "" : `<div class="raum-schieber">
-      <input type="range" min="0" max="100" step="5" value="${zeige(stand)}"
+      <input type="range" min="0" max="100" step="5" value="${zeige(stand ?? 0)}"
              title="${t("ka.schieber_titel")}" data-schieber="${esc(rollo.entity_id)}">
-      <span class="wert">${zeige(stand)} %</span>
+      <span class="wert">${zeige(stand ?? 0)} %</span>
     </div>`}
     <div class="raum-fuss">
       <span style="flex:1">${naechster}</span>
