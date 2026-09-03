@@ -297,6 +297,28 @@ def test_offen_muss_ueber_zu_liegen():
     raise AssertionError("verdrehte Stellungen hätten auffallen müssen")
 
 
+def test_die_faehigkeiten_des_antriebs_werden_gelesen():
+    """Welche Knöpfe die Übersicht zeigt, hängt daran.
+
+    Ein Halt-Knopf vor einem Antrieb, der nicht anhalten kann, ist schlimmer
+    als keiner: Er behauptet, es ginge – und wer ihn drückt, sucht den Fehler
+    beim Rollo statt beim Antrieb.
+    """
+    def zustand(merkmale):
+        return {"attributes": {"supported_features": merkmale}}
+
+    # 15 = open|close|set_position|stop, 3 = nur auf und zu.
+    assert ha_api.kann_position(zustand(15)) and ha_api.kann_stoppen(zustand(15))
+    assert not ha_api.kann_position(zustand(3))
+    assert not ha_api.kann_stoppen(zustand(3))
+    # 11 = auf|zu|stop, ohne Zwischenstellung: Halt ja, Schieber nein.
+    assert ha_api.kann_stoppen(zustand(11)) and not ha_api.kann_position(zustand(11))
+    # Fehlt die Angabe ganz, wird nichts versprochen.
+    for leer in (None, {}, zustand(None), zustand("viele")):
+        assert not ha_api.kann_position(leer)
+        assert not ha_api.kann_stoppen(leer)
+
+
 def test_nur_cover_sind_rollos():
     """Ein Rollo *ist* sein `cover.` – alles andere wäre eine Verwechslung,
     die erst beim Fahren auffiele."""

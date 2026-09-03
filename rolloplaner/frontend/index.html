@@ -121,6 +121,22 @@
   .raum-fuss{display:flex; align-items:center; gap:var(--l2); flex-wrap:wrap;
     margin-top:var(--l3); padding-top:var(--l3); border-top:1px solid var(--linie);
     font-size:.78rem; color:var(--grau)}
+  /* Der Schieber: eine Zeile für sich, weil er die ganze Breite braucht.
+     Zwischen zwei Knöpfen gequetscht träfe man auf einem Wandtablett keine
+     50 %, sondern irgendetwas zwischen 30 und 70. */
+  .raum-schieber{display:flex; align-items:center; gap:var(--l3);
+    margin-top:var(--l3)}
+  .raum-schieber input[type=range]{flex:1; min-width:0; accent-color:var(--ton);
+    margin:0; cursor:pointer}
+  .raum-schieber .wert{font-size:.78rem; color:var(--leise);
+    font-variant-numeric:tabular-nums; min-width:3.4em; text-align:right}
+  /* Der Halt gehört zwischen auf und zu – so steht er auf jedem Handsender,
+     und die Hand findet ihn, ohne hinzusehen. */
+  .raum-fuss .halt{font-weight:600}
+  /* „dann zu um 20:03 Uhr" braucht eine Mindestbreite, sonst quetscht der
+     dritte Knopf den Satz auf drei Zeilen. Reicht der Platz nicht, rutscht
+     er lieber ganz in eine eigene Zeile. */
+  .raum-fuss > span:first-child{flex:1 1 9em}
   /* ═══ Rollladen vor Fenster oder Tür ═══ */
   /* ── Rollladen vor Fenster oder Tür ──
      Die Eigenschaft --zu geht von 0 % (ganz offen) bis 100 % (ganz
@@ -491,6 +507,11 @@ let CONFIG = null, ENTITAETEN = null, BERICHT = null;
    spricht die Einrichtung dieselbe Sprache wie das, was sie einrichtet. */
 const UI = {
   de: {
+    "ka.abgelehnt": "Fahrbefehl abgelehnt",
+    "ka.halt": "Halt",
+    "ka.halt_titel": "Die Fahrt hier anhalten – der Planer lässt das Rollo dann stehen",
+    "ka.schieber_titel": "Stellung wählen; gefahren wird beim Loslassen",
+    "ka.gestoppt": "angehalten",
     "rl.eigene_punkte_1": "ein eigener Punkt",
     "zp.n_punkte_1": "1 Schaltpunkt",
     "ge.rollos": "<b>{n}</b> Rollos",
@@ -910,6 +931,11 @@ const UI = {
     "knopf.speichern": "Speichern",
   },
   en: {
+    "ka.abgelehnt": "Command refused",
+    "ka.halt": "Stop",
+    "ka.halt_titel": "Stop here – the planner will then leave the cover alone",
+    "ka.schieber_titel": "Choose a position; it moves when you let go",
+    "ka.gestoppt": "stopped",
     "rl.eigene_punkte_1": "one own point",
     "zp.n_punkte_1": "1 switching point",
     "ge.rollos": "<b>{n}</b> covers",
@@ -1502,6 +1528,11 @@ function zeichneUebersicht(){
     if (!nachRaum.has(raum)) nachRaum.set(raum, []);
     nachRaum.get(raum).push(r);
   });
+  // Solange jemand an einem Schieber zieht, wird nicht neu gezeichnet: Die
+  // Übersicht erneuert sich alle zwanzig Sekunden von selbst, und ein
+  // Schieber, der einem unter dem Finger weggerissen wird, ist unbedienbar.
+  if (schieberAktiv()) return;
+
   // Ein durchgehendes Raster mit Überschriften darin: Ein eigenes Raster je
   // Raum ließe die Kachel eines Einzelrollos über die ganze Breite laufen.
   $("#uebersicht-rollos").innerHTML = `<div class="raumliste">${
@@ -1513,6 +1544,43 @@ function zeichneUebersicht(){
     el.onclick = () => fahren(el.dataset.fahren, Number(el.dataset.position)));
   $$("#uebersicht-rollos [data-hand]").forEach((el) =>
     el.onclick = () => handbetriebAufheben(el.dataset.hand));
+  $$("#uebersicht-rollos [data-stop]").forEach((el) =>
+    el.onclick = () => anhalten(el.dataset.stop));
+  $$("#uebersicht-rollos [data-schieber]").forEach((el) => {
+    // Beim Ziehen nur die Zahl mitführen. Jeder Zwischenwert als Fahrbefehl
+    // wäre ein Dutzend Befehle für eine Handbewegung – der Antrieb ruckte,
+    // und das Protokoll stünde voll.
+    el.oninput = () => {
+      SCHIEBER_BIS = Date.now() + 5000;
+      el.parentElement.querySelector(".wert").textContent = el.value + " %";
+    };
+    el.onchange = () => {
+      // Nach dem Loslassen etwas Ruhe: Der Antrieb meldet seine neue Stellung
+      // erst, wenn er angekommen ist. Ohne die Frist spränge der Schieber
+      // beim nächsten Zeichnen auf den alten Wert zurück.
+      SCHIEBER_BIS = Date.now() + 15000;
+      fahren(el.dataset.schieber, Number(el.value));
+    };
+  });
+}
+
+/* Der Schieber will nicht unter der Hand neu gezeichnet werden – weder
+   während man zieht noch, solange das Rollo unterwegs ist. */
+let SCHIEBER_BIS = 0;
+function schieberAktiv(){
+  if (Date.now() < SCHIEBER_BIS) return true;
+  const el = document.activeElement;
+  return Boolean(el && el.type === "range" && el.closest("#uebersicht-rollos"));
+}
+
+async function anhalten(entityId){
+  try {
+    const r = await holeJSON("api/stop", "POST", {rollo: entityId});
+    melden(t(r.gestoppt ? "ka.gestoppt" : "ka.abgelehnt"), !r.gestoppt);
+    // Erst nach der Auslaufzeit nachsehen: Vorher meldet der Antrieb noch die
+    // Stellung, aus der er gerade kommt.
+    setTimeout(aktualisieren, 2500);
+  } catch (err) { melden(err.message, true); }
 }
 
 function kachel(rollo){
@@ -1522,6 +1590,10 @@ function kachel(rollo){
     ? t("ka.dann", {stellung: stellungstext(rollo.naechste_stellung),
                     zeit: esc(rollo.naechste_uhrzeit)}) : "";
   const hand = zustand === "manuell";
+  // Der Schieber zeigt, wo das Rollo **steht** – nicht, wohin der Planer es
+  // geschickt hat. Nach einem Halt gehen die beiden auseinander, und dann ist
+  // die wahre Stellung die, an der man weiterdreht.
+  const stand = rollo.ist ?? ziel ?? 0;
   const plan = rollo.plan
     ? `<span class="planschild">${esc(rollo.plan)}</span>`
     : `<span class="planschild eigen">${t("ka.eigener_plan")}</span>`;
@@ -1540,9 +1612,17 @@ function kachel(rollo){
       ${plan}
     </div>
     <p class="raum-grund">${esc(rollo.begruendung || "")}</p>
+    ${rollo.kann_stellung === false ? "" : `<div class="raum-schieber">
+      <input type="range" min="0" max="100" step="5" value="${zeige(stand)}"
+             title="${t("ka.schieber_titel")}" data-schieber="${esc(rollo.entity_id)}">
+      <span class="wert">${zeige(stand)} %</span>
+    </div>`}
     <div class="raum-fuss">
       <span style="flex:1">${naechster}</span>
       <button class="leise" data-fahren="${esc(rollo.entity_id)}" data-position="100">${t("ka.auf")}</button>
+      ${rollo.kann_stop === false ? "" : `<button class="leise halt"
+        data-stop="${esc(rollo.entity_id)}" title="${t("ka.halt_titel")}"
+        >${t("ka.halt")}</button>`}
       <button class="leise" data-fahren="${esc(rollo.entity_id)}" data-position="0">${t("ka.zu")}</button>
       ${hand ? `<button class="leise" data-hand="${esc(rollo.entity_id)}">${t("ka.hand_aufheben")}</button>` : ""}
     </div>

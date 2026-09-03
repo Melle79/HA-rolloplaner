@@ -502,6 +502,11 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
         "hitzeschutz": bool(rollo.get("beschattung")),
         "ausrichtung": rollo.get("ausrichtung"),
         "art": rollo.get("art") or "fenster",
+        # Was der Antrieb kann, entscheidet, welche Knöpfe die Übersicht
+        # zeigt. Ein Schieber vor einem Rollo, das nur auf und zu kann,
+        # verspricht eine Genauigkeit, die es nicht gibt.
+        "kann_stellung": ha_api.kann_position(zustand),
+        "kann_stop": ha_api.kann_stoppen(zustand),
         "ist": ha_api.position_von(zustand),
         "zustand": "plan",
         "begruendung": "",

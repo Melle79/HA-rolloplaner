@@ -14,7 +14,7 @@ import uuid
 import threading
 import time
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Flask, jsonify, request, send_from_directory
 
@@ -431,9 +431,47 @@ def _rollo_fahren(entity_id: str | None, position) -> dict:
         # Haus und zeigen fast alle auf ein anderes Zimmer, als ihr Name sagt –
         # „cover.finns_rollo" ist das Schlafzimmerfenster. Eine Kennung im
         # Protokoll ist dann keine Auskunft, sondern eine Falschauskunft.
+        invertiert = bool(config["einstellungen"].get("prozent_invertiert"))
         logbuch.eintragen(regelung.anzeigename(rollo, {entity_id: zustand}),
-                          f"{ziel} %", "von Hand gestellt", entity_id)
+                          f"{100 - ziel if invertiert else ziel} %",
+                          sprache.t("hand.gestellt"), entity_id)
     return {"gefahren": erfolg, "position": ziel}
+
+
+def _rollo_stoppen(entity_id: str | None) -> dict:
+    """Ein fahrendes Rollo anhalten.
+
+    Anders als beim Fahren weiß der Planer hinterher **nicht**, wo es steht:
+    Der Antrieb meldet seine Stellung erst, wenn er zur Ruhe gekommen ist, und
+    das dauert. Ein Ziel zu erfinden wäre der schlimmere Weg – genau daran hat
+    sich schon einmal die Handbetriebserkennung verschluckt.
+
+    Deshalb wird der Halt als **Handbetrieb** vermerkt. Das ist ohnehin, was
+    gemeint ist: „Ich habe eingegriffen, lass es stehen.“ Bis zum nächsten
+    fälligen Schaltpunkt rührt der Planer das Rollo nicht an; der Schaltpunkt
+    hebt die Schonfrist dann von selbst auf.
+    """
+    config = store.load_config()
+    rollo = next((r for r in config["rollos"] if r["entity_id"] == entity_id), None)
+    if rollo is None:
+        raise store.ValidationError("Rollo nicht eingerichtet")
+
+    with _takt_lock:
+        state = store.load_state()
+        zustand = ha_api.get_state(entity_id)
+        erfolg = ha_api.stop(entity_id)
+        if erfolg:
+            stunden = float(config["einstellungen"].get("manuell_stunden", 12.0))
+            bis = datetime.now() + timedelta(hours=stunden)
+            state["rollos"].setdefault(entity_id, {}).update(
+                manuell_bis=bis.isoformat(timespec="seconds"),
+                grund=sprache.t("hand.angehalten"))
+            store.save_state(state)
+    if erfolg:
+        logbuch.eintragen(regelung.anzeigename(rollo, {entity_id: zustand}),
+                          sprache.t("hand.halt"), sprache.t("hand.angehalten"),
+                          entity_id)
+    return {"gestoppt": erfolg}
 
 
 def _durchsetzen() -> None:
@@ -890,6 +928,16 @@ def api_fahren():
     nutzlast = request.get_json(force=True) or {}
     try:
         ergebnis = _rollo_fahren(nutzlast.get("rollo"), nutzlast.get("position"))
+    except store.ValidationError as err:
+        return jsonify({"fehler": str(err)}), 400
+    return jsonify(ergebnis)
+
+
+@app.route("/api/stop", methods=["POST"])
+def api_stop():
+    nutzlast = request.get_json(force=True) or {}
+    try:
+        ergebnis = _rollo_stoppen(nutzlast.get("rollo"))
     except store.ValidationError as err:
         return jsonify({"fehler": str(err)}), 400
     return jsonify(ergebnis)

@@ -107,6 +107,11 @@ TEXTE: dict[str, dict[str, str]] = {
         "lage.mit_automatik": "{n} von {gesamt} Rollos mit Automatik",
         "lage.kein_wechsel": "kein Wechsel geplant",
 
+        # ── Von Hand bedient ──────────────────────────────────────────────
+        "hand.gestellt": "von Hand gestellt",
+        "hand.halt": "Halt",
+        "hand.angehalten": "von Hand angehalten",
+
         # ── Übernahme aus den alten Automationen ─────────────────────────
         "ueb.kein_ausloeser": "kein Zeit- oder Sonnenauslöser",
         "ueb.toter_zweig": "{alias}: ein Zweig verlangt zwei Wochentags-Bedingungen "
@@ -188,6 +193,10 @@ TEXTE: dict[str, dict[str, str]] = {
         "lage.alle_mit_automatik": "All covers automated",
         "lage.mit_automatik": "{n} of {gesamt} covers automated",
         "lage.kein_wechsel": "no change scheduled",
+
+        "hand.gestellt": "set by hand",
+        "hand.halt": "stop",
+        "hand.angehalten": "stopped by hand",
 
         "ueb.kein_ausloeser": "no time or sun trigger",
         "ueb.toter_zweig": "{alias}: one branch demands two weekday conditions at "

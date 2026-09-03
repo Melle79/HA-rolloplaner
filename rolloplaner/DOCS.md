@@ -344,6 +344,32 @@ am Schalter. Dann bleibt es in Ruhe, bis die eingestellte Frist abgelaufen ist �
 oder bis der nächste Schaltpunkt fällig wird. Man muss also nicht daran denken,
 den Handbetrieb wieder aufzuheben.
 
+### Bedienen in der Übersicht
+
+Jede Kachel trägt **auf · Halt · zu** – der Halt in der Mitte, so wie auf jedem
+Handsender – und darunter einen **Schieber** für alles dazwischen. Gefahren
+wird erst beim Loslassen: Jeder Zwischenwert als Befehl wäre ein Dutzend
+Befehle für eine Handbewegung, der Antrieb ruckte, und das Protokoll stünde
+voll.
+
+Beide Bedienelemente erscheinen nur, wenn der Antrieb sie beherrscht. Ein
+Rollladen, der nur auf und zu kann, bekommt keinen Schieber, und einer ohne
+`stop_cover` keinen Halt. Ein Knopf, der nichts tut, ist schlimmer als keiner:
+Er behauptet, es ginge – und wer ihn drückt, sucht den Fehler beim Rollo.
+
+**Der Halt zählt als Handbetrieb.** Anders als beim Fahren weiß der Planer
+danach nämlich *nicht*, wo das Rollo steht: Der Antrieb meldet seine Stellung
+erst, wenn er zur Ruhe gekommen ist. Ein Ziel zu erfinden wäre der schlimmere
+Weg – daran hat sich schon einmal die Handbetriebserkennung verschluckt.
+„Handbetrieb“ ist ohnehin genau das, was gemeint war: *Ich habe eingegriffen,
+lass es stehen.* Der nächste fällige Schaltpunkt hebt die Schonfrist von selbst
+wieder auf.
+
+Solange die Zahl über der Kachel und der Schieber auseinandergehen, sieht man
+beides zugleich: **oben, wohin der Planer will; unten, wo das Rollo steht.**
+Nach einem Halt ist das der Normalfall, und die Marke *Handbetrieb* sagt,
+warum.
+
 ## Wächter
 
 Meldet ein Antrieb länger als die Schweigefrist nichts mehr, oder meldet er ein

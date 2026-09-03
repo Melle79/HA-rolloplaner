@@ -1,5 +1,24 @@
 # Änderungen
 
+## 2.17.0 – 03.09.2026
+
+**Halt und Schieber in der Übersicht.** Bisher gab es dort nur ganz auf und
+ganz zu.
+
+* **Halt** zwischen *auf* und *zu* – dort, wo er auf jedem Handsender sitzt.
+  Er zählt als Handbetrieb, denn wo das Rollo danach steht, weiß der Planer
+  nicht: Der Antrieb meldet seine Stellung erst, wenn er steht. Ein Ziel zu
+  erfinden wäre der schlimmere Weg.
+* **Ein Schieber** für alles zwischen auf und zu. Gefahren wird beim
+  Loslassen, nicht bei jedem Zwischenwert – sonst ruckte der Antrieb und das
+  Protokoll stünde voll. Solange man zieht, zeichnet sich die Übersicht nicht
+  neu; ein Schieber, den es einem unter dem Finger wegreißt, ist unbedienbar.
+* **Beides nur, wo der Antrieb es kann.** Ein Rollladen ohne Zwischenstellung
+  bekommt keinen Schieber, einer ohne `stop_cover` keinen Halt.
+* Die umgedrehte Zählweise gilt auch hier: Der Schieber zeigt, was angezeigt
+  werden soll, und schickt, was Home Assistant versteht.
+* Auch die zwei Protokolltexte des Handbetriebs sprechen jetzt beide Sprachen.
+
 ## 2.16.1 – 03.09.2026
 
 * `backend/version.py` hinkte hinterher: Das Add-on meldete beim Start weiter

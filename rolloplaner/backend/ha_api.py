@@ -23,8 +23,9 @@ _LOGGER = logging.getLogger(__name__)
 API_BASE = "http://supervisor/core/api"
 TIMEOUT = 15
 
-# Bitmaske der Fähigkeiten einer cover-Entität (SUPPORT_SET_POSITION).
-FEATURE_SET_POSITION = 4
+# Bitmaske der Fähigkeiten einer cover-Entität.
+FEATURE_SET_POSITION = 4          # SUPPORT_SET_POSITION
+FEATURE_STOP = 8                  # SUPPORT_STOP
 
 
 def _token() -> str:
@@ -128,11 +129,24 @@ def position_von(zustand: dict | None) -> int | None:
 
 def kann_position(zustand: dict | None) -> bool:
     """Nimmt dieser Antrieb eine Zwischenstellung an?"""
+    return _kann(zustand, FEATURE_SET_POSITION)
+
+
+def kann_stoppen(zustand: dict | None) -> bool:
+    """Lässt sich dieser Antrieb mitten in der Fahrt anhalten?
+
+    Ein Knopf, der nichts tut, ist schlimmer als keiner: Er sagt, es ginge –
+    und wer ihn drückt, sucht den Fehler beim Rollo statt beim Antrieb.
+    """
+    return _kann(zustand, FEATURE_STOP)
+
+
+def _kann(zustand: dict | None, merkmal: int) -> bool:
     if not zustand:
         return False
     merkmale = (zustand.get("attributes") or {}).get("supported_features")
     try:
-        return bool(int(merkmale) & FEATURE_SET_POSITION)
+        return bool(int(merkmale) & merkmal)
     except (TypeError, ValueError):
         return False
 
