@@ -467,6 +467,28 @@ def test_die_karte_kennt_in_beiden_sprachen_dieselben_schluessel():
             assert hier == erwartet, f"{code}/{schluessel}: {hier} statt {erwartet}"
 
 
+def test_alle_drei_stellen_nennen_dieselbe_fassung():
+    """Die Nummer steht an drei Stellen – und sie müssen sich einig sein.
+
+    Der Supervisor liest `config.yaml`, das Protokoll `version.py`, die Karte
+    ihre eigene Zeile. Läuft eine nach, meldet das Add-on beim Start eine
+    Fassung, die es gar nicht mehr ist – und genau daran sucht man einen
+    Fehler zuerst.
+    """
+    import re
+    wurzel = pathlib.Path(__file__).parent.parent
+    yaml = re.search(r'^version:\s*"([^"]+)"',
+                     (wurzel / "config.yaml").read_text(encoding="utf-8"), re.M)
+    py = re.search(r'VERSION\s*=\s*"([^"]+)"',
+                   (wurzel / "backend" / "version.py").read_text(encoding="utf-8"))
+    karte = re.search(r'CARD_VERSION\s*=\s*"([^"]+)"',
+                      (wurzel / "card" / "rolloplaner-card.js").read_text(encoding="utf-8"))
+    assert yaml and py and karte, "eine der drei Fassungszeilen ist nicht auffindbar"
+    fassungen = {"config.yaml": yaml.group(1), "version.py": py.group(1),
+                 "rolloplaner-card.js": karte.group(1)}
+    assert len(set(fassungen.values())) == 1, f"uneinig: {fassungen}"
+
+
 def test_bei_einem_stueck_gilt_die_einzahl():
     """„1 covers shaded" liest sich wie ein Fehler – und wer die Sprache nicht
     spricht, hält es für einen."""

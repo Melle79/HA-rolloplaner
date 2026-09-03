@@ -1,5 +1,13 @@
 # Änderungen
 
+## 2.16.1 – 03.09.2026
+
+* `backend/version.py` hinkte hinterher: Das Add-on meldete beim Start weiter
+  2.15.0, während es längst die neue Oberfläche fuhr. Genau daran sucht man
+  einen Fehler zuerst – und findet keinen.
+* Ein Wächter im Prüflauf hält `config.yaml`, `version.py` und die Karte auf
+  derselben Nummer.
+
 ## 2.16.0 – 03.09.2026
 
 **Auch die Oberfläche des Add-ons spricht jetzt Englisch.** In 2.15.0 sprachen
