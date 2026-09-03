@@ -56,6 +56,14 @@ Freigabeschalter, an denen die Schaltpunkte hängen. Eingestellt wird sie im
 **Karteneditor**, ohne YAML: Schriftgröße (gedacht für ein Wandtablett), was
 sie zeigt, und welche Gruppen in welcher Reihenfolge erscheinen.
 
+## Zweisprachig
+
+Planer, Einrichtung und Karte sprechen **Deutsch und Englisch**. Add-on und
+Einrichtung folgen Home Assistant oder der Einstellung unter *Einstellungen →
+Sprache*; die Karte folgt dem **Betrachter** — auf dem Wandtablett steht
+Deutsch, ein englischsprachiger Gast sieht dieselbe Karte auf Englisch. Eine
+dritte Sprache ist eine weitere Tabelle, kein `gettext` und kein Bauschritt.
+
 ## Ausführlich
 
 [rolloplaner/DOCS.md](rolloplaner/DOCS.md) — das Handbuch. Es erklärt nicht nur,

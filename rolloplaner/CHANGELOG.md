@@ -1,5 +1,29 @@
 # Änderungen
 
+## 2.16.0 – 03.09.2026
+
+**Auch die Oberfläche des Add-ons spricht jetzt Englisch.** In 2.15.0 sprachen
+Planer und Karte zwei Sprachen, die Einrichtung dagegen nur Deutsch – also
+ausgerechnet die Stelle, an der man die Sprache einstellt.
+
+* **Alle acht Reiter übersetzt**, samt der langen Erklärtexte, der Dialoge für
+  Rollo und Zeitplan, aller Rückfragen und aller Meldungen. Die Oberfläche
+  folgt derselben Einstellung wie der Planer.
+* **Wochentage, Himmelsrichtungen, Auslöser und Fensterarten** stehen nicht
+  mehr als feste Listen im Kopf der Datei, sondern werden bei jedem Zeichnen
+  gebaut. Sonst wäre die Sprache dort festgelegt, bevor der Planer sie
+  überhaupt gemeldet hat.
+* **Einzahl statt „1 covers shaded"**: Steht neben einem Schlüssel einer mit
+  `_1`, gilt der bei genau einem Stück – in Planer und Oberfläche.
+* Auch die zwei deutschen Sätze aus der Übernahme alter Automationen
+  („kein Zeit- oder Sonnenauslöser") sprechen jetzt beide Sprachen.
+* Die Uhrzeiten stehen in beiden Sprachen 24-stündig: „7:30 PM" neben einem
+  Zeitplan, der in 19:30 gedacht ist, liest sich falsch.
+* **Drei neue Wächter im Prüflauf**: beide Tabellen dieselben Schlüssel und
+  Platzhalter, kein Schlüssel doppelt vergeben, kein benutzter Schlüssel ohne
+  Eintrag. Der doppelte Eintrag ist der heimtückische Fall – JavaScript nimmt
+  stillschweigend den letzten.
+
 ## 2.15.0 – 28.08.2026
 
 **Der Planer spricht Deutsch und Englisch.**

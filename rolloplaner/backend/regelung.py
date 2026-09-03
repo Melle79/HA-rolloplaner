@@ -1124,6 +1124,10 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         "plaene": plan_bericht,
         "freigaben": sorted(freigaben.values(), key=lambda e: e["name"]),
         "prozent_invertiert": bool(einstellungen.get("prozent_invertiert")),
+        # Damit die Oberfläche dieselbe Sprache spricht wie der Planer, ohne
+        # sie ein zweites Mal herzuleiten.
+        "sprache": sprache.aktuell(),
+        "sprachen": sprache.sprachen(),
         "automatik": lage["automatik"],
         "trockenlauf": bool(einstellungen.get("trockenlauf")),
         "urlaub": urlaub,

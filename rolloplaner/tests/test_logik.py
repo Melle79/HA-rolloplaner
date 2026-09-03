@@ -467,6 +467,113 @@ def test_die_karte_kennt_in_beiden_sprachen_dieselben_schluessel():
             assert hier == erwartet, f"{code}/{schluessel}: {hier} statt {erwartet}"
 
 
+def test_bei_einem_stueck_gilt_die_einzahl():
+    """„1 covers shaded" liest sich wie ein Fehler – und wer die Sprache nicht
+    spricht, hält es für einen."""
+    sprache.setze("en")
+    assert sprache.t("lage.beschattet", n=1) == "one cover shaded"
+    assert sprache.t("lage.beschattet", n=3) == "3 covers shaded"
+    sprache.setze("de")
+    assert sprache.t("lage.beschattet", n=1) == "ein Rollo beschattet"
+    assert sprache.t("lage.beschattet", n=2) == "2 Rollos beschattet"
+    # Ohne Einzahlform bleibt es bei der einen Vorlage – kein Rückfall auf den
+    # nackten Schlüssel.
+    assert "{" not in sprache.t("lage.mit_automatik", n=1, gesamt=9)
+
+
+def _oberflaechen_tabellen():
+    """Die beiden Sprachtabellen aus `index.html` als Wörterbücher.
+
+    Die Texte stehen dort teils über mehrere Zeilen aneinandergehängt
+    (``"..." + "..."``) – deshalb wird jeder Eintrag bis zum nächsten Schlüssel
+    gelesen und danach werden alle Zeichenketten darin zusammengefügt.
+    """
+    import re
+    quelle = (pathlib.Path(__file__).parent.parent / "frontend"
+              / "index.html").read_text(encoding="utf-8")
+    block = re.search(r"\nconst UI = \{\n(.*?)\n\};\n", quelle, re.S)
+    assert block, "Sprachtabelle der Oberfläche nicht gefunden"
+    tabellen = {}
+    for code in ("de", "en"):
+        teil = re.search(rf"\n  {code}: \{{\n(.*?)\n  \}},?\n",
+                         "\n" + block.group(1) + "\n", re.S)
+        assert teil, f"Sprachtabelle {code} nicht gefunden"
+        # Kurze Texte stehen zu mehreren in einer Zeile, lange über mehrere
+        # Zeilen hinweg. Deshalb wird nicht zeilenweise gelesen, sondern von
+        # einem Schlüssel bis zum nächsten.
+        rumpf = "\n" + teil.group(1)   # damit auch der erste Schlüssel eine Kante hat
+        marken = list(re.finditer(r'(?<=[\{,\n])\s*"([a-z][\w.]*)":', rumpf))
+        # Ein Schlüssel zweimal in derselben Tabelle: JavaScript nimmt den
+        # letzten, ein Wörterbuch hier ebenso – der Fehler bliebe also stumm,
+        # während im Bild die ältere Fassung steht. Darum vorher zählen.
+        namen = [m.group(1) for m in marken]
+        doppelt = sorted({n for n in namen if namen.count(n) > 1})
+        assert not doppelt, f"{code}: doppelt vergeben {doppelt}"
+        tabellen[code] = {}
+        for i, marke in enumerate(marken):
+            ende = marken[i + 1].start() if i + 1 < len(marken) else len(rumpf)
+            wert = rumpf[marke.end():ende]
+            tabellen[code][marke.group(1)] = "".join(
+                re.findall(r'"((?:[^"\\]|\\.)*)"', wert))
+    return tabellen
+
+
+def test_die_oberflaeche_kennt_in_beiden_sprachen_dieselben_schluessel():
+    """Wie bei Karte und Backend: eine halbe Übersetzung ist schlimmer als gar
+    keine, weil sie erst dem auffällt, der die andere Sprache nicht kann."""
+    import re
+    tabellen = _oberflaechen_tabellen()
+    assert len(tabellen["de"]) > 300, "die Tabelle wurde nicht richtig gelesen"
+    deutsch = set(tabellen["de"])
+    for code, tabelle in tabellen.items():
+        assert not deutsch - set(tabelle), f"{code}: es fehlen {sorted(deutsch - set(tabelle))}"
+        assert not set(tabelle) - deutsch, f"{code}: unbekannt {sorted(set(tabelle) - deutsch)}"
+    for schluessel, wert in tabellen["de"].items():
+        erwartet = set(re.findall(r"\{(\w+)\}", wert))
+        for code, tabelle in tabellen.items():
+            hier = set(re.findall(r"\{(\w+)\}", tabelle[schluessel]))
+            assert hier == erwartet, f"{code}/{schluessel}: {hier} statt {erwartet}"
+
+
+def test_jeder_verwendete_textschluessel_steht_in_der_tabelle():
+    """Ein vertippter Schlüssel zeigt im Bild den Schlüssel selbst.
+
+    Das sieht man nur, wenn man genau diesen Reiter öffnet – und meist erst,
+    wenn jemand anderes es meldet. Hier fällt es beim Prüflauf auf.
+    """
+    import re
+    quelle = (pathlib.Path(__file__).parent.parent / "frontend"
+              / "index.html").read_text(encoding="utf-8")
+    tabelle = _oberflaechen_tabellen()["de"]
+    ohne_tabelle = re.sub(r"\nconst UI = \{\n.*?\n\};\n", "\n", quelle, flags=re.S)
+    # Ein Schlüssel steht nicht immer gleich hinter der Klammer – es gibt auch
+    # `t(gut ? "a" : "b")`. Deshalb wird der ganze Aufruf gelesen, Klammer für
+    # Klammer, und darin jede Zeichenkette in Schlüsselform gewertet.
+    schluesselform = re.compile(r'"([a-z][\w]*(?:\.[\w]+)+)"')
+    benutzt = set()
+    for anfang in (m.end() for m in re.finditer(r'\bt\(', ohne_tabelle)):
+        tiefe, i = 1, anfang
+        while i < len(ohne_tabelle) and tiefe:
+            if ohne_tabelle[i] == "(":
+                tiefe += 1
+            elif ohne_tabelle[i] == ")":
+                tiefe -= 1
+            i += 1
+        benutzt |= set(schluesselform.findall(ohne_tabelle[anfang:i]))
+    benutzt |= set(re.findall(r'data-t(?:-titel)?="([a-z][\w.]*)"', ohne_tabelle))
+    # Zusammengesetzte Schlüssel: `t("aus." + w)` und Geschwister. Die
+    # Vorsilbe allein ist kein Schlüssel – sie steht für die ganze Sippe.
+    for vorsilbe in re.findall(r'\bt\("([a-z][\w.]*\.)"\s*\+', ohne_tabelle):
+        benutzt.discard(vorsilbe)
+        benutzt |= {s for s in tabelle if s.startswith(vorsilbe)}
+    # Die Einzahlform wird nie selbst aufgerufen – `t` greift sie sich, wenn
+    # n gleich eins ist. Benutzt ist sie also, sobald ihr Grundwort benutzt ist.
+    benutzt |= {s for s in tabelle
+                if s.endswith("_1") and s[:-2] in benutzt}
+    assert not benutzt - set(tabelle), f"nicht in der Tabelle: {sorted(benutzt - set(tabelle))}"
+    assert not set(tabelle) - benutzt, f"nie benutzt: {sorted(set(tabelle) - benutzt)}"
+
+
 def test_karte_ist_gueltiges_javascript():
     """Ein Syntaxfehler in der Karte fällt sonst erst im Dashboard auf – und
     dort sieht man nur, dass nichts kommt."""

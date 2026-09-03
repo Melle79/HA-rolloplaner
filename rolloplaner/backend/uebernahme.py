@@ -25,6 +25,8 @@ import os
 import re
 import uuid
 
+import sprache
+
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_DIRS = ("/homeassistant", "/config")
@@ -318,16 +320,15 @@ def vorschlag(bereiche: dict, schulfrei_entity: str, schulfrei_morgen_entity: st
             # nicht über die Zeit. Solche Automationen bleiben, wo sie sind –
             # der Planer soll sie nicht ersetzen, sondern ihnen ausweichen.
             ungedeutet.append({"alias": automation.get("alias", "?"),
-                               "grund": "kein Zeit- oder Sonnenauslöser"})
+                               "grund": sprache.t("ueb.kein_ausloeser")})
             continue
         bedingungen = _bedingungen(automation, schulfrei_entity, schulfrei_morgen_entity)
 
         for stellung, ziele, ids, klammer in treffer:
             if klammer.get("widerspruch"):
                 for eid in ziele:
-                    text = (f"{automation.get('alias', '?')}: ein Zweig verlangt zwei "
-                            "Wochentags-Bedingungen gleichzeitig und läuft nie – "
-                            "übersprungen")
+                    text = sprache.t("ueb.toter_zweig",
+                                     alias=automation.get("alias", "?"))
                     hinweise = eintrag_fuer(eid)["hinweise"]
                     if text not in hinweise:
                         hinweise.append(text)

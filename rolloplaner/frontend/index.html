@@ -298,32 +298,33 @@
   <div class="kopf-rechts">
     <span class="zustand"><span class="punkt" id="punkt"></span><span id="kopfstatus">…</span></span>
     <button class="leise" id="btn-durchsetzen"
-            title="Den gemerkten Stand verwerfen und den geltenden Schaltpunkt neu ausführen">Plan durchsetzen</button>
-    <button class="leise" id="btn-takt">Jetzt rechnen</button>
+            data-t-titel="kopf.durchsetzen.titel"
+            data-t="kopf.durchsetzen">Plan durchsetzen</button>
+    <button class="leise" id="btn-takt" data-t="kopf.rechnen">Jetzt rechnen</button>
   </div>
 </header>
 
 <nav>
-  <button data-reiter="uebersicht" class="an">Übersicht</button>
-  <button data-reiter="rollos">Rollos</button>
-  <button data-reiter="gruppen">Gruppen</button>
-  <button data-reiter="plaene">Zeitpläne</button>
-  <button data-reiter="schalter">Schalter</button>
-  <button data-reiter="rauchalarm">Rauchalarm</button>
-  <button data-reiter="einstellungen">Einstellungen</button>
-  <button data-reiter="protokoll">Protokoll</button>
-  <button data-reiter="einrichtung">Einrichtung<span class="zaehler" id="z-einrichtung" hidden></span></button>
+  <button data-reiter="uebersicht" class="an" data-t="nav.uebersicht">Übersicht</button>
+  <button data-reiter="rollos" data-t="nav.rollos">Rollos</button>
+  <button data-reiter="gruppen" data-t="nav.gruppen">Gruppen</button>
+  <button data-reiter="plaene" data-t="nav.plaene">Zeitpläne</button>
+  <button data-reiter="schalter" data-t="nav.schalter">Schalter</button>
+  <button data-reiter="rauchalarm" data-t="nav.rauchalarm">Rauchalarm</button>
+  <button data-reiter="einstellungen" data-t="nav.einstellungen">Einstellungen</button>
+  <button data-reiter="protokoll" data-t="nav.protokoll">Protokoll</button>
+  <button data-reiter="einrichtung"><span data-t="nav.einrichtung">Einrichtung</span><span class="zaehler" id="z-einrichtung" hidden></span></button>
 </nav>
 
 <main>
   <!-- ══════════════════════════════════════════════════ Übersicht ═══ -->
   <section id="s-uebersicht" class="an">
     <div class="tafel">
-      <h2>Lage</h2>
+      <h2 data-t="tafel.lage">Lage</h2>
       <div class="sonne-zeile" id="lage"></div>
     </div>
     <div class="tafel" id="stoerungen-tafel" hidden>
-      <h2>Störungen</h2>
+      <h2 data-t="tafel.stoerungen">Störungen</h2>
       <div id="stoerungen"></div>
     </div>
     <div id="uebersicht-rollos"></div>
@@ -332,15 +333,12 @@
   <!-- ═════════════════════════════════════════════════════ Rollos ═══ -->
   <section id="s-rollos">
     <div class="tafel">
-      <h2>Rollos</h2>
-      <p class="hinweis" style="margin-bottom:var(--l4)">
-        Jedes Rollo führt seine eigenen Angaben: was dahintersteckt, wohin es zeigt,
-        welcher Kontakt es sperrt. Den <b>Zeitplan</b> teilt es sich mit anderen –
-        oder es hat einen eigenen.
-      </p>
+      <h2 data-t="tafel.rollos">Rollos</h2>
+      <p class="hinweis" style="margin-bottom:var(--l4)"
+         data-t="tafel.rollos_hinweis"></p>
       <div id="rolloliste"></div>
       <div style="margin-top:var(--l4)">
-        <button class="leise" id="btn-rollo-neu">Rollo hinzufügen</button>
+        <button class="leise" id="btn-rollo-neu" data-t="knopf.rollo_neu">Rollo hinzufügen</button>
       </div>
     </div>
   </section>
@@ -348,15 +346,12 @@
   <!-- ══════════════════════════════════════════════════ Zeitpläne ═══ -->
   <section id="s-plaene">
     <div class="tafel">
-      <h2>Gemeinsame Zeitpläne</h2>
-      <p class="hinweis" style="margin-bottom:var(--l4)">
-        Ein Zeitplan gehört keinem Raum, sondern allen Rollos, die ihm folgen.
-        Was hier geändert wird, gilt für alle davon – und jeder Zeitplan hat einen
-        eigenen Schalter in Home Assistant, mit dem er stillgelegt werden kann.
-      </p>
+      <h2 data-t="tafel.plaene">Gemeinsame Zeitpläne</h2>
+      <p class="hinweis" style="margin-bottom:var(--l4)"
+         data-t="tafel.plaene_hinweis"></p>
       <div id="planliste"></div>
       <div style="margin-top:var(--l4)">
-        <button class="leise" id="btn-plan-neu">Zeitplan anlegen</button>
+        <button class="leise" id="btn-plan-neu" data-t="knopf.plan_neu">Zeitplan anlegen</button>
       </div>
     </div>
   </section>
@@ -364,75 +359,56 @@
   <!-- ═══════════════════════════════════════════════════ Schalter ═══ -->
   <section id="s-schalter">
     <div class="tafel">
-      <h2>Eigene Schalter</h2>
-      <p class="hinweis" style="margin-bottom:var(--l3)">
-        Ein Schalter ist eine <b>Bedingung, die Sie von Hand umlegen können</b>.
-        Sie hängen ihn an einen Schaltpunkt („nur wenn …“), und solange er nicht
-        passt, greift der Punkt nicht. So lässt sich das Öffnen eines Rollos
-        aussetzen, ohne den Zeitplan zu ändern.
-      </p>
-      <p class="hinweis" style="margin-bottom:var(--l4)">
-        <b>Ein/Aus-Schalter</b> – zwei Stellungen. Beispiel: „Obergeschoss
-        schließen“. Steht er auf aus, fahren die Kinderzimmer abends nicht zu.<br>
-        <b>Auswahl</b> – mehrere Stellungen, von denen immer eine gilt. Beispiel:
-        „Terrassentür schließen“ mit <i>normal / 24 Uhr / aus</i>. Für jede
-        Stellung gibt es einen eigenen Schaltpunkt; bei „aus“ greift keiner, und
-        die Tür bleibt offen.<br>
-        Der Planer legt beide in Home Assistant an – als
-        <code>switch.</code> beziehungsweise <code>select.</code> Er kennt ihren
-        Stand und räumt sie wieder ab, wenn Sie sie hier löschen. Deshalb hängt
-        kein Zeitplan an Helfern, die jemand vorher von Hand anlegen müsste.
-      </p>
+      <h2 data-t="tafel.schalter">Eigene Schalter</h2>
+      <p class="hinweis" style="margin-bottom:var(--l3)"
+         data-t="tafel.schalter_hinweis1"></p>
+      <p class="hinweis" style="margin-bottom:var(--l4)"
+         data-t="tafel.schalter_hinweis2"></p>
       <div id="schalterliste"></div>
       <div style="margin-top:var(--l4); display:flex; gap:var(--l2); flex-wrap:wrap">
-        <button class="leise" id="btn-schalter-neu">Ein/Aus-Schalter anlegen</button>
-        <button class="leise" id="btn-auswahl-neu">Auswahl anlegen</button>
-        <button id="btn-schalter-speichern">Speichern</button>
+        <button class="leise" id="btn-schalter-neu" data-t="knopf.schalter_neu">Ein/Aus-Schalter anlegen</button>
+        <button class="leise" id="btn-auswahl-neu" data-t="knopf.auswahl_neu">Auswahl anlegen</button>
+        <button id="btn-schalter-speichern" data-t="knopf.speichern">Speichern</button>
       </div>
     </div>
     <div class="tafel">
-      <h2>Fremde Helfer ersetzen</h2>
+      <h2 data-t="knopf.helfer_ersetzen">Fremde Helfer ersetzen</h2>
       <div id="fremde"></div>
     </div>
   </section>
 
   <!-- ══════════════════════════════════════════════════════ Gruppen ═══ -->
   <section id="s-gruppen">
-    <div class="tafel"><h2>Obergruppen</h2>
-      <p class="hinweis">Eine Obergruppe liegt <b>über</b> den Rollos, sie
-        ersetzt sie nicht: Jedes Rollo behält seinen eigenen Zeitplan. Gibst du
-        der Gruppe zusätzlich einen, gelten seine Schaltpunkte für alle ihre
-        Rollos – so wie früher eine Automation „Rollo schliessen EG" neben den
-        Einzelautomationen lief. Welcher Punkt gilt, entscheidet der zuletzt
-        fällige.</p>
+    <div class="tafel"><h2 data-t="tafel.gruppen">Obergruppen</h2>
+      <p class="hinweis" data-t="gr.hinweis"></p>
       <div id="gruppen"></div>
       <div class="dlg-fuss" style="border-top:1px solid var(--linie); margin-top:var(--l4);
         padding-left:0; padding-right:0">
-        <button class="leise" id="btn-gruppe-vorschlag">Vorschlag aus Home Assistant</button>
-        <button class="leise" id="btn-gruppe-neu">Gruppe hinzufügen</button>
-        <button id="btn-gruppen-speichern">Speichern</button>
+        <button class="leise" id="btn-gruppe-vorschlag" data-t="knopf.gruppen_vorschlag">Vorschlag aus Home Assistant</button>
+        <button class="leise" id="btn-gruppe-neu" data-t="knopf.gruppe_neu">Gruppe hinzufügen</button>
+        <button id="btn-gruppen-speichern" data-t="knopf.speichern">Speichern</button>
       </div>
     </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════ Rauchalarm ═══ -->
   <section id="s-rauchalarm">
-    <div class="tafel"><h2>Rauchalarm</h2><div id="rauchalarm"></div>
+    <div class="tafel"><h2 data-t="tafel.rauchalarm">Rauchalarm</h2><div id="rauchalarm"></div>
       <div class="dlg-fuss" style="border-top:1px solid var(--linie); margin-top:var(--l4);
         padding-left:0; padding-right:0">
-        <button class="leise" id="btn-rauch-probe">Probemeldung senden</button>
-        <button id="btn-rauch-speichern">Speichern</button>
+        <button class="leise" id="btn-rauch-probe" data-t="knopf.probe">Probemeldung senden</button>
+        <button id="btn-rauch-speichern" data-t="knopf.speichern">Speichern</button>
       </div>
     </div>
   </section>
 
   <!-- ══════════════════════════════════════════════ Einstellungen ═══ -->
   <section id="s-einstellungen">
-    <div class="tafel"><h2>Einstellungen</h2><div id="einstellungen"></div>
+    <div class="tafel"><h2 data-t="tafel.einstellungen">Einstellungen</h2><div id="einstellungen"></div>
       <div class="dlg-fuss" style="border-top:1px solid var(--linie); margin-top:var(--l4);
         padding-left:0; padding-right:0">
-        <button class="leise" id="btn-probe">Probemeldung senden</button>
-        <button id="btn-einst-speichern">Speichern</button>
+        <button class="leise" id="btn-probe" data-t="knopf.probe">Probemeldung senden</button>
+        <button id="btn-einst-speichern" data-t="knopf.speichern">Speichern</button>
       </div>
     </div>
   </section>
@@ -440,11 +416,12 @@
   <!-- ═══════════════════════════════════════════════════ Protokoll ═══ -->
   <section id="s-protokoll">
     <div class="tafel">
-      <h2>Protokoll</h2>
-      <table><thead><tr><th>Zeit</th><th>Rollo</th><th>Was</th><th>Warum</th></tr></thead>
+      <h2 data-t="tafel.protokoll">Protokoll</h2>
+      <table><thead><tr><th data-t="pr.zeit">Zeit</th><th data-t="pr.rollo">Rollo</th>
+        <th data-t="pr.was">Was</th><th data-t="pr.warum">Warum</th></tr></thead>
         <tbody id="protokoll"></tbody></table>
       <div style="margin-top:var(--l4)">
-        <button class="leise gefahr" id="btn-protokoll-leeren">Protokoll leeren</button>
+        <button class="leise gefahr" id="btn-protokoll-leeren" data-t="knopf.protokoll_leeren">Protokoll leeren</button>
       </div>
     </div>
   </section>
@@ -452,20 +429,15 @@
   <!-- ═════════════════════════════════════════════════ Einrichtung ═══ -->
   <section id="s-einrichtung">
     <div class="tafel">
-      <h2>Aus den vorhandenen Automationen</h2>
-      <p class="hinweis" style="margin-bottom:var(--l4)">
-        Der Planer liest <code>automations.yaml</code> und schlägt vor, was er dort
-        findet: je Rollo die Schaltzeiten, und für Rollos mit gleichem Muster einen
-        gemeinsamen Zeitplan. Übernommen wird nichts von selbst.
-        <b>Die alten Automationen bleiben aktiv</b>; schalten Sie sie ab, sobald der
-        Planer läuft, sonst fahren beide gegeneinander.
-      </p>
+      <h2 data-t="tafel.einrichtung">Aus den vorhandenen Automationen</h2>
+      <p class="hinweis" style="margin-bottom:var(--l4)"
+         data-t="tafel.einrichtung_hinweis"></p>
       <div id="vorschlag"></div>
     </div>
     <div class="tafel">
-      <h2>Selbstauskunft</h2>
+      <h2 data-t="tafel.gesundheit">Selbstauskunft</h2>
       <div id="gesundheit"></div>
-      <div style="margin-top:var(--l4)"><button class="leise" id="btn-gesundheit">Neu prüfen</button></div>
+      <div style="margin-top:var(--l4)"><button class="leise" id="btn-gesundheit" data-t="knopf.neu_pruefen">Neu prüfen</button></div>
     </div>
   </section>
 </main>
@@ -475,46 +447,911 @@
 <dialog id="dialog">
   <form method="dialog" id="dlg-form">
     <div class="dlg-kopf"><h2 id="dlg-titel">…</h2>
-      <button class="leise" value="abbruch" formnovalidate>Schließen</button></div>
+      <button class="leise" value="abbruch" formnovalidate data-t="knopf.schliessen">Schließen</button></div>
     <div class="dlg-inhalt" id="dlg-inhalt"></div>
     <div class="dlg-fuss">
-      <button type="button" class="leise gefahr" id="btn-dlg-loeschen">Löschen</button>
-      <button type="button" id="btn-dlg-speichern">Speichern</button>
+      <button type="button" class="leise gefahr" id="btn-dlg-loeschen" data-t="knopf.loeschen">Löschen</button>
+      <button type="button" id="btn-dlg-speichern" data-t="knopf.speichern">Speichern</button>
     </div>
   </form>
 </dialog>
 
 <script>
 "use strict";
-const TAGE = [["mon","Mo"],["tue","Di"],["wed","Mi"],["thu","Do"],["fri","Fr"],
-              ["sat","Sa"],["sun","So"]];
-const AUSLOESER = [["uhrzeit","Uhrzeit"],["sonnenaufgang","Sonnenaufgang"],
-                   ["sonnenuntergang","Sonnenuntergang"],["daemmerung","Dämmerung"]];
-const GELTUNG = [["immer","immer"],["schultag","an Schultagen"],
-                 ["schulfrei","an schulfreien Tagen"],
-                 ["morgen_schultag","wenn morgen Schule ist"],
-                 ["morgen_schulfrei","wenn morgen schulfrei ist"]];
-const STRICHE = ["N","NNO","NO","ONO","O","OSO","SO","SSO",
-                 "S","SSW","SW","WSW","W","WNW","NW","NNW"];
+/* Diese Listen tragen Text, also dürfen sie nicht beim Laden festgelegt
+   werden: Welche Sprache gilt, weiß der Planer erst mit dem ersten Bericht.
+   Darum Funktionen und keine Konstanten – sie werden bei jedem Zeichnen neu
+   gebaut, und ein Sprachwechsel greift ohne Neuladen. */
+const TAGCODES = ["mon","tue","wed","thu","fri","sat","sun"];
+const TAGE = () => TAGCODES.map((w, i) => [w, t("tage.kurz").split(",")[i]]);
+const AUSLOESER = () => ["uhrzeit","sonnenaufgang","sonnenuntergang","daemmerung"]
+  .map((w) => [w, t("aus." + w)]);
+const GELTUNG = () => ["immer","schultag","schulfrei","morgen_schultag","morgen_schulfrei"]
+  .map((w) => [w, t("gilt." + w)]);
+const STRICHE = () => t("allg.striche").split(",");
 /* Ein Fenster zeigt selten genau nach Süden. Steht ein Haus schräg zur
    Himmelsrichtung – und das tun die meisten –, sind die 22 Grad Unterschied
    zwischen „Süd“ und „SSO“ am Nachmittag eine gute Stunde Sonne. */
 function strich(grad){
   if (grad === null || grad === undefined || grad === "") return "";
-  return STRICHE[Math.round(((Number(grad) % 360) + 360) % 360 / 22.5) % 16];
+  return STRICHE()[Math.round(((Number(grad) % 360) + 360) % 360 / 22.5) % 16];
 }
-const ARTEN = [["fenster","Fenster"],["balkontuer","Balkontür"],
-               ["terrassentuer","Terrassentür"],["dachfenster","Dachfenster"],
-               ["haustuer","Haustür"]];
+const ARTCODES = ["fenster","balkontuer","terrassentuer","dachfenster","haustuer"];
+const ARTEN = () => ARTCODES.map((w) => [w, t("art." + w)]);
 const TUERARTEN = ["balkontuer","terrassentuer","haustuer"];
-const ZUSTAND_TEXT = {
-  plan:"Zeitplan", beschattung:"Hitzeschutz", urlaub:"Urlaub", rauch:"Rauchsperre",
-  fenster:"Fenster offen", manuell:"Handbetrieb", aus:"aus", gesperrt:"gesperrt",
-  ohne_plan:"kein Plan", nur_schliessen:"nur schließen", fehlt:"fehlt",
-  von_hand:"von Hand",
-};
+const ZUSTAENDE = ["plan","beschattung","urlaub","rauch","fenster","manuell","aus",
+                   "gesperrt","ohne_plan","nur_schliessen","fehlt","von_hand"];
+const zustandText = (z) => ZUSTAENDE.includes(z) ? t("zt." + z) : "";
 
 let CONFIG = null, ENTITAETEN = null, BERICHT = null;
+
+/* ── Die Sprache der Oberfläche ─────────────────────────────────────────
+   Dieselbe Bauart wie im Add-on und in der Karte: eine Tabelle je Sprache,
+   Deutsch als Rückfallebene. Welche gilt, sagt der Planer im Bericht – so
+   spricht die Einrichtung dieselbe Sprache wie das, was sie einrichtet. */
+const UI = {
+  de: {
+    "rl.eigene_punkte_1": "ein eigener Punkt",
+    "zp.n_punkte_1": "1 Schaltpunkt",
+    "ge.rollos": "<b>{n}</b> Rollos",
+    "ge.rollos_1": "<b>1</b> Rollo",
+    "ge.plaene": "<b>{n}</b> Zeitpläne",
+    "ge.plaene_1": "<b>1</b> Zeitplan",
+    "ge.fehler": "<b>{n}</b> Fehler",
+    "ge.fehler_1": "<b>1</b> Fehler",
+    "ge.warnungen": "<b>{n}</b> Warnungen",
+    "ge.warnungen_1": "<b>1</b> Warnung",
+    "ev.frage_1": "Ein Rollo übernehmen? Die bisherige Einrichtung wird dabei ersetzt.",
+    "fr.angelegt_1": "ein Schalter angelegt",
+    "tafel.rollos": "Rollos",
+    "tafel.rollos_hinweis": "Jedes Rollo führt seine eigenen Angaben: was dahintersteckt, wohin es "
+      + "zeigt, welcher Kontakt es sperrt. Den <b>Zeitplan</b> teilt es sich mit "
+      + "anderen – oder es hat einen eigenen.",
+    "tafel.plaene_hinweis": "Ein Zeitplan gehört keinem Raum, sondern allen Rollos, die ihm folgen. "
+      + "Was hier geändert wird, gilt für alle davon – und jeder Zeitplan hat einen "
+      + "eigenen Schalter in Home Assistant, mit dem er stillgelegt werden kann.",
+    "tafel.schalter_hinweis1": "Ein Schalter ist eine <b>Bedingung, die Sie von Hand umlegen können</b>. "
+      + "Sie hängen ihn an einen Schaltpunkt („nur wenn …“), und solange er nicht "
+      + "passt, greift der Punkt nicht. So lässt sich das Öffnen eines Rollos "
+      + "aussetzen, ohne den Zeitplan zu ändern.",
+    "tafel.schalter_hinweis2": "<b>Ein/Aus-Schalter</b> – zwei Stellungen. Beispiel: „Obergeschoss "
+      + "schließen“. Steht er auf aus, fahren die Kinderzimmer abends nicht zu.<br>"
+      + "<b>Auswahl</b> – mehrere Stellungen, von denen immer eine gilt. Beispiel: "
+      + "„Terrassentür schließen“ mit <i>normal / 24 Uhr / aus</i>. Für jede "
+      + "Stellung gibt es einen eigenen Schaltpunkt; bei „aus“ greift keiner, und "
+      + "die Tür bleibt offen.<br>Der Planer legt beide in Home Assistant an – als "
+      + "<code>switch.</code> beziehungsweise <code>select.</code> Er kennt ihren "
+      + "Stand und räumt sie wieder ab, wenn Sie sie hier löschen. Deshalb hängt "
+      + "kein Zeitplan an Helfern, die jemand vorher von Hand anlegen müsste.",
+    "tafel.rauchalarm": "Rauchalarm",
+    "tafel.einstellungen": "Einstellungen",
+    "tafel.protokoll": "Protokoll",
+    "pr.zeit": "Zeit",
+    "pr.rollo": "Rollo",
+    "pr.was": "Was",
+    "pr.warum": "Warum",
+    "tafel.einrichtung": "Aus den vorhandenen Automationen",
+    "tafel.einrichtung_hinweis": "Der Planer liest <code>automations.yaml</code> und schlägt vor, was er "
+      + "dort findet: je Rollo die Schaltzeiten, und für Rollos mit gleichem Muster "
+      + "einen gemeinsamen Zeitplan. Übernommen wird nichts von selbst. <b>Die "
+      + "alten Automationen bleiben aktiv</b>; schalten Sie sie ab, sobald der "
+      + "Planer läuft, sonst fahren beide gegeneinander.",
+    "pr.leer": "Noch nichts geschehen.",
+    "pr.leeren_frage": "Protokoll leeren?",
+    "ev.keine_rollos": "Keine Rollos gefunden.",
+    "ev.uhr": "{zeit} Uhr",
+    "ev.ab": ", ab {zeit}",
+    "ev.bis": ", bis {zeit}",
+    "ev.taeglich": "täglich",
+    "ev.rollos": "Rollos",
+    "ev.kein_plan": "kein Zeitplan",
+    "ev.plaene": "Gemeinsame Zeitpläne",
+    "ev.plaene_hinweis": "Rollos mit gleichem Schaltmuster teilen sich einen Zeitplan – was dort "
+        + "geändert wird, gilt für alle davon.",
+    "ev.uebernehmen": "Ausgewählte übernehmen",
+    "ev.eigene_schalter": "Eigene Schalter anlegen statt fremde Helfer zu benutzen",
+    "ev.bleibt": "Bleibt bei den Automationen",
+    "ev.bleibt_hinweis": "Diese Automationen löst der Planer nicht ab; sie sollen weiterlaufen.",
+    "ev.nichts_gewaehlt": "Nichts ausgewählt",
+    "ev.frage": "{n} Rollos übernehmen? Die bisherige Einrichtung wird dabei ersetzt.",
+    "ev.fertig": "{rollos} Rollos, {plaene} Zeitpläne, {schalter} Schalter",
+    "ge.leer": "Nichts zu beanstanden.",
+    "kopf.rauch": "Rauchsperre",
+    "kopf.automatik_aus": "Automatik aus",
+    "kopf.trockenlauf": "Trockenlauf",
+    "kopf.urlaub": "Urlaub",
+    "kopf.laeuft": "läuft",
+    "kopf.gerechnet": "gerechnet",
+    "kopf.durchsetzen_frage": "Der Planer vergisst, was er zuletzt getan hat, und fährt alle Rollos "
+             + "auf den Stand, der jetzt gilt. Fortfahren?",
+    "kopf.durchgesetzt": "wird durchgesetzt",
+    "neu.schalter": "Neuer Schalter",
+    "neu.auswahl": "Neue Auswahl",
+    "neu.auswahl_normal": "normal",
+    "neu.auswahl_aus": "aus",
+    "neu.gruppe": "Neue Gruppe",
+    "pb.gesendet_an": "Probemeldung gesendet an {liste}",
+    "pb.nichts": "Nichts gesendet",
+    "pb.wachhund": "gesendet an {liste}",
+    "zp.plan": "Zeitplan",
+    "zp.punkte": "Schaltpunkte",
+    "zp.gilt_fuer": "gilt für",
+    "zp.aus": "(aus)",
+    "zp.niemand": "– niemand folgt ihm –",
+    "zp.bearbeiten": "Bearbeiten",
+    "zp.leer": "Noch kein gemeinsamer Zeitplan.",
+    "zp.eigene": "Eigene Zeitpläne",
+    "zp.eigene_hinweis": "Diese Rollos folgen keinem gemeinsamen Plan, sondern haben einen für "
+        + "sich allein. Bearbeitet wird er im Rollo selbst.",
+    "zp.n_punkte": "{n} Schaltpunkte",
+    "zp.ohne": "Ohne Zeitplan",
+    "zp.von_hand_gewollt": "wird von Hand gefahren – so gewollt",
+    "zp.faehrt_nie": "fährt nie",
+    "pd.neuer": "Neuer Zeitplan",
+    "pd.anlegen": "Zeitplan anlegen",
+    "pd.name": "Name",
+    "pd.aktiv": "Zeitplan ist eingeschaltet",
+    "pd.folger": "Diesem Plan folgen: <b>{liste}</b>. Was hier geändert wird, gilt für alle.",
+    "pd.keine_folger": "Diesem Plan folgt noch kein Rollo – zuzuordnen ist er unter <b>Rollos</b>.",
+    "pd.punkte": "Schaltpunkte",
+    "dl.rollo_waehlen": "Bitte ein Rollo auswählen",
+    "dl.den_plan": "den Zeitplan „{name}“",
+    "dl.das_rollo": "das Rollo „{name}“",
+    "dl.frage": "Wirklich {was} löschen?",
+    "dl.geloescht": "gelöscht",
+    "sc.name": "Name",
+    "sc.art": "Art",
+    "sc.stellungen": "Stellungen",
+    "sc.vorgabe": "Vorgabe",
+    "sc.jetzt": "jetzt",
+    "sc.auswahl": "Auswahl",
+    "sc.schalter": "Schalter",
+    "sc.optionen_platzhalter": "normal, 24 Uhr, aus",
+    "sc.an_aus": "an / aus",
+    "sc.an": "an",
+    "sc.aus": "aus",
+    "sc.leer": "Noch kein eigener Schalter.",
+    "fr.zeitplan": "Zeitplan {name}",
+    "fr.alles_eigen": "Alle Zeitpläne hängen an eigenen Schaltern des Planers.",
+    "fr.hinweis": "Diese Zeitpläne hängen noch an fremden Helfern. Der Planer kann sie "
+      + "durch eigene ersetzen: gleicher Name, gleiche Stellungen, übernommener "
+      + "Stand. Die alten Helfer bleiben liegen – sie werden danach nur nicht mehr "
+      + "gebraucht.",
+    "fr.ersetzen": "Durch eigene Schalter ersetzen",
+    "fr.frage": "Der Planer legt für jeden dieser Helfer einen eigenen Schalter an und "
+               + "biegt die Zeitpläne darauf um. Fortfahren?",
+    "fr.angelegt": "{n} Schalter angelegt",
+    "rd.neu": "Rollo hinzufügen",
+    "rd.entitaet": "Entität",
+    "rd.welches": "Welches Rollo?",
+    "rd.bitte_waehlen": "bitte wählen",
+    "rd.art": "Was steckt dahinter",
+    "rd.art_hinweis": "Eine Tür geht bis zum Boden – das ändert die Anzeige und legt nahe, "
+      + "einen Kontakt zu hinterlegen.",
+    "rd.name": "Name (leer = aus Home Assistant)",
+    "rd.raum": "Raum (nur zum Ordnen)",
+    "rd.aktiv": "Automatik für dieses Rollo",
+    "rd.aktiv_hinweis": "Aus heißt: Der Planer fährt es nicht nach Plan. Es bleibt in der "
+      + "Übersicht, meldet weiter seine Stellung, lässt sich von Hand fahren und "
+      + "geht bei Rauchalarm trotzdem auf.",
+    "rd.betriebsart": "Betriebsart",
+    "rd.b_plan": "Plan – auf und zu",
+    "rd.b_nur_schliessen": "nur schließen",
+    "rd.b_von_hand": "ohne Zeitplan, nur von Hand",
+    "rd.b_beobachten": "beobachten, nicht fahren",
+    "rd.betriebsart_hinweis": "„nur von Hand“ heißt: Der Planer zeigt das Rollo an, überwacht es und "
+          + "hält bei Rauch die Finger davon – aber er fährt es nicht nach der Uhr.",
+    "rd.plan_titel": "Zeitplan",
+    "rd.plan_frage": "Welchem Zeitplan folgt dieses Rollo?",
+    "rd.plan_eigen": "einem eigenen",
+    "rd.plan_hinweis": "Die Schaltpunkte stehen unter <b>Zeitpläne</b> – was dort geändert wird, "
+             + "gilt für alle Rollos, die diesem Plan folgen.",
+    "rd.zeigt_nach": "Zeigt nach",
+    "rd.unbekannt": "unbekannt",
+    "rd.oeffnungswinkel": "Öffnungswinkel",
+    "rd.stellung_vorgabe": "Stellung (leer = Vorgabe)",
+    "rd.grad_hinweis": "Grad im Uhrzeigersinn: <b>0</b> Nord · <b>90</b> Ost · <b>180</b> Süd · "
+      + "<b>270</b> West. Krumme Werte sind erwünscht — ein Haus steht selten genau "
+      + "nach der Himmelsrichtung, und 20 Grad Unterschied sind am Nachmittag eine "
+      + "Stunde Sonne. Der <i>Öffnungswinkel</i> sagt, wie weit die Sonne daneben "
+      + "stehen darf und trotzdem noch hereinscheint. Die <i>Stellung</i> gilt nur "
+      + "für dieses Rollo; leer heißt: die Vorgabe aus den Einstellungen.",
+    "rd.hitze_haken": "Hitzeschutz für dieses Rollo",
+    "rd.hitze_hinweis": "Ohne Ausrichtung bleibt er wirkungslos – der Planer kann nicht raten, "
+      + "wohin ein Fenster zeigt.",
+    "rd.raumfuehler": "Raumfühler (freiwillig)",
+    "rd.raumtemp_ab": "… erst ab dieser Raumtemperatur",
+    "rd.kontakte": "Kontakte",
+    "rd.kontakte_titel": "Solange einer offen ist, wird nicht zugefahren",
+    "rd.tuer_warnung": "Bei einer Tür ist das kein Zubehör: Ohne Kontakt merkt der Planer "
+        + "nicht, ob jemand draußen steht, wenn er zufährt.",
+    "rd.urlaub_sim": "Im Urlaub mitsimulieren",
+    "rd.fluchtweg": "Bei Rauchalarm auffahren",
+    "rd.fluchtweg_hinweis": "Der Fluchtweg geht allem vor – auch einem abgeschalteten Zeitplan und "
+        + "„von Hand“. Ausschalten nur für ein Rollo, das nicht fahren darf, etwa "
+        + "weil ein Möbelstück im Weg steht.",
+    "rd.stellungen": "Stellungen",
+    "rd.offen_heisst": "„offen“ heißt",
+    "rd.zu_heisst": "„zu“ heißt",
+    "hb.aufgehoben": "Handbetrieb aufgehoben ({n})",
+    "rl.leer": "Noch kein Rollo eingerichtet.",
+    "rl.rollo": "Rollo",
+    "rl.was": "was",
+    "rl.plan": "Zeitplan",
+    "rl.hitze": "Hitzeschutz",
+    "rl.automatik_aus": "(Automatik aus)",
+    "rl.nur_hand": "nur von Hand",
+    "rl.eigene_punkte": "{n} eigene Punkte",
+    "rl.bearbeiten": "Bearbeiten",
+    "ue.stand": "Stand",
+    "ue.sonne": "Sonne <b>{auf}</b> bis <b>{unter}</b>",
+    "ue.hoehe": "steht <b>{hoehe}°</b> hoch bei <b>{azimut}°</b>",
+    "ue.aussen": "außen <b>{n} °C</b>",
+    "ue.heute": "heute <b>{was}</b>",
+    "ue.morgen": "morgen <b>{was}</b>",
+    "ue.schulfrei": "schulfrei",
+    "ue.schultag": "Schultag",
+    "ue.schule": "Schule",
+    "ue.urlaub": "<b>Urlaub</b>",
+    "ue.trockenlauf": "<b>Trockenlauf</b> – es wird nichts gefahren",
+    "ue.rauch": "<b>Rauchsperre</b>",
+    "ue.leer": "Noch kein Rollo eingerichtet – schauen Sie unter <b>Einrichtung</b>, was "
+      + "sich aus den vorhandenen Automationen übernehmen lässt.",
+    "ka.dann": "dann {stellung} um {zeit} Uhr",
+    "ka.eigener_plan": "eigener Plan",
+    "ka.auf": "auf",
+    "ka.zu": "zu",
+    "ka.hand_aufheben": "Handbetrieb aufheben",
+    "ka.gefahren": "gefahren",
+    "pk.versatz_titel": "Versatz in Minuten",
+    "pk.frueh_titel": "frühestens",
+    "pk.spaet_titel": "spätestens",
+    "pk.stellung_titel": "Stellung in Prozent",
+    "pk.nur_wenn": "nur wenn",
+    "pk.bedingung_neu": "Bedingung hinzufügen",
+    "pk.ohne_bedingung": "ohne Bedingung gilt der Punkt immer",
+    "pk.kopf_ausloeser": "Auslöser",
+    "pk.kopf_zeit": "Zeit / Versatz",
+    "pk.kopf_klammer": "frühestens · spätestens",
+    "pk.kopf_stellung": "Stellung · gilt",
+    "pk.leer": "Noch kein Schaltpunkt.",
+    "pk.neu": "Schaltpunkt hinzufügen",
+    "pk.vorlage": "Vorlage einfügen …",
+    "pk.v_wohnraum": "Wohnraum",
+    "pk.v_kinderzimmer": "Kinderzimmer",
+    "pk.v_schlafzimmer": "Schlafzimmer",
+    "pk.v_buero": "Büro",
+    "pk.hinweis": "Bei einem Sonnenauslöser ist die zweite Spalte der Versatz in Minuten; "
+      + "„frühestens“ und „spätestens“ klammern ihn ein.",
+    "tage.kurz": "Mo,Di,Mi,Do,Fr,Sa,So",
+    "allg.striche": "N,NNO,NO,ONO,O,OSO,SO,SSO,S,SSW,SW,WSW,W,WNW,NW,NNW",
+    "aus.uhrzeit": "Uhrzeit",
+    "aus.sonnenaufgang": "Sonnenaufgang",
+    "aus.sonnenuntergang": "Sonnenuntergang",
+    "aus.daemmerung": "Dämmerung",
+    "gilt.immer": "immer",
+    "gilt.schultag": "an Schultagen",
+    "gilt.schulfrei": "an schulfreien Tagen",
+    "gilt.morgen_schultag": "wenn morgen Schule ist",
+    "gilt.morgen_schulfrei": "wenn morgen schulfrei ist",
+    "art.fenster": "Fenster",
+    "art.balkontuer": "Balkontür",
+    "art.terrassentuer": "Terrassentür",
+    "art.dachfenster": "Dachfenster",
+    "art.haustuer": "Haustür",
+    "zt.plan": "Zeitplan",
+    "zt.beschattung": "Hitzeschutz",
+    "zt.urlaub": "Urlaub",
+    "zt.rauch": "Rauchsperre",
+    "zt.fenster": "Fenster offen",
+    "zt.manuell": "Handbetrieb",
+    "zt.aus": "aus",
+    "zt.gesperrt": "gesperrt",
+    "zt.ohne_plan": "kein Plan",
+    "zt.nur_schliessen": "nur schließen",
+    "zt.fehlt": "fehlt",
+    "zt.von_hand": "von Hand",
+    "allg.offen": "offen",
+    "allg.zu": "zu",
+    "allg.nichts_gefunden": "Nichts gefunden",
+    "allg.ohne_bereich": "Ohne Bereich",
+    "ein.betrieb": "Betrieb",
+    "ein.automatik": "Automatik – ohne Haken fährt der Planer gar nichts",
+    "ein.trockenlauf": "Trockenlauf – rechnen und protokollieren, aber nicht fahren",
+    "ein.manuell": "Handbetrieb stehen lassen",
+    "ein.invertiert": "Prozentangaben umdrehen: 0 % = offen, 100 % = geschlossen",
+    "ein.invertiert_hinweis": "Home Assistant zählt andersherum (100 % = offen), Amazon Echo so wie "
+      + "hier. Umgedreht wird nur, was angezeigt und eingegeben wird – gespeichert "
+      + "bleibt alles in der Zählweise von Home Assistant, damit ein Umschalten "
+      + "keinen Zeitplan verdreht. Der Wert der Rollo-Sensoren dreht sich mit; ihr "
+      + "Attribut <code>stellung_ha</code> behält die Zählweise von Home Assistant.",
+    "ein.takt": "Takt (Sekunden)",
+    "ein.manuell_stunden": "Handbetrieb gilt (Stunden)",
+    "ein.sprache": "Sprache",
+    "ein.sprache_feld": "Texte des Planers",
+    "ein.sprache_auto": "wie Home Assistant",
+    "ein.sprache_hinweis": "Gilt für alles, was der Planer selbst formuliert: Begründungen in der "
+      + "Kachel, Protokoll und die Meldung bei Rauchalarm. „Wie Home Assistant“ "
+      + "liest die dort eingestellte Sprache beim Start des Add-ons – wer sie in "
+      + "Home Assistant ändert, startet das Add-on neu. Die Karte folgt dagegen "
+      + "immer der Sprache ihres Betrachters.",
+    "ein.kalender": "Woher der Planer weiß, welcher Tag ist",
+    "ein.schulfrei": "Heute schulfrei",
+    "ein.schulfrei_morgen": "Morgen schulfrei",
+    "ein.urlaub_entity": "Urlaub",
+    "ein.aussen": "Außentemperatur",
+    "ein.keiner": "keiner",
+    "ein.keine": "keine",
+    "ein.hitze": "Hitzeschutz",
+    "ein.hitze_an": "Hitzeschutz einschalten",
+    "ein.hitze_ab": "ab Außentemperatur (°C)",
+    "ein.hysterese": "Hysterese (K)",
+    "ein.min_hoehe": "Sonne mindestens (° hoch)",
+    "ein.hitze_position": "Stellung beim Beschatten (%)",
+    "ein.nur_leer": "nur, wenn niemand im Raum ist",
+    "ein.urlaub": "Urlaub",
+    "ein.urlaub_modus": "Was im Urlaub gilt",
+    "ein.urlaub_simulation": "Anwesenheit simulieren",
+    "ein.urlaub_zu": "alles geschlossen halten",
+    "ein.urlaub_plan": "normaler Zeitplan",
+    "ein.streuung": "Streuung (± Minuten)",
+    "ein.nicht_vor": "nicht vor",
+    "ein.nicht_nach": "nicht nach",
+    "ein.urlaub_hinweis": "Der Versatz wird einmal am Tag gewürfelt und bleibt dann fest – auch "
+      + "über einen Neustart hinweg.",
+    "ein.waechter": "Wächter",
+    "ein.waechter_an": "Ausfälle melden",
+    "ein.hindernis": "Hindernis- und Blockademeldungen der Antriebe auswerten",
+    "ein.schweigefrist": "Schweigefrist (Stunden)",
+    "ein.meldeweg": "Meldeweg",
+    "gr.hinweis": "Eine Obergruppe liegt <b>über</b> den Rollos, sie ersetzt sie nicht: "
+      + "Jedes Rollo behält seinen eigenen Zeitplan. Geben Sie der Gruppe "
+      + "zusätzlich einen, gelten seine Schaltpunkte für alle ihre Rollos – so wie "
+      + "früher eine Automation „Rollo schliessen EG“ neben den Einzelautomationen "
+      + "lief. Welcher Punkt gilt, entscheidet der zuletzt fällige.",
+    "gr.name": "Name der Gruppe",
+    "gr.plan": "Gemeinsamer Zeitplan (freiwillig)",
+    "gr.plan_keiner": "— keiner, die Gruppe ordnet nur —",
+    "gr.schalter": "Freigabeschalter (freiwillig)",
+    "gr.schalter_keiner": "— keiner —",
+    "gr.aktiv": "Gruppe eingeschaltet",
+    "gr.schalter_hinweis": "Steht der Freigabeschalter aus, fährt der Planer kein Rollo dieser "
+      + "Gruppe nach Plan. Von Hand und bei Rauchalarm fahren sie weiter.",
+    "gr.verschieben": "verschieben nach …",
+    "gr.heraus": "— aus der Gruppe nehmen —",
+    "gr.leer": "Noch kein Rollo in dieser Gruppe.",
+    "gr.dazu": "Rollo in diese Gruppe legen",
+    "gr.dazu_waehlen": "auswählen …",
+    "gr.bisher_in": " — bisher in „{name}“",
+    "gr.hoch": "↑ Gruppe",
+    "gr.runter": "↓ Gruppe",
+    "gr.weg": "Gruppe löschen",
+    "gr.ohne": "Noch in keiner Gruppe",
+    "gr.ohne_waehlen": "in eine Gruppe legen …",
+    "gr.ohne_hinweis": "Ein Rollo ohne Gruppe fährt weiter nach seinem eigenen Zeitplan – es "
+      + "fehlt ihm nur die Obergruppe.",
+    "gr.keine": "Noch keine Gruppen. „Vorschlag aus Home Assistant“ macht aus deinen "
+      + "Etagen einen Anfang.",
+    "gr.loeschen_frage": "Gruppe „{name}“ löschen? Die {n} Rollos darin bleiben bestehen und "
+      + "fahren weiter nach ihrem eigenen Zeitplan.",
+    "gr.vorschlag_frage": "Vorschlag: {n} Gruppen aus deinen Etagen. Das ersetzt den aktuellen "
+      + "Stand in diesem Reiter – gespeichert wird erst mit „Speichern“.",
+    "allg.gespeichert": "gespeichert",
+    "ra.alarm_laeuft": "<b>Es läuft gerade ein Alarm.</b>",
+    "ra.fluchtweg_offen": " – der Fluchtweg ist offen.",
+    "ra.ruhig": "Zurzeit schlägt kein Melder an.",
+    "ra.sperre_an": "Sperre an",
+    "ra.sperre_aus": "Sperre AUS",
+    "ra.freigabe_an": "Fluchtweg-Freigabe an",
+    "ra.freigabe_aus": "Freigabe AUS",
+    "ra.trockenlauf_an": "Trockenlauf – es fährt nichts",
+    "ra.trockenlauf_aus": "kein Trockenlauf",
+    "ra.weg_eigen": "eigener Meldeweg",
+    "ra.weg_waechter": "Meldeweg vom Wächter",
+    "ra.weg_fehlt": "MELDEWEG FEHLT",
+    "ra.ausgenommen": "Vom Auffahren ausgenommen:",
+    "ra.stand": "Stand",
+    "ra.sperre": "Die Sperre",
+    "ra.sperre_haken": "Bei Rauch keinen Zeitplan mehr ausführen",
+    "ra.sperre_hinweis": "Das muss an bleiben: Sonst führe der Planer beim nächsten Takt "
+      + "seinen Zeitplan durch und machte den Fluchtweg wieder zu.",
+    "ra.nachlauf": "Nachlauf nach der Entwarnung (Minuten)",
+    "ra.nachlauf_hinweis": "So lange nach der Entwarnung führt der Planer noch keinen Zeitplan "
+      + "aus. Aufgefahren wird in dieser Zeit aber auch nicht mehr – wer hinter "
+      + "dem abgezogenen Alarm zumacht, soll nicht gegen den Planer ankämpfen.",
+    "ra.freigabe": "Die Fluchtweg-Freigabe",
+    "ra.freigabe_haken": "Bei Alarm jedes Rollo auffahren",
+    "ra.freigabe_hinweis": "Steht über allem: über der Automatik, über einem abgeschalteten "
+      + "Zeitplan, über „von Hand“. Ein einzelnes Rollo nimmt man nicht hier aus, "
+      + "sondern beim Rollo selbst (<i>Rollos → Bearbeiten → Bei Rauchalarm "
+      + "auffahren</i>). Der <b>Trockenlauf</b> gilt auch hier – solange er an "
+      + "ist, wird nur gemeldet.",
+    "ra.versuche": "Versuche je Rollo",
+    "ra.versuche_hinweis": "Ein Rollo, das nach der Fahrzeit immer noch zu ist, bekommt den Befehl "
+      + "erneut – so oft, wie hier steht. Danach gilt es als blockiert und wird in "
+      + "Ruhe gelassen, statt im Minutentakt gegen ein Hindernis zu fahren.",
+    "ra.melder": "Melder",
+    "ra.melder_titel": "Diese Melder lösen aus",
+    "ra.melder_hinweis": "Keiner gewählt heißt <b>alle</b> – jeder <code>binary_sensor</code> der "
+      + "Geräteklasse „Rauch“, CO-Melder eingeschlossen. Das ist die sichere "
+      + "Vorgabe: Ein Melder, den man beim Auswählen übersieht, löst dann trotzdem "
+      + "aus. Ein nicht angehakter Melder schlägt für den Planer niemals an.",
+    "ra.weg": "Meldeweg",
+    "ra.weg_titel": "Ein Rauchalarm geht an",
+    "ra.weg_hinweis1": "Gemeldet wird <b>einmal je Alarm</b>, nicht bei jedem Takt – und auch "
+      + "dann, wenn die Freigabe abgeschaltet ist; dann sagt die Nachricht eben, "
+      + "dass kein Rollo aufgefahren ist. Ganz oben in der Meldung steht, was "
+      + "<b>nicht</b> erreichbar war.",
+    "ra.weg_hinweis2": "Ist hier nichts angehakt, gilt der Meldeweg des Wächters "
+      + "(<i>Einstellungen → Wächter</i>)",
+    "ra.weg_zurzeit": ", zurzeit",
+    "ra.weg_keiner": " – und dort steht ebenfalls keiner, die Meldung ginge also ins Leere",
+    "ra.weg_hinweis3": "Ein Brandalarm sollte nicht am selben Weg hängen wie „ein Antrieb "
+      + "meldet sich nicht“.",
+    "nav.uebersicht": "Übersicht", "nav.rollos": "Rollos", "nav.gruppen": "Gruppen",
+    "nav.plaene": "Zeitpläne", "nav.schalter": "Schalter",
+    "nav.rauchalarm": "Rauchalarm", "nav.einstellungen": "Einstellungen",
+    "nav.protokoll": "Protokoll", "nav.einrichtung": "Einrichtung",
+    "kopf.durchsetzen": "Plan durchsetzen",
+    "kopf.durchsetzen.titel": "Den gemerkten Stand verwerfen und den geltenden "
+      + "Schaltpunkt neu ausführen",
+    "kopf.rechnen": "Jetzt rechnen",
+    "tafel.lage": "Lage", "tafel.stoerungen": "Störungen",
+    "tafel.plaene": "Gemeinsame Zeitpläne", "tafel.schalter": "Eigene Schalter",
+    "tafel.gruppen": "Obergruppen", "tafel.gesundheit": "Selbstauskunft",
+    "knopf.rollo_neu": "Rollo hinzufügen", "knopf.plan_neu": "Zeitplan anlegen",
+    "knopf.schalter_neu": "Ein/Aus-Schalter anlegen",
+    "knopf.auswahl_neu": "Auswahl anlegen",
+    "knopf.helfer_ersetzen": "Fremde Helfer ersetzen",
+    "knopf.gruppen_vorschlag": "Vorschlag aus Home Assistant",
+    "knopf.gruppe_neu": "Gruppe hinzufügen", "knopf.probe": "Probemeldung senden",
+    "knopf.protokoll_leeren": "Protokoll leeren", "knopf.neu_pruefen": "Neu prüfen",
+    "knopf.schliessen": "Schließen", "knopf.loeschen": "Löschen",
+    "knopf.speichern": "Speichern",
+  },
+  en: {
+    "rl.eigene_punkte_1": "one own point",
+    "zp.n_punkte_1": "1 switching point",
+    "ge.rollos": "<b>{n}</b> covers",
+    "ge.rollos_1": "<b>1</b> cover",
+    "ge.plaene": "<b>{n}</b> schedules",
+    "ge.plaene_1": "<b>1</b> schedule",
+    "ge.fehler": "<b>{n}</b> errors",
+    "ge.fehler_1": "<b>1</b> error",
+    "ge.warnungen": "<b>{n}</b> warnings",
+    "ge.warnungen_1": "<b>1</b> warning",
+    "ev.frage_1": "Take over one cover? The current setup will be replaced.",
+    "fr.angelegt_1": "one switch created",
+    "tafel.rollos": "Covers",
+    "tafel.rollos_hinweis": "Every cover carries its own details: what is behind it, which way it faces, "
+      + "which contact blocks it. Its <b>schedule</b> it shares with others – or it "
+      + "has one of its own.",
+    "tafel.plaene_hinweis": "A schedule belongs to no room but to every cover following it. What is "
+      + "changed here applies to all of them – and each schedule has its own switch "
+      + "in Home Assistant to put it to sleep.",
+    "tafel.schalter_hinweis1": "A switch is a <b>condition you can flip by hand</b>. You hang it on a "
+      + "switching point (“only if …”), and while it does not match, the point does "
+      + "not fire. That lets you suspend a cover’s opening without touching the "
+      + "schedule.",
+    "tafel.schalter_hinweis2": "<b>On/off switch</b> – two positions. Example: “close the upper floor”. Set "
+      + "to off, the children’s rooms do not close in the evening.<br><b>Choice</b> "
+      + "– several positions, one of which always applies. Example: “close the "
+      + "patio door” with <i>normal / midnight / off</i>. Each position gets its "
+      + "own switching point; with “off” none fires and the door stays open.<br>The "
+      + "planner creates both in Home Assistant – as <code>switch.</code> and "
+      + "<code>select.</code> respectively. It knows their state and clears them "
+      + "away when you delete them here. That is why no schedule hangs on helpers "
+      + "somebody would have to create by hand first.",
+    "tafel.rauchalarm": "Smoke alarm",
+    "tafel.einstellungen": "Settings",
+    "tafel.protokoll": "Log",
+    "pr.zeit": "Time",
+    "pr.rollo": "Cover",
+    "pr.was": "What",
+    "pr.warum": "Why",
+    "tafel.einrichtung": "From the existing automations",
+    "tafel.einrichtung_hinweis": "The planner reads <code>automations.yaml</code> and proposes what it finds "
+      + "there: the switching times per cover, and a shared schedule for covers "
+      + "with the same pattern. Nothing is taken over on its own. <b>The old "
+      + "automations stay active</b>; switch them off once the planner runs, or the "
+      + "two will work against each other.",
+    "pr.leer": "Nothing has happened yet.",
+    "pr.leeren_frage": "Clear the log?",
+    "ev.keine_rollos": "No covers found.",
+    "ev.uhr": "{zeit}",
+    "ev.ab": ", from {zeit}",
+    "ev.bis": ", until {zeit}",
+    "ev.taeglich": "daily",
+    "ev.rollos": "Covers",
+    "ev.kein_plan": "no schedule",
+    "ev.plaene": "Shared schedules",
+    "ev.plaene_hinweis": "Covers with the same switching pattern share one schedule – what is changed "
+        + "there applies to all of them.",
+    "ev.uebernehmen": "Take over the selected",
+    "ev.eigene_schalter": "Create own switches instead of using outside helpers",
+    "ev.bleibt": "Stays with the automations",
+    "ev.bleibt_hinweis": "The planner does not replace these automations; they are meant to keep running.",
+    "ev.nichts_gewaehlt": "Nothing selected",
+    "ev.frage": "Take over {n} covers? The current setup will be replaced.",
+    "ev.fertig": "{rollos} covers, {plaene} schedules, {schalter} switches",
+    "ge.leer": "Nothing to complain about.",
+    "kopf.rauch": "Smoke lock",
+    "kopf.automatik_aus": "Automation off",
+    "kopf.trockenlauf": "Dry run",
+    "kopf.urlaub": "Holiday",
+    "kopf.laeuft": "running",
+    "kopf.gerechnet": "calculated",
+    "kopf.durchsetzen_frage": "The planner forgets what it last did and moves every cover to the position "
+             + "that applies now. Continue?",
+    "kopf.durchgesetzt": "being enforced",
+    "neu.schalter": "New switch",
+    "neu.auswahl": "New choice",
+    "neu.auswahl_normal": "normal",
+    "neu.auswahl_aus": "off",
+    "neu.gruppe": "New group",
+    "pb.gesendet_an": "Test message sent to {liste}",
+    "pb.nichts": "Nothing sent",
+    "pb.wachhund": "sent to {liste}",
+    "zp.plan": "Schedule",
+    "zp.punkte": "Switching points",
+    "zp.gilt_fuer": "applies to",
+    "zp.aus": "(off)",
+    "zp.niemand": "– nobody follows it –",
+    "zp.bearbeiten": "Edit",
+    "zp.leer": "No shared schedule yet.",
+    "zp.eigene": "Own schedules",
+    "zp.eigene_hinweis": "These covers follow no shared schedule but have one of their own. It is "
+        + "edited in the cover itself.",
+    "zp.n_punkte": "{n} switching points",
+    "zp.ohne": "Without a schedule",
+    "zp.von_hand_gewollt": "moved by hand – on purpose",
+    "zp.faehrt_nie": "never moves",
+    "pd.neuer": "New schedule",
+    "pd.anlegen": "Create a schedule",
+    "pd.name": "Name",
+    "pd.aktiv": "Schedule is switched on",
+    "pd.folger": "Following this schedule: <b>{liste}</b>. What is changed here applies to all.",
+    "pd.keine_folger": "No cover follows this schedule yet – assign it under <b>Covers</b>.",
+    "pd.punkte": "Switching points",
+    "dl.rollo_waehlen": "Please choose a cover",
+    "dl.den_plan": "the schedule “{name}”",
+    "dl.das_rollo": "the cover “{name}”",
+    "dl.frage": "Really delete {was}?",
+    "dl.geloescht": "deleted",
+    "sc.name": "Name",
+    "sc.art": "Kind",
+    "sc.stellungen": "Positions",
+    "sc.vorgabe": "Default",
+    "sc.jetzt": "now",
+    "sc.auswahl": "Choice",
+    "sc.schalter": "Switch",
+    "sc.optionen_platzhalter": "normal, midnight, off",
+    "sc.an_aus": "on / off",
+    "sc.an": "on",
+    "sc.aus": "off",
+    "sc.leer": "No own switch yet.",
+    "fr.zeitplan": "Schedule {name}",
+    "fr.alles_eigen": "Every schedule hangs on the planner’s own switches.",
+    "fr.hinweis": "These schedules still hang on outside helpers. The planner can replace them "
+      + "with its own: same name, same positions, current state carried over. The "
+      + "old helpers stay where they are – they are simply no longer needed.",
+    "fr.ersetzen": "Replace with own switches",
+    "fr.frage": "The planner will create its own switch for each of these helpers and point "
+               + "the schedules at them. Continue?",
+    "fr.angelegt": "{n} switches created",
+    "rd.neu": "Add a cover",
+    "rd.entitaet": "Entity",
+    "rd.welches": "Which cover?",
+    "rd.bitte_waehlen": "please choose",
+    "rd.art": "What is behind it",
+    "rd.art_hinweis": "A door reaches the floor – that changes the picture and makes a contact "
+      + "sensor worth having.",
+    "rd.name": "Name (empty = from Home Assistant)",
+    "rd.raum": "Room (for sorting only)",
+    "rd.aktiv": "Automation for this cover",
+    "rd.aktiv_hinweis": "Off means: the planner does not move it on schedule. It stays in the "
+      + "overview, keeps reporting its position, can be moved by hand and still "
+      + "opens on a smoke alarm.",
+    "rd.betriebsart": "Mode",
+    "rd.b_plan": "Schedule – open and close",
+    "rd.b_nur_schliessen": "close only",
+    "rd.b_von_hand": "no schedule, by hand only",
+    "rd.b_beobachten": "watch, do not move",
+    "rd.betriebsart_hinweis": "“By hand only” means: the planner shows the cover, watches it and keeps "
+          + "its hands off it during smoke – but it does not move it by the clock.",
+    "rd.plan_titel": "Schedule",
+    "rd.plan_frage": "Which schedule does this cover follow?",
+    "rd.plan_eigen": "its own",
+    "rd.plan_hinweis": "The switching points are under <b>Schedules</b> – what is changed there "
+             + "applies to every cover following that schedule.",
+    "rd.zeigt_nach": "Faces",
+    "rd.unbekannt": "unknown",
+    "rd.oeffnungswinkel": "Opening angle",
+    "rd.stellung_vorgabe": "Position (empty = default)",
+    "rd.grad_hinweis": "Degrees clockwise: <b>0</b> north · <b>90</b> east · <b>180</b> south · "
+      + "<b>270</b> west. Odd values are welcome — a house rarely stands exactly "
+      + "with the compass, and 20 degrees make an hour of sun in the afternoon. The "
+      + "<i>opening angle</i> says how far off the sun may stand and still shine in. "
+      + "The <i>position</i> applies to this cover only; empty means the default "
+      + "from the settings.",
+    "rd.hitze_haken": "Heat shield for this cover",
+    "rd.hitze_hinweis": "Without an orientation it does nothing – the planner cannot guess which way "
+      + "a window faces.",
+    "rd.raumfuehler": "Room sensor (optional)",
+    "rd.raumtemp_ab": "… only from this room temperature",
+    "rd.kontakte": "Contacts",
+    "rd.kontakte_titel": "While one of these is open, nothing is closed",
+    "rd.tuer_warnung": "On a door this is not an accessory: without a contact the planner cannot "
+        + "tell whether someone is outside when it closes.",
+    "rd.urlaub_sim": "Include in holiday simulation",
+    "rd.fluchtweg": "Open on smoke alarm",
+    "rd.fluchtweg_hinweis": "The escape route beats everything – a switched-off schedule and “by hand” "
+        + "included. Switch it off only for a cover that must not move, for "
+        + "instance because a piece of furniture is in the way.",
+    "rd.stellungen": "Positions",
+    "rd.offen_heisst": "“open” means",
+    "rd.zu_heisst": "“closed” means",
+    "hb.aufgehoben": "Manual operation cleared ({n})",
+    "rl.leer": "No cover set up yet.",
+    "rl.rollo": "Cover",
+    "rl.was": "what",
+    "rl.plan": "Schedule",
+    "rl.hitze": "Heat shield",
+    "rl.automatik_aus": "(automation off)",
+    "rl.nur_hand": "by hand only",
+    "rl.eigene_punkte": "{n} own points",
+    "rl.bearbeiten": "Edit",
+    "ue.stand": "As of",
+    "ue.sonne": "Sun <b>{auf}</b> to <b>{unter}</b>",
+    "ue.hoehe": "stands <b>{hoehe}°</b> high at <b>{azimut}°</b>",
+    "ue.aussen": "outside <b>{n} °C</b>",
+    "ue.heute": "today <b>{was}</b>",
+    "ue.morgen": "tomorrow <b>{was}</b>",
+    "ue.schulfrei": "day off",
+    "ue.schultag": "school day",
+    "ue.schule": "school",
+    "ue.urlaub": "<b>Holiday</b>",
+    "ue.trockenlauf": "<b>Dry run</b> – nothing is moved",
+    "ue.rauch": "<b>Smoke lock</b>",
+    "ue.leer": "No cover set up yet – have a look under <b>Setup</b> to see what can be taken "
+      + "over from the existing automations.",
+    "ka.dann": "then {stellung} at {zeit}",
+    "ka.eigener_plan": "own schedule",
+    "ka.auf": "open",
+    "ka.zu": "close",
+    "ka.hand_aufheben": "Clear manual operation",
+    "ka.gefahren": "moved",
+    "pk.versatz_titel": "Offset in minutes",
+    "pk.frueh_titel": "not before",
+    "pk.spaet_titel": "no later than",
+    "pk.stellung_titel": "Position in percent",
+    "pk.nur_wenn": "only if",
+    "pk.bedingung_neu": "Add a condition",
+    "pk.ohne_bedingung": "without a condition the point always applies",
+    "pk.kopf_ausloeser": "Trigger",
+    "pk.kopf_zeit": "Time / offset",
+    "pk.kopf_klammer": "not before · no later than",
+    "pk.kopf_stellung": "Position · applies",
+    "pk.leer": "No switching point yet.",
+    "pk.neu": "Add a switching point",
+    "pk.vorlage": "Insert a template …",
+    "pk.v_wohnraum": "Living room",
+    "pk.v_kinderzimmer": "Child’s room",
+    "pk.v_schlafzimmer": "Bedroom",
+    "pk.v_buero": "Office",
+    "pk.hinweis": "With a sun trigger the second column is the offset in minutes; “not before” "
+      + "and “no later than” bracket it.",
+    "tage.kurz": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+    "allg.striche": "N,NNE,NE,ENE,E,ESE,SE,SSE,S,SSW,SW,WSW,W,WNW,NW,NNW",
+    "aus.uhrzeit": "Time of day",
+    "aus.sonnenaufgang": "Sunrise",
+    "aus.sonnenuntergang": "Sunset",
+    "aus.daemmerung": "Dusk",
+    "gilt.immer": "always",
+    "gilt.schultag": "on school days",
+    "gilt.schulfrei": "on days off",
+    "gilt.morgen_schultag": "when tomorrow is a school day",
+    "gilt.morgen_schulfrei": "when tomorrow is a day off",
+    "art.fenster": "Window",
+    "art.balkontuer": "Balcony door",
+    "art.terrassentuer": "Patio door",
+    "art.dachfenster": "Roof window",
+    "art.haustuer": "Front door",
+    "zt.plan": "Schedule",
+    "zt.beschattung": "Heat shield",
+    "zt.urlaub": "Holiday",
+    "zt.rauch": "Smoke lock",
+    "zt.fenster": "Window open",
+    "zt.manuell": "Manual",
+    "zt.aus": "off",
+    "zt.gesperrt": "locked",
+    "zt.ohne_plan": "no schedule",
+    "zt.nur_schliessen": "close only",
+    "zt.fehlt": "missing",
+    "zt.von_hand": "by hand",
+    "allg.offen": "open",
+    "allg.zu": "closed",
+    "allg.nichts_gefunden": "Nothing found",
+    "allg.ohne_bereich": "No area",
+    "ein.betrieb": "Operation",
+    "ein.automatik": "Automation – unticked, the planner moves nothing at all",
+    "ein.trockenlauf": "Dry run – calculate and log, but do not move",
+    "ein.manuell": "Leave manual operation alone",
+    "ein.invertiert": "Invert percentages: 0 % = open, 100 % = closed",
+    "ein.invertiert_hinweis": "Home Assistant counts the other way round (100 % = open), Amazon Echo the "
+      + "way it is here. Only what is shown and entered is inverted – everything is "
+      + "stored in Home Assistant’s counting, so that switching does not turn a "
+      + "schedule upside down. The value of the cover sensors follows; their "
+      + "attribute <code>stellung_ha</code> keeps Home Assistant’s counting.",
+    "ein.takt": "Tick (seconds)",
+    "ein.manuell_stunden": "Manual operation lasts (hours)",
+    "ein.sprache": "Language",
+    "ein.sprache_feld": "The planner’s wording",
+    "ein.sprache_auto": "same as Home Assistant",
+    "ein.sprache_hinweis": "Applies to everything the planner words itself: reasons on the tile, the log "
+      + "and the smoke alarm message. “Same as Home Assistant” reads the language "
+      + "set there when the add-on starts – change it in Home Assistant and restart "
+      + "the add-on. The card, by contrast, always follows the language of whoever "
+      + "is looking at it.",
+    "ein.kalender": "How the planner knows what kind of day it is",
+    "ein.schulfrei": "Day off today",
+    "ein.schulfrei_morgen": "Day off tomorrow",
+    "ein.urlaub_entity": "Holiday",
+    "ein.aussen": "Outside temperature",
+    "ein.keiner": "none",
+    "ein.keine": "none",
+    "ein.hitze": "Heat shield",
+    "ein.hitze_an": "Switch the heat shield on",
+    "ein.hitze_ab": "from outside temperature (°C)",
+    "ein.hysterese": "Hysteresis (K)",
+    "ein.min_hoehe": "Sun at least (° high)",
+    "ein.hitze_position": "Position while shading (%)",
+    "ein.nur_leer": "only when nobody is in the room",
+    "ein.urlaub": "Holiday",
+    "ein.urlaub_modus": "What applies while away",
+    "ein.urlaub_simulation": "simulate presence",
+    "ein.urlaub_zu": "keep everything closed",
+    "ein.urlaub_plan": "normal schedule",
+    "ein.streuung": "Jitter (± minutes)",
+    "ein.nicht_vor": "not before",
+    "ein.nicht_nach": "not after",
+    "ein.urlaub_hinweis": "The offset is drawn once a day and then stays put – across a restart too.",
+    "ein.waechter": "Watchdog",
+    "ein.waechter_an": "Report failures",
+    "ein.hindernis": "Evaluate obstacle and blockage reports from the motors",
+    "ein.schweigefrist": "Silence allowed (hours)",
+    "ein.meldeweg": "Notification path",
+    "gr.hinweis": "A group sits <b>above</b> the covers, it does not replace them: every cover "
+      + "keeps its own schedule. Give the group one as well and its switching "
+      + "points apply to all its covers – the way an automation “close ground "
+      + "floor” used to run alongside the individual ones. Which point applies is "
+      + "decided by the one that came due last.",
+    "gr.name": "Group name",
+    "gr.plan": "Shared schedule (optional)",
+    "gr.plan_keiner": "— none, the group only orders —",
+    "gr.schalter": "Release switch (optional)",
+    "gr.schalter_keiner": "— none —",
+    "gr.aktiv": "Group switched on",
+    "gr.schalter_hinweis": "With the release switch off, the planner moves no cover of this group by "
+      + "schedule. By hand and on a smoke alarm they still move.",
+    "gr.verschieben": "move to …",
+    "gr.heraus": "— remove from the group —",
+    "gr.leer": "No cover in this group yet.",
+    "gr.dazu": "Put a cover into this group",
+    "gr.dazu_waehlen": "choose …",
+    "gr.bisher_in": " — currently in “{name}”",
+    "gr.hoch": "↑ Group",
+    "gr.runter": "↓ Group",
+    "gr.weg": "Delete group",
+    "gr.ohne": "Not in any group yet",
+    "gr.ohne_waehlen": "put into a group …",
+    "gr.ohne_hinweis": "A cover without a group still follows its own schedule – it simply has no "
+      + "group above it.",
+    "gr.keine": "No groups yet. “Suggestion from Home Assistant” turns your floors into a start.",
+    "gr.loeschen_frage": "Delete group “{name}”? The {n} covers in it remain and keep following "
+      + "their own schedule.",
+    "gr.vorschlag_frage": "Suggestion: {n} groups from your floors. This replaces what is currently in "
+      + "this tab – nothing is saved until you press “Save”.",
+    "allg.gespeichert": "saved",
+    "ra.alarm_laeuft": "<b>An alarm is running.</b>",
+    "ra.fluchtweg_offen": " – the escape route is open.",
+    "ra.ruhig": "No detector is triggering at the moment.",
+    "ra.sperre_an": "Lock on",
+    "ra.sperre_aus": "Lock OFF",
+    "ra.freigabe_an": "Escape route release on",
+    "ra.freigabe_aus": "Release OFF",
+    "ra.trockenlauf_an": "Dry run – nothing moves",
+    "ra.trockenlauf_aus": "no dry run",
+    "ra.weg_eigen": "own notification path",
+    "ra.weg_waechter": "notification path from the watchdog",
+    "ra.weg_fehlt": "NO NOTIFICATION PATH",
+    "ra.ausgenommen": "Excluded from opening:",
+    "ra.stand": "Status",
+    "ra.sperre": "The lock",
+    "ra.sperre_haken": "Run no schedule while smoke is detected",
+    "ra.sperre_hinweis": "This has to stay on: otherwise the planner would carry out its schedule on "
+      + "the next tick and close the escape route again.",
+    "ra.nachlauf": "Grace period after the all-clear (minutes)",
+    "ra.nachlauf_hinweis": "For this long after the all-clear the planner still runs no schedule. But "
+      + "it will not open anything either – whoever closes a cover once the alarm "
+      + "is over should not have to fight the planner.",
+    "ra.freigabe": "The escape route release",
+    "ra.freigabe_haken": "Open every cover on an alarm",
+    "ra.freigabe_hinweis": "This overrides everything: the automation, a switched-off schedule, "
+      + "“by hand”. A single cover is excluded at the cover itself "
+      + "(<i>Covers → Edit → Open on a smoke alarm</i>), not here. The "
+      + "<b>dry run</b> applies here too – while it is on, nothing but a message "
+      + "goes out.",
+    "ra.versuche": "Attempts per cover",
+    "ra.versuche_hinweis": "A cover that is still closed after its travel time gets the command again – "
+      + "as often as set here. After that it counts as blocked and is left alone, "
+      + "rather than driving against an obstacle once a minute.",
+    "ra.melder": "Detectors",
+    "ra.melder_titel": "These detectors trigger",
+    "ra.melder_hinweis": "None ticked means <b>all</b> – every <code>binary_sensor</code> of device "
+      + "class “smoke”, CO detectors included. That is the safe default: a detector "
+      + "overlooked while ticking still triggers. A detector left unticked never "
+      + "triggers for the planner.",
+    "ra.weg": "Notification path",
+    "ra.weg_titel": "A smoke alarm goes to",
+    "ra.weg_hinweis1": "A message goes out <b>once per alarm</b>, not on every tick – and also when "
+      + "the release is switched off; the message then says that no cover opened. "
+      + "The very first line names what was <b>not</b> reachable.",
+    "ra.weg_hinweis2": "With nothing ticked here, the watchdog’s notification path applies "
+      + "(<i>Settings → Watchdog</i>)",
+    "ra.weg_zurzeit": ", currently",
+    "ra.weg_keiner": " – and none is set there either, so the message would go nowhere",
+    "ra.weg_hinweis3": "A fire alarm should not hang on the same path as “a motor is not responding”.",
+    "nav.uebersicht": "Overview", "nav.rollos": "Covers", "nav.gruppen": "Groups",
+    "nav.plaene": "Schedules", "nav.schalter": "Switches",
+    "nav.rauchalarm": "Smoke alarm", "nav.einstellungen": "Settings",
+    "nav.protokoll": "Log", "nav.einrichtung": "Setup",
+    "kopf.durchsetzen": "Apply plan now",
+    "kopf.durchsetzen.titel": "Discard what the planner remembers and carry out "
+      + "the currently valid switching point again",
+    "kopf.rechnen": "Recalculate",
+    "tafel.lage": "Situation", "tafel.stoerungen": "Faults",
+    "tafel.plaene": "Shared schedules", "tafel.schalter": "Own switches",
+    "tafel.gruppen": "Groups", "tafel.gesundheit": "Self-check",
+    "knopf.rollo_neu": "Add cover", "knopf.plan_neu": "Create schedule",
+    "knopf.schalter_neu": "Create on/off switch",
+    "knopf.auswahl_neu": "Create selection",
+    "knopf.helfer_ersetzen": "Replace external helpers",
+    "knopf.gruppen_vorschlag": "Suggestion from Home Assistant",
+    "knopf.gruppe_neu": "Add group", "knopf.probe": "Send test message",
+    "knopf.protokoll_leeren": "Clear log", "knopf.neu_pruefen": "Check again",
+    "knopf.schliessen": "Close", "knopf.loeschen": "Delete",
+    "knopf.speichern": "Save",
+  },
+};
+let SPRACHE = "de";
+
+function t(schluessel, werte){
+  // Einzahl: Steht neben dem Schlüssel einer mit `_1`, gilt der bei genau
+  // einem Stück. „1 own points" liest sich sonst wie ein Tippfehler – und in
+  // einer Sprache, die man selbst nicht spricht, sieht so etwas niemand nach.
+  const wahl = werte && Number(werte.n) === 1 && (UI[SPRACHE]?.[schluessel + "_1"]
+    ?? UI.de[schluessel + "_1"]) !== undefined ? schluessel + "_1" : schluessel;
+  const vorlage = UI[SPRACHE]?.[wahl] ?? UI.de[wahl] ?? UI.de[schluessel] ?? schluessel;
+  if (!werte) return vorlage;
+  return vorlage.replace(/\{(\w+)\}/g, (ganz, name) =>
+    werte[name] !== undefined ? werte[name] : ganz);
+}
+
+/* Die feste Struktur trägt ihre Schlüssel als `data-t` am Element. Das ist
+   weniger Umbau als jeden Text durch eine Funktion zu schicken – und es
+   bleibt lesbar, wenn man die Seite im Quelltext liest. */
+function texteSetzen(){
+  document.documentElement.lang = SPRACHE;
+  // Manche Texte tragen Auszeichnung – <b>, <code>, <br>. Sie stammen aus der
+  // Tabelle in dieser Datei und nicht von außen; deshalb darf hier `innerHTML`
+  // stehen, und auch nur da, wo wirklich eine Marke drin steckt.
+  $$("[data-t]").forEach((el) => {
+    const text = t(el.dataset.t);
+    if (text.includes("<")) el.innerHTML = text; else el.textContent = text;
+  });
+  $$("[data-t-titel]").forEach((el) => { el.title = t(el.dataset.tTitel); });
+}
 let ENTWURF = null;        // was im Dialog gerade bearbeitet wird
 let DIALOGART = null;      // "rollo" | "plan"
 
@@ -547,7 +1384,10 @@ const holeJSON = (pfad, methode, koerper) => hole(pfad, {
 function uhrzeit(iso){
   if (!iso) return "–";
   const d = new Date(iso);
-  return isNaN(d) ? "–" : d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+  // 24 Stunden in beiden Sprachen: „7:30 PM" neben einem Zeitplan, der in
+  // 19:30 gedacht ist, liest sich falsch.
+  return isNaN(d) ? "–" : d.toLocaleTimeString(SPRACHE === "en" ? "en-GB" : "de-DE",
+                                               {hour:"2-digit", minute:"2-digit"});
 }
 
 /* Home Assistant zählt 100 % = offen, Amazon Echo andersherum. Ist die
@@ -573,24 +1413,24 @@ function rolloName(rollo){
 function stellungstext(p){
   if (p === null || p === undefined) return "–";
   // „offen“ und „zu“ hängen nicht an der Zählweise – nur die Zahl dazwischen.
-  if (p >= 100) return "offen";
-  if (p <= 0) return "zu";
+  if (p >= 100) return t("allg.offen");
+  if (p <= 0) return t("allg.zu");
   return zeige(p) + " %";
 }
 
 function auswahl(feldname, optionen, wert, leer=null){
   const eintraege = leer ? [["", leer], ...optionen] : optionen;
-  return `<select name="${feldname}">${eintraege.map(([w, t]) =>
-    `<option value="${esc(w)}" ${String(w) === String(wert ?? "") ? "selected" : ""}>${esc(t)}</option>`
+  return `<select name="${feldname}">${eintraege.map(([w, bez]) =>
+    `<option value="${esc(w)}" ${String(w) === String(wert ?? "") ? "selected" : ""}>${esc(bez)}</option>`
   ).join("")}</select>`;
 }
 
 function hakenliste(feldname, kandidaten, gewaehlt, gruppieren=true){
   if (!kandidaten.length)
-    return `<div class="hakenliste kurz"><div class="h-leer">Nichts gefunden</div></div>`;
+    return `<div class="hakenliste kurz"><div class="h-leer">${t("allg.nichts_gefunden")}</div></div>`;
   const gruppen = new Map();
   kandidaten.forEach((k) => {
-    const gruppe = gruppieren ? (k.bereich || "Ohne Bereich") : "";
+    const gruppe = gruppieren ? (k.bereich || t("allg.ohne_bereich")) : "";
     if (!gruppen.has(gruppe)) gruppen.set(gruppe, []);
     gruppen.get(gruppe).push(k);
   });
@@ -627,19 +1467,20 @@ function zeichneUebersicht(){
   const b = BERICHT || {};
   const sonne = b.sonne || {};
   const teile = [];
-  if (b.zeit) teile.push(`Stand <b>${uhrzeit(b.zeit)}</b>`);
-  teile.push(`Sonne <b>${uhrzeit(sonne.aufgang)}</b> bis <b>${uhrzeit(sonne.untergang)}</b>`);
+  if (b.zeit) teile.push(`${t("ue.stand")} <b>${uhrzeit(b.zeit)}</b>`);
+  teile.push(t("ue.sonne", {auf: uhrzeit(sonne.aufgang), unter: uhrzeit(sonne.untergang)}));
   if (sonne.elevation !== undefined)
-    teile.push(`steht <b>${Math.round(sonne.elevation)}°</b> hoch bei <b>${Math.round(sonne.azimut)}°</b>`);
-  if (b.aussen !== null && b.aussen !== undefined) teile.push(`außen <b>${b.aussen} °C</b>`);
+    teile.push(t("ue.hoehe", {hoehe: Math.round(sonne.elevation),
+                              azimut: Math.round(sonne.azimut)}));
+  if (b.aussen !== null && b.aussen !== undefined) teile.push(t("ue.aussen", {n: b.aussen}));
   if (b.schulfrei !== null && b.schulfrei !== undefined)
-    teile.push(`heute <b>${b.schulfrei ? "schulfrei" : "Schultag"}</b>`);
+    teile.push(t("ue.heute", {was: t(b.schulfrei ? "ue.schulfrei" : "ue.schultag")}));
   if (b.schulfrei_morgen !== null && b.schulfrei_morgen !== undefined)
-    teile.push(`morgen <b>${b.schulfrei_morgen ? "schulfrei" : "Schule"}</b>`);
-  if (b.urlaub) teile.push(`<b>Urlaub</b>`);
-  if (b.trockenlauf) teile.push(`<b>Trockenlauf</b> – es wird nichts gefahren`);
-  if (b.rauch) teile.push(`<b>Rauchsperre</b>: ${esc(b.rauch_grund||"")}`);
-  $("#lage").innerHTML = teile.map((t) => `<span>${t}</span>`).join("");
+    teile.push(t("ue.morgen", {was: t(b.schulfrei_morgen ? "ue.schulfrei" : "ue.schule")}));
+  if (b.urlaub) teile.push(t("ue.urlaub"));
+  if (b.trockenlauf) teile.push(t("ue.trockenlauf"));
+  if (b.rauch) teile.push(`${t("ue.rauch")}: ${esc(b.rauch_grund||"")}`);
+  $("#lage").innerHTML = teile.map((teil) => `<span>${teil}</span>`).join("");
 
   const stoerungen = b.stoerungen || [];
   $("#stoerungen-tafel").hidden = stoerungen.length === 0;
@@ -650,15 +1491,14 @@ function zeichneUebersicht(){
   const rollos = b.rollos || [];
   if (!rollos.length) {
     $("#uebersicht-rollos").innerHTML = `<div class="tafel"><div class="leerhinweis">
-      Noch kein Rollo eingerichtet – schauen Sie unter <b>Einrichtung</b>, was sich
-      aus den vorhandenen Automationen übernehmen lässt.</div></div>`;
+      ${t("ue.leer")}</div></div>`;
     return;
   }
   // Nach Raum ordnen: Der Raum steuert nichts mehr, aber er ist der Ort, an dem
   // man ein Rollo sucht.
   const nachRaum = new Map();
   rollos.forEach((r) => {
-    const raum = r.raum || "Ohne Bereich";
+    const raum = r.raum || t("allg.ohne_bereich");
     if (!nachRaum.has(raum)) nachRaum.set(raum, []);
     nachRaum.get(raum).push(r);
   });
@@ -679,11 +1519,12 @@ function kachel(rollo){
   const zustand = rollo.zustand || "plan";
   const ziel = rollo.ziel;
   const naechster = rollo.naechste_uhrzeit
-    ? `dann ${stellungstext(rollo.naechste_stellung)} um ${esc(rollo.naechste_uhrzeit)} Uhr` : "";
-  const hand = (rollo.hinweis || "").includes("Hand") || zustand === "manuell";
+    ? t("ka.dann", {stellung: stellungstext(rollo.naechste_stellung),
+                    zeit: esc(rollo.naechste_uhrzeit)}) : "";
+  const hand = zustand === "manuell";
   const plan = rollo.plan
     ? `<span class="planschild">${esc(rollo.plan)}</span>`
-    : `<span class="planschild eigen">eigener Plan</span>`;
+    : `<span class="planschild eigen">${t("ka.eigener_plan")}</span>`;
   return `<article class="raum ${zustand === "aus" ? "aus" : ""}">
     <div class="raum-kopf">
       ${rollobild(ziel, rollo.art)}
@@ -694,16 +1535,16 @@ function kachel(rollo){
       </div>
     </div>
     <div style="display:flex; gap:var(--l2); flex-wrap:wrap; align-items:center">
-      ${ZUSTAND_TEXT[zustand] && zustand !== "plan"
-        ? `<span class="marke-schild m-${zustand}">${ZUSTAND_TEXT[zustand]}</span>` : ""}
+      ${zustandText(zustand) && zustand !== "plan"
+        ? `<span class="marke-schild m-${zustand}">${zustandText(zustand)}</span>` : ""}
       ${plan}
     </div>
     <p class="raum-grund">${esc(rollo.begruendung || "")}</p>
     <div class="raum-fuss">
-      <span style="flex:1">${esc(naechster)}</span>
-      <button class="leise" data-fahren="${esc(rollo.entity_id)}" data-position="100">auf</button>
-      <button class="leise" data-fahren="${esc(rollo.entity_id)}" data-position="0">zu</button>
-      ${hand ? `<button class="leise" data-hand="${esc(rollo.entity_id)}">Handbetrieb aufheben</button>` : ""}
+      <span style="flex:1">${naechster}</span>
+      <button class="leise" data-fahren="${esc(rollo.entity_id)}" data-position="100">${t("ka.auf")}</button>
+      <button class="leise" data-fahren="${esc(rollo.entity_id)}" data-position="0">${t("ka.zu")}</button>
+      ${hand ? `<button class="leise" data-hand="${esc(rollo.entity_id)}">${t("ka.hand_aufheben")}</button>` : ""}
     </div>
   </article>`;
 }
@@ -711,7 +1552,7 @@ function kachel(rollo){
 async function fahren(entityId, position){
   try {
     await holeJSON("api/fahren", "POST", {rollo: entityId, position: lies(position)});
-    melden(`gefahren`);
+    melden(t("ka.gefahren"));
     setTimeout(aktualisieren, 1200);
   } catch (err) { melden(err.message, true); }
 }
@@ -719,7 +1560,7 @@ async function fahren(entityId, position){
 async function handbetriebAufheben(entityId){
   try {
     const r = await holeJSON(`api/handbetrieb?rollo=${encodeURIComponent(entityId)}`, "DELETE");
-    melden(`Handbetrieb aufgehoben (${r.aufgehoben})`);
+    melden(t("hb.aufgehoben", {n: r.aufgehoben}));
     setTimeout(aktualisieren, 900);
   } catch (err) { melden(err.message, true); }
 }
@@ -757,29 +1598,29 @@ function werteListe(){
 function punktZeile(punkt, index){
   const sonne = punkt.ausloeser !== "uhrzeit";
   return `<div class="punkt-zeile" data-punkt="${index}">
-    ${auswahl(`p${index}_ausloeser`, AUSLOESER, punkt.ausloeser)}
+    ${auswahl(`p${index}_ausloeser`, AUSLOESER(), punkt.ausloeser)}
     <input type="${sonne ? "number" : "time"}" name="p${index}_start"
            value="${sonne ? (punkt.versatz_min || 0) : esc(punkt.start || "")}"
-           ${sonne ? 'step="5" min="-180" max="180" title="Versatz in Minuten"' : ""}>
+           ${sonne ? `step="5" min="-180" max="180" title="${t("pk.versatz_titel")}"` : ""}>
     <div style="display:flex; gap:4px; align-items:center">
       <input type="time" name="p${index}_frueh" value="${esc(punkt.frueh || "")}"
-             title="frühestens" ${sonne ? "" : "disabled"}>
+             title="${t("pk.frueh_titel")}" ${sonne ? "" : "disabled"}>
       <input type="time" name="p${index}_spaet" value="${esc(punkt.spaet || "")}"
-             title="spätestens" ${sonne ? "" : "disabled"}>
+             title="${t("pk.spaet_titel")}" ${sonne ? "" : "disabled"}>
     </div>
     <div style="display:flex; gap:4px; align-items:center">
       <input type="number" name="p${index}_position" value="${zeige(punkt.position)}"
-             min="0" max="100" step="5" title="Stellung in Prozent" style="max-width:74px">
-      ${auswahl(`p${index}_gilt`, GELTUNG, punkt.gilt)}
+             min="0" max="100" step="5" title="${t("pk.stellung_titel")}" style="max-width:74px">
+      ${auswahl(`p${index}_gilt`, GELTUNG(), punkt.gilt)}
     </div>
     <button type="button" class="leise gefahr" data-punkt-weg="${index}">×</button>
     <div class="tagewahl" style="grid-column:1/-1">
-      ${TAGE.map(([w, t]) => `<label>
+      ${TAGE().map(([w, kurz]) => `<label>
         <input type="checkbox" name="p${index}_tage" value="${w}"
-               ${(punkt.tage || []).includes(w) ? "checked" : ""}><span>${t}</span></label>`).join("")}
+               ${(punkt.tage || []).includes(w) ? "checked" : ""}><span>${kurz}</span></label>`).join("")}
     </div>
     ${(punkt.wenn || []).map((bedingung, j) => `<div class="wennzeile">
-      <span>nur wenn</span>
+      <span>${t("pk.nur_wenn")}</span>
       ${auswahl(`p${index}_w${j}_entity`, bedingungsKandidaten(), bedingung.entity)}
       <span>=</span>
       ${(() => { const werte = werteFuer(bedingung.entity);
@@ -790,9 +1631,9 @@ function punktZeile(punkt, index){
       <button type="button" class="leise gefahr w-weg" data-wenn-weg="${index}:${j}">×</button>
     </div>`).join("")}
     <div class="wennzeile">
-      <button type="button" class="leise" data-wenn-neu="${index}">Bedingung hinzufügen</button>
+      <button type="button" class="leise" data-wenn-neu="${index}">${t("pk.bedingung_neu")}</button>
       ${(punkt.wenn || []).length ? "" : `<span class="hinweis" style="margin:0">
-        ohne Bedingung gilt der Punkt immer</span>`}
+        ${t("pk.ohne_bedingung")}</span>`}
     </div>
   </div>`;
 }
@@ -800,24 +1641,25 @@ function punktZeile(punkt, index){
 function punktliste(punkte){
   return `<div class="punktliste" id="punktliste">
     ${punkte.length ? `<div class="punkt-kopf">
-      <span>Auslöser</span><span>Zeit / Versatz</span><span>frühestens · spätestens</span>
-      <span>Stellung · gilt</span><span>x</span></div>` : ""}
+      <span>${t("pk.kopf_ausloeser")}</span><span>${t("pk.kopf_zeit")}</span>
+      <span>${t("pk.kopf_klammer")}</span>
+      <span>${t("pk.kopf_stellung")}</span><span>x</span></div>` : ""}
     ${punkte.map(punktZeile).join("") ||
-      `<div class="leerhinweis">Noch kein Schaltpunkt.</div>`}
+      `<div class="leerhinweis">${t("pk.leer")}</div>`}
   </div>
   <div style="margin-top:var(--l3); display:flex; gap:var(--l2); flex-wrap:wrap;
               align-items:center">
-    <button type="button" class="leise" id="btn-punkt-neu">Schaltpunkt hinzufügen</button>
+    <button type="button" class="leise" id="btn-punkt-neu">${t("pk.neu")}</button>
     <span style="max-width:220px">${auswahl("vorlage",
-      [["","Vorlage einfügen …"],["wohnraum","Wohnraum"],["kinderzimmer","Kinderzimmer"],
-       ["schlafzimmer","Schlafzimmer"],["buero","Büro"]], "")}</span>
+      [["", t("pk.vorlage")],["wohnraum", t("pk.v_wohnraum")],
+       ["kinderzimmer", t("pk.v_kinderzimmer")],
+       ["schlafzimmer", t("pk.v_schlafzimmer")],["buero", t("pk.v_buero")]], "")}</span>
   </div>
-  <p class="hinweis">Bei einem Sonnenauslöser ist die zweite Spalte der Versatz in
-    Minuten; „frühestens“ und „spätestens“ klammern ihn ein.</p>`;
+  <p class="hinweis">${t("pk.hinweis")}</p>`;
 }
 
 const WERKTAGE = ["mon","tue","wed","thu","fri"];
-const ALLE = TAGE.map(([w]) => w);
+const ALLE = TAGCODES;
 const punkt = (position, ausloeser="uhrzeit", start="", rest={}) => ({
   ausloeser, start, versatz_min:0, frueh:"", spaet:"", position, wenn:[],
   gilt:"immer", tage:ALLE, name:"", ...rest});
@@ -909,15 +1751,15 @@ function punkteSammeln(wurzel){
 function zeichneRollos(){
   const rollos = CONFIG?.rollos || [];
   const plaene = new Map((CONFIG?.plaene || []).map((p) => [p.id, p]));
-  const artName = new Map(ARTEN);
+  const artName = new Map(ARTEN());
 
   if (!rollos.length) {
-    $("#rolloliste").innerHTML = `<div class="leerhinweis">Noch kein Rollo eingerichtet.</div>`;
+    $("#rolloliste").innerHTML = `<div class="leerhinweis">${t("rl.leer")}</div>`;
     return;
   }
   const nachRaum = new Map();
   rollos.forEach((r) => {
-    const raum = r.raum || "Ohne Bereich";
+    const raum = r.raum || t("allg.ohne_bereich");
     if (!nachRaum.has(raum)) nachRaum.set(raum, []);
     nachRaum.get(raum).push(r);
   });
@@ -925,7 +1767,8 @@ function zeichneRollos(){
   // wiederholt sich die Kopfzeile bei jedem Raum, und weil jede Tabelle ihre
   // Spalten selbst ausmisst, springen die Spaltenbreiten von Raum zu Raum.
   $("#rolloliste").innerHTML = `<table>
-    <thead><tr><th>Rollo</th><th>was</th><th>Zeitplan</th><th>Hitzeschutz</th>
+    <thead><tr><th>${t("rl.rollo")}</th><th>${t("rl.was")}</th>
+      <th>${t("rl.plan")}</th><th>${t("rl.hitze")}</th>
       <th></th></tr></thead>
     <tbody>${[...nachRaum].map(([raum, liste]) => `
       <tr class="raumzeile"><td colspan="5">${esc(raum)}</td></tr>
@@ -933,17 +1776,17 @@ function zeichneRollos(){
         const plan = plaene.get(r.plan);
         return `<tr>
           <td><b>${esc(rolloName(r))}</b>
-            ${r.aktiv ? "" : ' <span class="hinweis">(Automatik aus)</span>'}
+            ${r.aktiv ? "" : ` <span class="hinweis">${t("rl.automatik_aus")}</span>`}
             <div class="hinweis">${esc(r.entity_id)}</div></td>
           <td>${esc(artName.get(r.art) || r.art)}</td>
           <td>${r.betriebsart === "von_hand"
-                ? `<span class="planschild eigen">nur von Hand</span>`
+                ? `<span class="planschild eigen">${t("rl.nur_hand")}</span>`
                 : plan ? `<span class="planschild">${esc(plan.name)}</span>`
-                : `<span class="planschild eigen">${r.zeitplan.length} eigene Punkte</span>`}</td>
+                : `<span class="planschild eigen">${t("rl.eigene_punkte", {n: r.zeitplan.length})}</span>`}</td>
           <td class="hinweis">${r.beschattung && r.ausrichtung !== null
                 ? `${strich(r.ausrichtung)} ${r.ausrichtung}°`
                 : "–"}</td>
-          <td class="knopfspalte"><button class="leise" data-rollo="${esc(r.entity_id)}">Bearbeiten</button></td>
+          <td class="knopfspalte"><button class="leise" data-rollo="${esc(r.entity_id)}">${t("rl.bearbeiten")}</button></td>
         </tr>`;
       }).join("")}`).join("")}</tbody></table>`;
 
@@ -962,7 +1805,7 @@ function rolloDialog(rollo){
     urlaub_simulation: true, position_offen: 100, position_zu: 0,
     fluchtweg: true,
   };
-  $("#dlg-titel").textContent = neu ? "Rollo hinzufügen" : rolloName(ENTWURF);
+  $("#dlg-titel").textContent = neu ? t("rd.neu") : rolloName(ENTWURF);
   $("#btn-dlg-loeschen").hidden = neu;
   zeichneRolloDialog();
   $("#dialog").showModal();
@@ -981,108 +1824,92 @@ function zeichneRolloDialog(){
     <div id="dlg-fehler"></div>
     <div class="abschnitt">
       <div class="gitter g2">
-        ${r.entity_id ? `<label class="feld"><span>Entität</span>
+        ${r.entity_id ? `<label class="feld"><span>${t("rd.entitaet")}</span>
             <input type="text" value="${esc(r.entity_id)}" disabled></label>`
-          : `<label class="feld"><span>Welches Rollo?</span>
+          : `<label class="feld"><span>${t("rd.welches")}</span>
             ${auswahl("entity_id", frei.map((k) => [k.entity_id, `${k.name} (${k.entity_id})`]),
-                      r.entity_id, "bitte wählen")}</label>`}
-        <label class="feld"><span>Was steckt dahinter</span>
-          ${auswahl("art", ARTEN, r.art)}
-          <span class="hinweis">Eine Tür geht bis zum Boden – das ändert die Anzeige
-            und legt nahe, einen Kontakt zu hinterlegen.</span></label>
+                      r.entity_id, t("rd.bitte_waehlen"))}</label>`}
+        <label class="feld"><span>${t("rd.art")}</span>
+          ${auswahl("art", ARTEN(), r.art)}
+          <span class="hinweis">${t("rd.art_hinweis")}</span></label>
       </div>
       <div class="gitter g2">
-        <label class="feld"><span>Name (leer = aus Home Assistant)</span>
+        <label class="feld"><span>${t("rd.name")}</span>
           <input type="text" name="name" value="${esc(r.name)}" maxlength="60"></label>
-        <label class="feld"><span>Raum (nur zum Ordnen)</span>
+        <label class="feld"><span>${t("rd.raum")}</span>
           <input type="text" name="raum" value="${esc(r.raum)}" maxlength="60"></label>
       </div>
       <label class="haken"><input type="checkbox" name="aktiv" ${r.aktiv ? "checked" : ""}>
-        Automatik für dieses Rollo</label>
-      <p class="hinweis">Aus heißt: Der Planer fährt es nicht nach Plan. Es
-        bleibt in der Übersicht, meldet weiter seine Stellung, lässt sich von
-        Hand fahren und geht bei Rauchalarm trotzdem auf.</p>
-      <label class="feld"><span>Betriebsart</span>
-        ${auswahl("betriebsart", [["plan","Plan – auf und zu"],
-                                  ["nur_schliessen","nur schließen"],
-                                  ["von_hand","ohne Zeitplan, nur von Hand"],
-                                  ["beobachten","beobachten, nicht fahren"]], r.betriebsart)}
-        <span class="hinweis">„nur von Hand“ heißt: Der Planer zeigt das Rollo an,
-          überwacht es und hält bei Rauch die Finger davon – aber er fährt es
-          nicht nach der Uhr.</span></label>
+        ${t("rd.aktiv")}</label>
+      <p class="hinweis">${t("rd.aktiv_hinweis")}</p>
+      <label class="feld"><span>${t("rd.betriebsart")}</span>
+        ${auswahl("betriebsart", [["plan", t("rd.b_plan")],
+                                  ["nur_schliessen", t("rd.b_nur_schliessen")],
+                                  ["von_hand", t("rd.b_von_hand")],
+                                  ["beobachten", t("rd.b_beobachten")]], r.betriebsart)}
+        <span class="hinweis">${t("rd.betriebsart_hinweis")}</span></label>
     </div>
 
     ${r.betriebsart === "von_hand" ? "" : `
-    <div class="abschnitt"><h3>Zeitplan</h3>
-      <label class="feld"><span>Welchem Zeitplan folgt dieses Rollo?</span>
+    <div class="abschnitt"><h3>${t("rd.plan_titel")}</h3>
+      <label class="feld"><span>${t("rd.plan_frage")}</span>
         ${auswahl("plan", plaene.map((p) => [p.id, p.name]), r.plan,
-                  "einem eigenen")}</label>
+                  t("rd.plan_eigen"))}</label>
       ${r.plan
-        ? `<p class="hinweis">Die Schaltpunkte stehen unter <b>Zeitpläne</b> –
-             was dort geändert wird, gilt für alle Rollos, die diesem Plan folgen.</p>`
+        ? `<p class="hinweis">${t("rd.plan_hinweis")}</p>`
         : punktliste(r.zeitplan || [])}
     </div>`}
 
-    <div class="abschnitt"><h3>Hitzeschutz</h3>
+    <div class="abschnitt"><h3>${t("ein.hitze")}</h3>
       <div class="gitter g3">
-        <label class="feld"><span>Zeigt nach${r.ausrichtung === null
+        <label class="feld"><span>${t("rd.zeigt_nach")}${r.ausrichtung === null
             || r.ausrichtung === undefined ? "" : " (" + strich(r.ausrichtung) + ")"}</span>
           <input type="number" name="ausrichtung" min="0" max="359" step="1"
-                 placeholder="unbekannt"
+                 placeholder="${t("rd.unbekannt")}"
                  value="${r.ausrichtung === null || r.ausrichtung === undefined
                           ? "" : r.ausrichtung}"></label>
-        <label class="feld"><span>Öffnungswinkel</span>
+        <label class="feld"><span>${t("rd.oeffnungswinkel")}</span>
           <input type="number" name="oeffnungswinkel" value="${r.oeffnungswinkel}"
                  min="10" max="180" step="10"></label>
-        <label class="feld"><span>Stellung (leer = Vorgabe)</span>
+        <label class="feld"><span>${t("rd.stellung_vorgabe")}</span>
           <input type="number" name="beschattung_position" min="0" max="100" step="5"
                  value="${r.beschattung_position === null || r.beschattung_position === undefined
                           ? "" : zeige(r.beschattung_position)}"></label>
       </div>
-      <p class="hinweis">Grad im Uhrzeigersinn: <b>0</b> Nord · <b>90</b> Ost ·
-        <b>180</b> Süd · <b>270</b> West. Krumme Werte sind erwünscht — ein Haus
-        steht selten genau nach der Himmelsrichtung, und 20 Grad Unterschied
-        sind am Nachmittag eine Stunde Sonne. Der <i>Öffnungswinkel</i> sagt, wie
-        weit die Sonne daneben stehen darf und trotzdem noch hereinscheint.
-        Die <i>Stellung</i> gilt nur für dieses Rollo; leer heißt: die Vorgabe
-        aus den Einstellungen.</p>
+      <p class="hinweis">${t("rd.grad_hinweis")}</p>
       <label class="haken"><input type="checkbox" name="beschattung" ${r.beschattung ? "checked" : ""}>
-        Hitzeschutz für dieses Rollo</label>
-      <p class="hinweis">Ohne Ausrichtung bleibt er wirkungslos – der Planer kann nicht
-        raten, wohin ein Fenster zeigt.</p>
+        ${t("rd.hitze_haken")}</label>
+      <p class="hinweis">${t("rd.hitze_hinweis")}</p>
       <div class="gitter g2" style="margin-top:var(--l3)">
-        <label class="feld"><span>Raumfühler (freiwillig)</span>
+        <label class="feld"><span>${t("rd.raumfuehler")}</span>
           ${auswahl("raumtemp", (e.raumtemp || []).map((k) => [k.entity_id, k.name]),
-                    r.raumtemp, "keiner")}</label>
-        <label class="feld"><span>… erst ab dieser Raumtemperatur</span>
+                    r.raumtemp, t("ein.keiner"))}</label>
+        <label class="feld"><span>${t("rd.raumtemp_ab")}</span>
           <input type="number" name="raumtemp_ab" step="0.5" min="10" max="40"
                  value="${r.raumtemp_ab ?? ""}"></label>
       </div>
     </div>
 
-    <div class="abschnitt"><h3>Kontakte</h3>
-      <label class="feld"><span>Solange einer offen ist, wird nicht zugefahren</span></label>
+    <div class="abschnitt"><h3>${t("rd.kontakte")}</h3>
+      <label class="feld"><span>${t("rd.kontakte_titel")}</span></label>
       ${hakenliste("fenster", e.fenster || [], r.fenster)}
       ${tuer && !(r.fenster || []).length ? `<p class="hinweis art-warnung">
-        Bei einer Tür ist das kein Zubehör: Ohne Kontakt merkt der Planer nicht,
-        ob jemand draußen steht, wenn er zufährt.</p>` : ""}
+        ${t("rd.tuer_warnung")}</p>` : ""}
       <label class="haken" style="margin-top:var(--l3)">
         <input type="checkbox" name="urlaub_simulation" ${r.urlaub_simulation ? "checked" : ""}>
-        Im Urlaub mitsimulieren</label>
+        ${t("rd.urlaub_sim")}</label>
       <label class="haken" style="margin-top:var(--l3)">
         <input type="checkbox" name="fluchtweg" ${r.fluchtweg !== false ? "checked" : ""}>
-        Bei Rauchalarm auffahren</label>
-      <p class="hinweis">Der Fluchtweg geht allem vor – auch einem
-        abgeschalteten Zeitplan und „von Hand“. Ausschalten nur für ein Rollo,
-        das nicht fahren darf, etwa weil ein Möbelstück im Weg steht.</p>
+        ${t("rd.fluchtweg")}</label>
+      <p class="hinweis">${t("rd.fluchtweg_hinweis")}</p>
     </div>
 
-    <div class="abschnitt"><h3>Stellungen</h3>
+    <div class="abschnitt"><h3>${t("rd.stellungen")}</h3>
       <div class="gitter g2">
-        <label class="feld"><span>„offen“ heißt</span>
+        <label class="feld"><span>${t("rd.offen_heisst")}</span>
           <input type="number" name="position_offen" value="${zeige(r.position_offen)}"
                  min="0" max="100" step="5"></label>
-        <label class="feld"><span>„zu“ heißt</span>
+        <label class="feld"><span>${t("rd.zu_heisst")}</span>
           <input type="number" name="position_zu" value="${zeige(r.position_zu)}"
                  min="0" max="100" step="5"></label>
       </div>
@@ -1110,46 +1937,46 @@ function zeichnePlaene(){
   const ohne = rollos.filter((r) => !r.plan && !(r.zeitplan || []).length);
 
   const gemeinsam = plaene.length ? `<table>
-    <thead><tr><th>Zeitplan</th><th>Schaltpunkte</th><th>gilt für</th><th></th></tr></thead>
+    <thead><tr><th>${t("zp.plan")}</th><th>${t("zp.punkte")}</th>
+      <th>${t("zp.gilt_fuer")}</th><th></th></tr></thead>
     <tbody>${plaene.map((p) => {
       const folger = rollos.filter((r) => r.plan === p.id);
       return `<tr>
-        <td><b>${esc(p.name)}</b>${p.aktiv ? "" : ' <span class="hinweis">(aus)</span>'}</td>
+        <td><b>${esc(p.name)}</b>${p.aktiv ? ""
+          : ` <span class="hinweis">${t("zp.aus")}</span>`}</td>
         <td>${p.zeitplan.length}</td>
         <td class="hinweis">${folger.length
           ? folger.map((r) => esc(rolloName(r))).join(", ")
-          : "– niemand folgt ihm –"}</td>
-        <td class="knopfspalte"><button class="leise" data-plan="${p.id}">Bearbeiten</button></td>
+          : t("zp.niemand")}</td>
+        <td class="knopfspalte"><button class="leise" data-plan="${p.id}">${t("zp.bearbeiten")}</button></td>
       </tr>`;
     }).join("")}</tbody></table>`
-    : `<div class="leerhinweis">Noch kein gemeinsamer Zeitplan.</div>`;
+    : `<div class="leerhinweis">${t("zp.leer")}</div>`;
 
   const eigenteil = eigene.length ? `
     <div class="abschnitt" style="margin-top:var(--l5)">
-      <h3>Eigene Zeitpläne</h3>
-      <p class="hinweis" style="margin-bottom:var(--l3)">
-        Diese Rollos folgen keinem gemeinsamen Plan, sondern haben einen für sich
-        allein. Bearbeitet wird er im Rollo selbst.</p>
+      <h3>${t("zp.eigene")}</h3>
+      <p class="hinweis" style="margin-bottom:var(--l3)">${t("zp.eigene_hinweis")}</p>
       <table><tbody>${eigene.map((r) => `<tr>
         <td><b>${esc(rolloName(r))}</b>
           <div class="hinweis">${esc(r.raum || "")}</div></td>
-        <td>${r.zeitplan.length} Schaltpunkte</td>
+        <td>${t("zp.n_punkte", {n: r.zeitplan.length})}</td>
         <td class="knopfspalte">
-          <button class="leise" data-rollo-plan="${esc(r.entity_id)}">Bearbeiten</button></td>
+          <button class="leise" data-rollo-plan="${esc(r.entity_id)}">${t("zp.bearbeiten")}</button></td>
       </tr>`).join("")}</tbody></table>
     </div>` : "";
 
   const ohneteil = ohne.length ? `
     <div class="abschnitt" style="margin-top:var(--l5)">
-      <h3>Ohne Zeitplan</h3>
+      <h3>${t("zp.ohne")}</h3>
       <table><tbody>${ohne.map((r) => `<tr>
         <td><b>${esc(rolloName(r))}</b>
           <div class="hinweis">${esc(r.raum || "")}</div></td>
         <td class="hinweis">${r.betriebsart === "von_hand"
-          ? "wird von Hand gefahren – so gewollt"
-          : "<span class=\"art-warnung\">fährt nie</span>"}</td>
+          ? t("zp.von_hand_gewollt")
+          : `<span class="art-warnung">${t("zp.faehrt_nie")}</span>`}</td>
         <td class="knopfspalte">
-          <button class="leise" data-rollo-plan="${esc(r.entity_id)}">Bearbeiten</button></td>
+          <button class="leise" data-rollo-plan="${esc(r.entity_id)}">${t("zp.bearbeiten")}</button></td>
       </tr>`).join("")}</tbody></table>
     </div>` : "";
 
@@ -1164,8 +1991,8 @@ function planDialog(plan){
   DIALOGART = "plan";
   const neu = !plan;
   ENTWURF = plan ? JSON.parse(JSON.stringify(plan))
-                 : {name: "Neuer Zeitplan", aktiv: true, zeitplan: []};
-  $("#dlg-titel").textContent = neu ? "Zeitplan anlegen" : ENTWURF.name;
+                 : {name: t("pd.neuer"), aktiv: true, zeitplan: []};
+  $("#dlg-titel").textContent = neu ? t("pd.anlegen") : ENTWURF.name;
   $("#btn-dlg-loeschen").hidden = neu;
   zeichnePlanDialog();
   $("#dialog").showModal();
@@ -1177,17 +2004,16 @@ function zeichnePlanDialog(){
   $("#dlg-inhalt").innerHTML = werteListe() + `
     <div id="dlg-fehler"></div>
     <div class="abschnitt">
-      <label class="feld"><span>Name</span>
+      <label class="feld"><span>${t("pd.name")}</span>
         <input type="text" name="name" value="${esc(p.name)}" required maxlength="60"></label>
       <label class="haken"><input type="checkbox" name="aktiv" ${p.aktiv ? "checked" : ""}>
-        Zeitplan ist eingeschaltet</label>
-      ${folger.length ? `<p class="hinweis">Diesem Plan folgen:
-        <b>${folger.map((r) => esc(rolloName(r))).join(", ")}</b>.
-        Was hier geändert wird, gilt für alle.</p>`
-        : `<p class="hinweis art-warnung">Diesem Plan folgt noch kein Rollo –
-           zuzuordnen ist er unter <b>Rollos</b>.</p>`}
+        ${t("pd.aktiv")}</label>
+      ${folger.length
+        ? `<p class="hinweis">${t("pd.folger",
+             {liste: folger.map((r) => esc(rolloName(r))).join(", ")})}</p>`
+        : `<p class="hinweis art-warnung">${t("pd.keine_folger")}</p>`}
     </div>
-    <div class="abschnitt"><h3>Schaltpunkte</h3>
+    <div class="abschnitt"><h3>${t("pd.punkte")}</h3>
       ${punktliste(p.zeitplan || [])}
     </div>`;
   punktKnoepfe(zeichnePlanDialog);
@@ -1240,14 +2066,14 @@ async function dialogSpeichern(){
       if (r.id) await holeJSON(`api/plaene/${r.id}`, "PUT", r);
       else await holeJSON("api/plaene", "POST", r);
     } else {
-      if (!r.entity_id) throw new Error("Bitte ein Rollo auswählen");
+      if (!r.entity_id) throw new Error(t("dl.rollo_waehlen"));
       const vorhanden = (CONFIG?.rollos || []).some((x) => x.entity_id === r.entity_id);
       if (vorhanden) await holeJSON(`api/rollos/${encodeURIComponent(r.entity_id)}`, "PUT", r);
       else await holeJSON("api/rollos", "PUT",
                           {rollos: [...(CONFIG?.rollos || []), r]});
     }
     $("#dialog").close();
-    melden("gespeichert");
+    melden(t("allg.gespeichert"));
     await aktualisieren();
   } catch (err) {
     $("#dlg-fehler").innerHTML = `<div class="fehler">${esc(err.message)}</div>`;
@@ -1257,13 +2083,13 @@ async function dialogSpeichern(){
 
 async function dialogLoeschen(){
   const r = ENTWURF;
-  const was = DIALOGART === "plan" ? `den Zeitplan „${r.name}“`
-                                   : `das Rollo „${rolloName(r)}“`;
-  if (!confirm(`Wirklich ${was} löschen?`)) return;
+  const was = DIALOGART === "plan" ? t("dl.den_plan", {name: r.name})
+                                   : t("dl.das_rollo", {name: rolloName(r)});
+  if (!confirm(t("dl.frage", {was}))) return;
   try {
     if (DIALOGART === "plan") await holeJSON(`api/plaene/${r.id}`, "DELETE");
     else await holeJSON(`api/rollos/${encodeURIComponent(r.entity_id)}`, "DELETE");
-    $("#dialog").close(); melden("gelöscht"); await aktualisieren();
+    $("#dialog").close(); melden(t("dl.geloescht")); await aktualisieren();
   } catch (err) {
     $("#dlg-fehler").innerHTML = `<div class="fehler">${esc(err.message)}</div>`;
   }
@@ -1276,30 +2102,31 @@ let SCHALTER = null;
 function zeichneSchalter(){
   const liste = SCHALTER || [];
   $("#schalterliste").innerHTML = liste.length ? `<table>
-    <thead><tr><th>Name</th><th>Art</th><th>Stellungen</th><th>Vorgabe</th>
-      <th>jetzt</th><th></th></tr></thead>
+    <thead><tr><th>${t("sc.name")}</th><th>${t("sc.art")}</th>
+      <th>${t("sc.stellungen")}</th><th>${t("sc.vorgabe")}</th>
+      <th>${t("sc.jetzt")}</th><th></th></tr></thead>
     <tbody>${liste.map((k, i) => `<tr>
       <td><input type="text" data-feld="name" data-i="${i}" value="${esc(k.name)}"
                  maxlength="60"></td>
-      <td>${k.art === "auswahl" ? "Auswahl" : "Schalter"}</td>
+      <td>${t(k.art === "auswahl" ? "sc.auswahl" : "sc.schalter")}</td>
       <td>${k.art === "auswahl"
         ? `<input type="text" data-feld="optionen" data-i="${i}"
              value="${esc((k.optionen || []).join(", "))}"
-             placeholder="normal, 24 Uhr, aus">`
-        : '<span class="hinweis">an / aus</span>'}</td>
+             placeholder="${t("sc.optionen_platzhalter")}">`
+        : `<span class="hinweis">${t("sc.an_aus")}</span>`}</td>
       <td>${k.art === "auswahl"
         ? `<input type="text" data-feld="vorgabe" data-i="${i}" value="${esc(k.vorgabe)}">`
-        : auswahl2(`vorgabe`, i, [["on","an"],["off","aus"]], k.vorgabe)}</td>
+        : auswahl2(`vorgabe`, i, [["on", t("sc.an")],["off", t("sc.aus")]], k.vorgabe)}</td>
       <td class="hinweis">${esc(k.zustand ?? "–")}</td>
       <td style="text-align:right">
-        <button class="leise gefahr" data-weg="${i}">Löschen</button></td>
+        <button class="leise gefahr" data-weg="${i}">${t("knopf.loeschen")}</button></td>
     </tr>`).join("")}</tbody></table>`
-    : `<div class="leerhinweis">Noch kein eigener Schalter.</div>`;
+    : `<div class="leerhinweis">${t("sc.leer")}</div>`;
 
   $$("#schalterliste [data-feld]").forEach((el) => el.onchange = () => {
     const k = SCHALTER[Number(el.dataset.i)];
     if (el.dataset.feld === "optionen") {
-      k.optionen = el.value.split(",").map((t) => t.trim()).filter(Boolean);
+      k.optionen = el.value.split(",").map((s) => s.trim()).filter(Boolean);
       if (!k.optionen.includes(k.vorgabe)) k.vorgabe = k.optionen[0] || "";
       zeichneSchalter();
     } else {
@@ -1314,9 +2141,9 @@ function zeichneSchalter(){
 
 /* Wie `auswahl`, aber für die Tabellenzeilen mit Index. */
 function auswahl2(feld, i, optionen, wert){
-  return `<select data-feld="${feld}" data-i="${i}">${optionen.map(([w, t]) =>
+  return `<select data-feld="${feld}" data-i="${i}">${optionen.map(([w, bez]) =>
     `<option value="${esc(w)}" ${String(w) === String(wert ?? "") ? "selected" : ""}
-     >${esc(t)}</option>`).join("")}</select>`;
+     >${esc(bez)}</option>`).join("")}</select>`;
 }
 
 async function ladeSchalter(){
@@ -1330,7 +2157,7 @@ async function ladeSchalter(){
 function zeichneFremde(){
   const fremde = new Map();
   const quellen = [...(CONFIG?.rollos || []).map((r) => [r.name || r.entity_id, r.zeitplan]),
-                   ...(CONFIG?.plaene || []).map((p) => [`Zeitplan ${p.name}`, p.zeitplan])];
+                   ...(CONFIG?.plaene || []).map((p) => [t("fr.zeitplan", {name: p.name}), p.zeitplan])];
   for (const [wo, punkte] of quellen) {
     const merken = (e) => {
       if (!e || e.startsWith("rolloplaner:")) return;
@@ -1340,28 +2167,23 @@ function zeichneFremde(){
     (punkte || []).forEach((p) => (p.wenn || []).forEach((b) => merken(b.entity)));
   }
   if (!fremde.size) {
-    $("#fremde").innerHTML = `<div class="leerhinweis">Alle Zeitpläne hängen an
-      eigenen Schaltern des Planers.</div>`;
+    $("#fremde").innerHTML = `<div class="leerhinweis">${t("fr.alles_eigen")}</div>`;
     return;
   }
   $("#fremde").innerHTML = `<p class="hinweis" style="margin-bottom:var(--l3)">
-      Diese Zeitpläne hängen noch an fremden Helfern. Der Planer kann sie durch
-      eigene ersetzen: gleicher Name, gleiche Stellungen, übernommener Stand.
-      Die alten Helfer bleiben liegen – sie werden danach nur nicht mehr
-      gebraucht.</p>
+      ${t("fr.hinweis")}</p>
     <table><tbody>${[...fremde].map(([e, wo]) => `<tr>
       <td><code>${esc(e)}</code></td>
       <td class="hinweis">${esc(wo.join(", "))}</td>
     </tr>`).join("")}</tbody></table>
     <div style="margin-top:var(--l4)">
-      <button id="btn-fremde-ersetzen">Durch eigene Schalter ersetzen</button>
+      <button id="btn-fremde-ersetzen">${t("fr.ersetzen")}</button>
     </div>`;
   $("#btn-fremde-ersetzen").onclick = async () => {
-    if (!confirm("Der Planer legt für jeden dieser Helfer einen eigenen Schalter "
-               + "an und biegt die Zeitpläne darauf um. Fortfahren?")) return;
+    if (!confirm(t("fr.frage"))) return;
     try {
       const r = await holeJSON("api/schalter/uebernehmen", "POST");
-      melden(r.hinweis || `${r.angelegt} Schalter angelegt`);
+      melden(r.hinweis || t("fr.angelegt", {n: r.angelegt}));
       await aktualisieren();
       await ladeSchalter();
     } catch (err) { melden(err.message, true); }
@@ -1376,112 +2198,103 @@ function zeichneEinstellungen(){
   const k = ENTITAETEN || {};
   const schalterListe = (k.schalter || []).map((s) => [s.entity_id, s.name]);
   $("#einstellungen").innerHTML = `
-    <div class="abschnitt"><h3>Betrieb</h3>
+    <div class="abschnitt"><h3>${t("ein.betrieb")}</h3>
       <label class="haken"><input type="checkbox" name="automatik" ${e.automatik ? "checked" : ""}>
-        Automatik – ohne Haken fährt der Planer gar nichts</label>
+        ${t("ein.automatik")}</label>
       <label class="haken"><input type="checkbox" name="trockenlauf" ${e.trockenlauf ? "checked" : ""}>
-        Trockenlauf – rechnen und protokollieren, aber nicht fahren</label>
+        ${t("ein.trockenlauf")}</label>
       <label class="haken"><input type="checkbox" name="manuell_respektieren"
         ${e.manuell_respektieren ? "checked" : ""}>
-        Handbetrieb stehen lassen</label>
+        ${t("ein.manuell")}</label>
       <label class="haken"><input type="checkbox" name="prozent_invertiert"
         ${e.prozent_invertiert ? "checked" : ""}>
-        Prozentangaben umdrehen: 0 % = offen, 100 % = geschlossen</label>
-      <p class="hinweis">Home Assistant zählt andersherum (100 % = offen), Amazon
-        Echo so wie hier. Umgedreht wird nur, was angezeigt und eingegeben wird –
-        gespeichert bleibt alles in der Zählweise von Home Assistant, damit ein
-        Umschalten keinen Zeitplan verdreht. Der Wert der Raum-Sensoren dreht
-        sich mit; ihr Attribut <code>stellung_ha</code> behält die Zählweise von
-        Home Assistant.</p>
+        ${t("ein.invertiert")}</label>
+      <p class="hinweis">${t("ein.invertiert_hinweis")}</p>
       <div class="gitter g3" style="margin-top:var(--l3)">
-        <label class="feld"><span>Takt (Sekunden)</span>
+        <label class="feld"><span>${t("ein.takt")}</span>
           <input type="number" name="takt_sekunden" value="${e.takt_sekunden}" min="30" max="3600" step="30"></label>
-        <label class="feld"><span>Handbetrieb gilt (Stunden)</span>
+        <label class="feld"><span>${t("ein.manuell_stunden")}</span>
           <input type="number" name="manuell_stunden" value="${e.manuell_stunden}"
                  min="0" max="168" step="1"></label>
       </div>
     </div>
 
-    <div class="abschnitt"><h3>Sprache</h3>
-      <label class="feld" style="max-width:320px"><span>Texte des Planers</span>
+    <div class="abschnitt"><h3>${t("ein.sprache")}</h3>
+      <label class="feld" style="max-width:320px"><span>${t("ein.sprache_feld")}</span>
         <select name="sprache">
-          <option value="" ${!e.sprache ? "selected" : ""}>wie Home Assistant</option>
+          <option value="" ${!e.sprache ? "selected" : ""}>${t("ein.sprache_auto")}</option>
           <option value="de" ${e.sprache === "de" ? "selected" : ""}>Deutsch</option>
           <option value="en" ${e.sprache === "en" ? "selected" : ""}>English</option>
         </select></label>
-      <p class="hinweis">Gilt für alles, was der Planer selbst formuliert:
-        Begründungen in der Kachel, Protokoll und die Meldung bei Rauchalarm.
-        „Wie Home Assistant“ liest die dort eingestellte Sprache beim Start des
-        Add-ons – wer sie in Home Assistant ändert, startet das Add-on neu.</p>
+      <p class="hinweis">${t("ein.sprache_hinweis")}</p>
     </div>
 
-    <div class="abschnitt"><h3>Woher der Planer weiß, welcher Tag ist</h3>
+    <div class="abschnitt"><h3>${t("ein.kalender")}</h3>
       <div class="gitter g2">
-        <label class="feld"><span>Heute schulfrei</span>
-          ${auswahl("schulfrei_entity", schalterListe, e.schulfrei_entity, "keiner")}</label>
-        <label class="feld"><span>Morgen schulfrei</span>
-          ${auswahl("schulfrei_morgen_entity", schalterListe, e.schulfrei_morgen_entity, "keiner")}</label>
-        <label class="feld"><span>Urlaub</span>
-          ${auswahl("urlaub_entity", schalterListe, e.urlaub_entity, "keiner")}</label>
-        <label class="feld"><span>Außentemperatur</span>
+        <label class="feld"><span>${t("ein.schulfrei")}</span>
+          ${auswahl("schulfrei_entity", schalterListe, e.schulfrei_entity, t("ein.keiner"))}</label>
+        <label class="feld"><span>${t("ein.schulfrei_morgen")}</span>
+          ${auswahl("schulfrei_morgen_entity", schalterListe, e.schulfrei_morgen_entity, t("ein.keiner"))}</label>
+        <label class="feld"><span>${t("ein.urlaub_entity")}</span>
+          ${auswahl("urlaub_entity", schalterListe, e.urlaub_entity, t("ein.keiner"))}</label>
+        <label class="feld"><span>${t("ein.aussen")}</span>
           ${auswahl("aussen_entity", (k.aussen || []).map((a) => [a.entity_id, a.name]),
-                    e.aussen_entity, "keine")}</label>
+                    e.aussen_entity, t("ein.keine"))}</label>
       </div>
     </div>
 
-    <div class="abschnitt"><h3>Hitzeschutz</h3>
+    <div class="abschnitt"><h3>${t("ein.hitze")}</h3>
       <label class="haken"><input type="checkbox" name="beschattung.aktiv"
-        ${e.beschattung?.aktiv ? "checked" : ""}>Hitzeschutz einschalten</label>
+        ${e.beschattung?.aktiv ? "checked" : ""}>${t("ein.hitze_an")}</label>
       <div class="gitter g3">
-        <label class="feld"><span>ab Außentemperatur (°C)</span>
+        <label class="feld"><span>${t("ein.hitze_ab")}</span>
           <input type="number" name="beschattung.ab_temperatur" step="0.5" min="10" max="40"
                  value="${e.beschattung?.ab_temperatur}"></label>
-        <label class="feld"><span>Hysterese (K)</span>
+        <label class="feld"><span>${t("ein.hysterese")}</span>
           <input type="number" name="beschattung.hysterese" step="0.5" min="0" max="10"
                  value="${e.beschattung?.hysterese}"></label>
-        <label class="feld"><span>Sonne mindestens (° hoch)</span>
+        <label class="feld"><span>${t("ein.min_hoehe")}</span>
           <input type="number" name="beschattung.min_elevation" step="1" min="0" max="60"
                  value="${e.beschattung?.min_elevation}"></label>
-        <label class="feld"><span>Stellung beim Beschatten (%)</span>
+        <label class="feld"><span>${t("ein.hitze_position")}</span>
           <input type="number" name="beschattung.position" step="5" min="0" max="100"
                  value="${zeige(e.beschattung?.position)}"></label>
       </div>
       <label class="haken"><input type="checkbox" name="beschattung.nur_wenn_niemand_da"
         ${e.beschattung?.nur_wenn_niemand_da ? "checked" : ""}>
-        nur, wenn niemand im Raum ist</label>
+        ${t("ein.nur_leer")}</label>
     </div>
 
-    <div class="abschnitt"><h3>Urlaub</h3>
-      <label class="feld"><span>Was im Urlaub gilt</span>
-        ${auswahl("urlaub.modus", [["simulation","Anwesenheit simulieren"],
-                                   ["zu","alles geschlossen halten"],
-                                   ["plan","normaler Zeitplan"]], e.urlaub?.modus)}</label>
+    <div class="abschnitt"><h3>${t("ein.urlaub")}</h3>
+      <label class="feld"><span>${t("ein.urlaub_modus")}</span>
+        ${auswahl("urlaub.modus", [["simulation", t("ein.urlaub_simulation")],
+                                   ["zu", t("ein.urlaub_zu")],
+                                   ["plan", t("ein.urlaub_plan")]], e.urlaub?.modus)}</label>
       <div class="gitter g3">
-        <label class="feld"><span>Streuung (± Minuten)</span>
+        <label class="feld"><span>${t("ein.streuung")}</span>
           <input type="number" name="urlaub.streuung_min" min="0" max="120" step="5"
                  value="${e.urlaub?.streuung_min}"></label>
-        <label class="feld"><span>nicht vor</span>
+        <label class="feld"><span>${t("ein.nicht_vor")}</span>
           <input type="time" name="urlaub.nicht_vor" value="${esc(e.urlaub?.nicht_vor || "")}"></label>
-        <label class="feld"><span>nicht nach</span>
+        <label class="feld"><span>${t("ein.nicht_nach")}</span>
           <input type="time" name="urlaub.nicht_nach" value="${esc(e.urlaub?.nicht_nach || "")}"></label>
       </div>
-      <p class="hinweis">Der Versatz wird einmal am Tag gewürfelt und bleibt dann fest –
-        auch über einen Neustart hinweg.</p>
+      <p class="hinweis">${t("ein.urlaub_hinweis")}</p>
     </div>
 
-    <div class="abschnitt"><h3>Wächter</h3>
+    <div class="abschnitt"><h3>${t("ein.waechter")}</h3>
       <label class="haken"><input type="checkbox" name="wachhund.aktiv"
-        ${e.wachhund?.aktiv ? "checked" : ""}>Ausfälle melden</label>
+        ${e.wachhund?.aktiv ? "checked" : ""}>${t("ein.waechter_an")}</label>
       <label class="haken"><input type="checkbox" name="wachhund.hindernis_melden"
         ${e.wachhund?.hindernis_melden ? "checked" : ""}>
-        Hindernis- und Blockademeldungen der Antriebe auswerten</label>
+        ${t("ein.hindernis")}</label>
       <div class="gitter g2">
-        <label class="feld"><span>Schweigefrist (Stunden)</span>
+        <label class="feld"><span>${t("ein.schweigefrist")}</span>
           <input type="number" name="wachhund.stumm_stunden" min="0.5" max="336" step="1"
                  value="${e.wachhund?.stumm_stunden}"></label>
-        <label class="feld"><span>Meldeweg</span>
+        <label class="feld"><span>${t("ein.meldeweg")}</span>
           ${auswahl("wachhund.melden_an", (k.notify || []).map((n) => [n.entity_id, n.name]),
-                    (e.wachhund?.melden_an || [])[0], "keiner")}</label>
+                    (e.wachhund?.melden_an || [])[0], t("ein.keiner"))}</label>
       </div>
     </div>`;
 }
@@ -1513,29 +2326,27 @@ function zeichneGruppen(){
   let html = GRUPPEN.map((g, i) => `
     <div class="abschnitt" data-gruppe="${i}">
       <div class="gitter g2">
-        <label class="feld"><span>Name der Gruppe</span>
+        <label class="feld"><span>${t("gr.name")}</span>
           <input type="text" data-g-feld="name" data-i="${i}" value="${esc(g.name)}"></label>
-        <label class="feld"><span>Gemeinsamer Zeitplan (freiwillig)</span>
+        <label class="feld"><span>${t("gr.plan")}</span>
           <select data-g-feld="plan" data-i="${i}">
-            <option value="">— keiner, die Gruppe ordnet nur —</option>
+            <option value="">${t("gr.plan_keiner")}</option>
             ${plaene.map((pl) => `<option value="${esc(pl.id)}"
               ${pl.id === g.plan ? "selected" : ""}>${esc(pl.name)}</option>`).join("")}
           </select></label>
       </div>
       <div class="gitter g2">
-        <label class="feld"><span>Freigabeschalter (freiwillig)</span>
+        <label class="feld"><span>${t("gr.schalter")}</span>
           <select data-g-feld="schalter" data-i="${i}">
-            <option value="">— keiner —</option>
+            <option value="">${t("gr.schalter_keiner")}</option>
             ${schalter.map((k) => `<option value="${esc(k.id)}"
               ${k.id === g.schalter ? "selected" : ""}>${esc(k.name)}</option>`).join("")}
           </select></label>
         <label class="haken" style="align-self:end">
           <input type="checkbox" data-g-feld="aktiv" data-i="${i}"
-                 ${g.aktiv ? "checked" : ""}>Gruppe eingeschaltet</label>
+                 ${g.aktiv ? "checked" : ""}>${t("gr.aktiv")}</label>
       </div>
-      <p class="hinweis">Steht der Freigabeschalter aus, fährt der Planer kein
-        Rollo dieser Gruppe nach Plan. Von Hand und bei Rauchalarm fahren sie
-        weiter.</p>
+      <p class="hinweis">${t("gr.schalter_hinweis")}</p>
 
       <div style="margin-top:var(--l3)">
         ${g.rollos.length ? g.rollos.map((eid, j) => `<div class="gruppenzeile">
@@ -1547,12 +2358,12 @@ function zeichneGruppen(){
                       ${j === g.rollos.length - 1 ? "disabled" : ""}>↓</button>
             </div>
             <select data-r-ziel="${i}:${j}">
-              <option value="">verschieben nach …</option>
+              <option value="">${t("gr.verschieben")}</option>
               ${ziele(eid, i)}
-              <option value="-">— aus der Gruppe nehmen —</option>
+              <option value="-">${t("gr.heraus")}</option>
             </select>
           </div>`).join("")
-          : `<p class="leerhinweis">Noch kein Rollo in dieser Gruppe.</p>`}
+          : `<p class="leerhinweis">${t("gr.leer")}</p>`}
       </div>
 
       ${/* Hinzufügen gehört an die Gruppe, nicht in einen Abschnitt weiter
@@ -1561,41 +2372,39 @@ function zeichneGruppen(){
             Liste unten sogar ganz – dann führte gar kein Weg mehr hierher. */
         ""}
       <label class="feld" style="margin-top:var(--l3); max-width:420px">
-        <span>Rollo in diese Gruppe legen</span>
+        <span>${t("gr.dazu")}</span>
         <select data-g-dazu="${i}">
-          <option value="">auswählen …</option>
+          <option value="">${t("gr.dazu_waehlen")}</option>
           ${(CONFIG?.rollos || []).map((r) => r.entity_id)
             .filter((eid) => !g.rollos.includes(eid))
             .map((eid) => {
               const bei = GRUPPEN.findIndex((x) => x.rollos.includes(eid));
               return `<option value="${esc(eid)}">${esc(rolloNameVon(eid))}${
-                bei >= 0 ? ` — bisher in „${esc(GRUPPEN[bei].name)}“` : ""}</option>`;
+                bei >= 0 ? t("gr.bisher_in", {name: esc(GRUPPEN[bei].name)}) : ""}</option>`;
             }).join("")}
         </select></label>
 
       <div class="dlg-fuss" style="padding-left:0; padding-right:0">
-        <button class="leise" data-g-hoch="${i}" ${i ? "" : "disabled"}>↑ Gruppe</button>
+        <button class="leise" data-g-hoch="${i}" ${i ? "" : "disabled"}>${t("gr.hoch")}</button>
         <button class="leise" data-g-runter="${i}"
-                ${i === GRUPPEN.length - 1 ? "disabled" : ""}>↓ Gruppe</button>
-        <button class="leise art-warnung" data-g-weg="${i}">Gruppe löschen</button>
+                ${i === GRUPPEN.length - 1 ? "disabled" : ""}>${t("gr.runter")}</button>
+        <button class="leise art-warnung" data-g-weg="${i}">${t("gr.weg")}</button>
       </div>
     </div>`).join("");
 
   if (frei.length) {
-    html += `<div class="abschnitt"><h3>Noch in keiner Gruppe</h3>
+    html += `<div class="abschnitt"><h3>${t("gr.ohne")}</h3>
       ${frei.map((eid) => `<div class="gruppenzeile">
         <div class="g-name"><b>${esc(rolloNameVon(eid))}</b>
           <div class="hinweis">${esc(eid)}</div></div>
         <select data-frei-ziel="${esc(eid)}">
-          <option value="">in eine Gruppe legen …</option>
+          <option value="">${t("gr.ohne_waehlen")}</option>
           ${GRUPPEN.map((g, i) => `<option value="${i}">${esc(g.name)}</option>`).join("")}
         </select></div>`).join("")}
-      <p class="hinweis">Ein Rollo ohne Gruppe fährt weiter nach seinem eigenen
-        Zeitplan – es fehlt ihm nur die Obergruppe.</p></div>`;
+      <p class="hinweis">${t("gr.ohne_hinweis")}</p></div>`;
   }
   if (!GRUPPEN.length && !frei.length) {
-    html = `<p class="leerhinweis">Noch keine Gruppen. „Vorschlag aus Home
-      Assistant" macht aus deinen Etagen einen Anfang.</p>`;
+    html = `<p class="leerhinweis">${t("gr.keine")}</p>`;
   }
   $("#gruppen").innerHTML = html;
   gruppenVerdrahten();
@@ -1652,8 +2461,7 @@ function gruppenVerdrahten(){
   $$("[data-g-weg]", wurzel).forEach((el) => el.onclick = () => {
     const g = GRUPPEN[Number(el.dataset.gWeg)];
     // Die Rollos bleiben – sie stehen danach unter „Noch in keiner Gruppe".
-    if (confirm(`Gruppe „${g.name}" löschen? Die ${g.rollos.length} Rollos `
-                + "darin bleiben bestehen und fahren weiter nach ihrem eigenen Zeitplan.")) {
+    if (confirm(t("gr.loeschen_frage", {name: g.name, n: g.rollos.length}))) {
       GRUPPEN.splice(Number(el.dataset.gWeg), 1); zeichneGruppen();
     }
   });
@@ -1662,7 +2470,7 @@ function gruppenVerdrahten(){
 async function gruppenSpeichern(){
   try {
     await holeJSON("api/gruppen", "PUT", {gruppen: GRUPPEN});
-    melden("gespeichert");
+    melden(t("allg.gespeichert"));
     GRUPPEN = null;
     await aktualisieren();
     zeichneGruppen();
@@ -1683,84 +2491,63 @@ function zeichneRauchalarm(){
   const ausgenommen = (CONFIG?.rollos || []).filter((x) => x.fluchtweg === false);
 
   const jetzt = b.rauch
-    ? `<p class="hinweis art-fehler"><b>Es läuft gerade ein Alarm.</b>
-        ${esc(b.rauch_grund || "")}${f.aktiv ? " – der Fluchtweg ist offen." : ""}</p>`
-    : `<p class="hinweis">Zurzeit schlägt kein Melder an.</p>`;
+    ? `<p class="hinweis art-fehler">${t("ra.alarm_laeuft")}
+        ${esc(b.rauch_grund || "")}${f.aktiv ? t("ra.fluchtweg_offen") : ""}</p>`
+    : `<p class="hinweis">${t("ra.ruhig")}</p>`;
 
-  $("#rauchalarm").innerHTML = `<div class="abschnitt"><h3>Stand</h3>
+  $("#rauchalarm").innerHTML = `<div class="abschnitt"><h3>${t("ra.stand")}</h3>
     <div class="lampenzeile">
-      ${lampe(r.aktiv, r.aktiv ? "Sperre an" : "Sperre AUS")}
-      ${lampe(r.fluchtweg, r.fluchtweg ? "Fluchtweg-Freigabe an" : "Freigabe AUS")}
-      ${lampe(!e.trockenlauf, e.trockenlauf ? "Trockenlauf – es fährt nichts"
-                                            : "kein Trockenlauf")}
+      ${lampe(r.aktiv, t(r.aktiv ? "ra.sperre_an" : "ra.sperre_aus"))}
+      ${lampe(r.fluchtweg, t(r.fluchtweg ? "ra.freigabe_an" : "ra.freigabe_aus"))}
+      ${lampe(!e.trockenlauf, t(e.trockenlauf ? "ra.trockenlauf_an"
+                                              : "ra.trockenlauf_aus"))}
       ${lampe((r.melden_an || []).length || wachhundweg.length,
-              (r.melden_an || []).length ? "eigener Meldeweg"
-                : wachhundweg.length ? "Meldeweg vom Wächter" : "MELDEWEG FEHLT")}
+              t((r.melden_an || []).length ? "ra.weg_eigen"
+                : wachhundweg.length ? "ra.weg_waechter" : "ra.weg_fehlt"))}
     </div>
     ${jetzt}
-    ${ausgenommen.length ? `<p class="hinweis">Vom Auffahren ausgenommen:
+    ${ausgenommen.length ? `<p class="hinweis">${t("ra.ausgenommen")}
       <b>${ausgenommen.map((x) => esc(rolloName(x))).join(", ")}</b></p>` : ""}
   </div>
 
-  <div class="abschnitt"><h3>Die Sperre</h3>
+  <div class="abschnitt"><h3>${t("ra.sperre")}</h3>
     <label class="haken"><input type="checkbox" name="rauchsperre.aktiv"
       ${r.aktiv ? "checked" : ""}>
-      Bei Rauch keinen Zeitplan mehr ausführen</label>
-    <p class="hinweis">Das muss an bleiben: Sonst führe der Planer beim nächsten
-      Takt seinen Zeitplan durch und machte den Fluchtweg wieder zu.</p>
-    <label class="feld" style="margin-top:var(--l3)"><span>Nachlauf nach der Entwarnung (Minuten)</span>
+      ${t("ra.sperre_haken")}</label>
+    <p class="hinweis">${t("ra.sperre_hinweis")}</p>
+    <label class="feld" style="margin-top:var(--l3)"><span>${t("ra.nachlauf")}</span>
       <input type="number" name="rauchsperre.nachlauf_min" value="${r.nachlauf_min}"
              min="0" max="720" step="5" style="max-width:160px"></label>
-    <p class="hinweis">So lange nach der Entwarnung führt der Planer noch keinen
-      Zeitplan aus. Aufgefahren wird in dieser Zeit aber auch nicht mehr – wer
-      hinter dem abgezogenen Alarm zumacht, soll nicht gegen den Planer
-      ankämpfen.</p>
+    <p class="hinweis">${t("ra.nachlauf_hinweis")}</p>
   </div>
 
-  <div class="abschnitt"><h3>Die Fluchtweg-Freigabe</h3>
+  <div class="abschnitt"><h3>${t("ra.freigabe")}</h3>
     <label class="haken"><input type="checkbox" name="rauchsperre.fluchtweg"
       ${r.fluchtweg ? "checked" : ""}>
-      Bei Alarm jedes Rollo auffahren</label>
-    <p class="hinweis">Steht über allem: über der Automatik, über einem
-      abgeschalteten Zeitplan, über „von Hand“. Ein einzelnes Rollo nimmt man
-      nicht hier aus, sondern beim Rollo selbst
-      (<i>Rollos → Bearbeiten → Bei Rauchalarm auffahren</i>). Der
-      <b>Trockenlauf</b> gilt auch hier – solange er an ist, wird nur gemeldet.</p>
-    <label class="feld" style="margin-top:var(--l3)"><span>Versuche je Rollo</span>
+      ${t("ra.freigabe_haken")}</label>
+    <p class="hinweis">${t("ra.freigabe_hinweis")}</p>
+    <label class="feld" style="margin-top:var(--l3)"><span>${t("ra.versuche")}</span>
       <input type="number" name="rauchsperre.fluchtweg_versuche"
              value="${r.fluchtweg_versuche ?? 3}" min="1" max="10" step="1"
              style="max-width:160px"></label>
-    <p class="hinweis">Ein Rollo, das nach der Fahrzeit immer noch zu ist,
-      bekommt den Befehl erneut – so oft, wie hier steht. Danach gilt es als
-      blockiert und wird in Ruhe gelassen, statt im Minutentakt gegen ein
-      Hindernis zu fahren.</p>
+    <p class="hinweis">${t("ra.versuche_hinweis")}</p>
   </div>
 
-  <div class="abschnitt"><h3>Melder</h3>
-    <label class="feld"><span>Diese Melder lösen aus</span></label>
+  <div class="abschnitt"><h3>${t("ra.melder")}</h3>
+    <label class="feld"><span>${t("ra.melder_titel")}</span></label>
     ${hakenliste("rauchsperre.melder", k.rauch || [], r.melder || [])}
-    <p class="hinweis">Keiner gewählt heißt <b>alle</b> – jeder
-      <code>binary_sensor</code> der Geräteklasse „Rauch“, CO-Melder
-      eingeschlossen. Das ist die sichere Vorgabe: Ein Melder, den man beim
-      Auswählen übersieht, löst dann trotzdem aus. Ein nicht angehakter Melder
-      schlägt für den Planer niemals an.</p>
+    <p class="hinweis">${t("ra.melder_hinweis")}</p>
   </div>
 
-  <div class="abschnitt"><h3>Meldeweg</h3>
-    <label class="feld"><span>Ein Rauchalarm geht an</span></label>
+  <div class="abschnitt"><h3>${t("ra.weg")}</h3>
+    <label class="feld"><span>${t("ra.weg_titel")}</span></label>
     ${hakenliste("rauchsperre.melden_an",
                  (k.notify || []).map((n) => ({entity_id: n.entity_id, name: n.name})),
                  r.melden_an || [], false)}
-    <p class="hinweis">Gemeldet wird <b>einmal je Alarm</b>, nicht bei jedem
-      Takt – und auch dann, wenn die Freigabe abgeschaltet ist; dann sagt die
-      Nachricht eben, dass kein Rollo aufgefahren ist. Ganz oben in der Meldung
-      steht, was <b>nicht</b> erreichbar war.</p>
-    <p class="hinweis">Ist hier nichts angehakt, gilt der Meldeweg des Wächters
-      (<i>Einstellungen → Wächter</i>)${wachhundweg.length
-        ? `, zurzeit <b>${esc(wachhundweg.join(", "))}</b>`
-        : " – und dort steht ebenfalls keiner, die Meldung ginge also ins Leere"}.
-      Ein Brandalarm sollte nicht am selben Weg hängen wie „ein Antrieb meldet
-      sich nicht“.</p>
+    <p class="hinweis">${t("ra.weg_hinweis1")}</p>
+    <p class="hinweis">${t("ra.weg_hinweis2")}${wachhundweg.length
+        ? `${t("ra.weg_zurzeit")} <b>${esc(wachhundweg.join(", "))}</b>`
+        : t("ra.weg_keiner")}. ${t("ra.weg_hinweis3")}</p>
   </div>`;
 }
 
@@ -1782,7 +2569,7 @@ async function rauchalarmSpeichern(){
   }
   try {
     await holeJSON("api/einstellungen", "PUT", {rauchsperre: r});
-    melden("gespeichert");
+    melden(t("allg.gespeichert"));
     await aktualisieren();
   } catch (err) { melden(err.message, true); }
 }
@@ -1815,7 +2602,7 @@ async function einstellungenSpeichern(){
   }
   try {
     await holeJSON("api/einstellungen", "PUT", daten);
-    melden("gespeichert");
+    melden(t("allg.gespeichert"));
     await aktualisieren();
   } catch (err) { melden(err.message, true); }
 }
@@ -1835,7 +2622,7 @@ async function ladeProtokoll(){
     <td>${esc(zeige(e))}</td>
     <td class="${e.art ? "art-" + e.art : ""}">${esc(e.was)}</td>
     <td>${esc(e.warum)}${e.entity_id ? `<div class="hinweis">${esc(e.entity_id)}</div>` : ""}</td>
-  </tr>`).join("") : `<tr><td colspan="4" class="leerhinweis">Noch nichts geschehen.</td></tr>`;
+  </tr>`).join("") : `<tr><td colspan="4" class="leerhinweis">${t("pr.leer")}</td></tr>`;
 }
 
 
@@ -1855,36 +2642,37 @@ async function ladeVorschlag(){
   zaehler.textContent = offen.length;
 
   if (!rollos.length) {
-    $("#vorschlag").innerHTML = `<div class="leerhinweis">Keine Rollos gefunden.</div>`;
+    $("#vorschlag").innerHTML = `<div class="leerhinweis">${t("ev.keine_rollos")}</div>`;
     return;
   }
 
-  const artName = new Map(ARTEN);
+  const artName = new Map(ARTEN());
   const zeile = (p) => {
-    const wann = p.ausloeser === "uhrzeit" ? esc(p.start) + " Uhr"
-      : esc(AUSLOESER.find(([w]) => w === p.ausloeser)?.[1] || p.ausloeser)
+    const wann = p.ausloeser === "uhrzeit" ? t("ev.uhr", {zeit: esc(p.start)})
+      : esc(AUSLOESER().find(([w]) => w === p.ausloeser)?.[1] || p.ausloeser)
         + (p.versatz_min ? ` ${p.versatz_min > 0 ? "+" : ""}${p.versatz_min} min` : "")
-        + (p.frueh ? `, ab ${esc(p.frueh)}` : "") + (p.spaet ? `, bis ${esc(p.spaet)}` : "");
+        + (p.frueh ? t("ev.ab", {zeit: esc(p.frueh)}) : "")
+        + (p.spaet ? t("ev.bis", {zeit: esc(p.spaet)}) : "");
     const wenn = (p.wenn || []).map((b) =>
       `${esc(b.entity.split(".").at(-1))} = ${esc(b.wert)}`).join(", ");
     return `<tr><td class="zeit">${wann}</td>
       <td>${stellungstext(p.position)}</td>
-      <td>${esc(GELTUNG.find(([w]) => w === p.gilt)?.[1] || p.gilt)}</td>
-      <td class="hinweis">${p.tage.length === 7 ? "täglich"
-        : p.tage.map((t) => TAGE.find(([w]) => w === t)?.[1]).join(" ")}</td>
+      <td>${esc(GELTUNG().find(([w]) => w === p.gilt)?.[1] || p.gilt)}</td>
+      <td class="hinweis">${p.tage.length === 7 ? t("ev.taeglich")
+        : p.tage.map((tag) => TAGE().find(([w]) => w === tag)?.[1]).join(" ")}</td>
       <td class="hinweis">${wenn}</td></tr>`;
   };
 
   // Nach Raum ordnen – so, wie man ein Rollo sucht.
   const nachRaum = new Map();
   rollos.forEach((r) => {
-    const raum = r.raum || "Ohne Bereich";
+    const raum = r.raum || t("allg.ohne_bereich");
     if (!nachRaum.has(raum)) nachRaum.set(raum, []);
     nachRaum.get(raum).push(r);
   });
 
   $("#vorschlag").innerHTML = `
-    <div class="abschnitt"><h3>Rollos</h3>
+    <div class="abschnitt"><h3>${t("ev.rollos")}</h3>
       ${[...nachRaum].map(([raum, liste]) => `
         <div class="raumtitel">${esc(raum)}</div>
         <table><tbody>${liste.map((r) => {
@@ -1899,18 +2687,16 @@ async function ladeVorschlag(){
                 `<div class="hinweis art-warnung">${esc(h)}</div>`).join("")}</td>
             <td>${esc(artName.get(r.art) || r.art)}</td>
             <td>${plan ? `<span class="planschild">${esc(plan.name)}</span>`
-                  : r.zeitplan.length ? `<span class="planschild eigen">${r.zeitplan.length} eigene Punkte</span>`
-                  : `<span class="hinweis">kein Zeitplan</span>`}</td>
+                  : r.zeitplan.length ? `<span class="planschild eigen">${t("rl.eigene_punkte", {n: r.zeitplan.length})}</span>`
+                  : `<span class="hinweis">${t("ev.kein_plan")}</span>`}</td>
             <td class="hinweis">${(r.quellen || []).join("; ")}</td>
           </tr>${!plan && r.zeitplan.length ? `<tr><td></td><td colspan="4">
             <table><tbody>${r.zeitplan.map(zeile).join("")}</tbody></table></td></tr>` : ""}`;
         }).join("")}</tbody></table>`).join("")}
     </div>
 
-    ${VORSCHLAG.plaene?.length ? `<div class="abschnitt"><h3>Gemeinsame Zeitpläne</h3>
-      <p class="hinweis" style="margin-bottom:var(--l3)">Rollos mit gleichem
-        Schaltmuster teilen sich einen Zeitplan – was dort geändert wird, gilt für
-        alle davon.</p>
+    ${VORSCHLAG.plaene?.length ? `<div class="abschnitt"><h3>${t("ev.plaene")}</h3>
+      <p class="hinweis" style="margin-bottom:var(--l3)">${t("ev.plaene_hinweis")}</p>
       ${VORSCHLAG.plaene.map((p) => {
         const folger = rollos.filter((r) => r.plan === p.id).map((r) => r.anzeige);
         return `<div style="margin-bottom:var(--l4)">
@@ -1920,30 +2706,29 @@ async function ladeVorschlag(){
 
     <div style="display:flex; gap:var(--l2); flex-wrap:wrap; margin-top:var(--l4);
                 align-items:center">
-      <button id="btn-uebernehmen">Ausgewählte übernehmen</button>
+      <button id="btn-uebernehmen">${t("ev.uebernehmen")}</button>
       <label class="haken" style="margin:0">
         <input type="checkbox" id="eigene-schalter" checked>
-        Eigene Schalter anlegen statt fremde Helfer zu benutzen</label>
+        ${t("ev.eigene_schalter")}</label>
     </div>
 
     ${VORSCHLAG.ungedeutet?.length ? `<div class="abschnitt" style="margin-top:var(--l5)">
-      <h3>Bleibt bei den Automationen</h3>
+      <h3>${t("ev.bleibt")}</h3>
       ${VORSCHLAG.ungedeutet.map((u) => `<div class="hinweis">
         <b>${esc(u.alias)}</b> – ${esc(u.grund)}</div>`).join("")}
-      <p class="hinweis" style="margin-top:var(--l2)">Diese Automationen löst der
-        Planer nicht ab; sie sollen weiterlaufen.</p></div>` : ""}`;
+      <p class="hinweis" style="margin-top:var(--l2)">${t("ev.bleibt_hinweis")}</p>
+      </div>` : ""}`;
 
   $("#btn-uebernehmen").onclick = async () => {
     const gewaehlt = new Set($$("#vorschlag [name=v]:checked").map((el) => el.value));
     const auswahl = rollos.filter((r) => gewaehlt.has(r.entity_id));
-    if (!auswahl.length) { melden("Nichts ausgewählt", true); return; }
-    if (!confirm(`${auswahl.length} Rollos übernehmen? Die bisherige Einrichtung `
-               + `wird dabei ersetzt.`)) return;
+    if (!auswahl.length) { melden(t("ev.nichts_gewaehlt"), true); return; }
+    if (!confirm(t("ev.frage", {n: auswahl.length}))) return;
     try {
       const r = await holeJSON("api/uebernahme", "POST", {
         rollos: auswahl, plaene: VORSCHLAG.plaene,
         eigene_schalter: $("#eigene-schalter").checked});
-      melden(`${r.rollos} Rollos, ${r.plaene} Zeitpläne, ${r.schalter} Schalter`);
+      melden(t("ev.fertig", {rollos: r.rollos, plaene: r.plaene, schalter: r.schalter}));
       await aktualisieren();
       await ladeVorschlag();
       await ladeGesundheit();
@@ -1956,15 +2741,16 @@ async function ladeGesundheit(){
   const z = g.zaehler;
   $("#gesundheit").innerHTML = `
     <div class="sonne-zeile" style="margin-bottom:var(--l3)">
-      <span><b>${z.rollos}</b> Rollos</span><span><b>${z.plaene}</b> Zeitpläne</span>
-      <span class="${z.fehler ? "art-fehler" : ""}"><b>${z.fehler}</b> Fehler</span>
-      <span class="${z.warnungen ? "art-warnung" : ""}"><b>${z.warnungen}</b> Warnungen</span>
+      <span>${t("ge.rollos", {n: z.rollos})}</span>
+      <span>${t("ge.plaene", {n: z.plaene})}</span>
+      <span class="${z.fehler ? "art-fehler" : ""}">${t("ge.fehler", {n: z.fehler})}</span>
+      <span class="${z.warnungen ? "art-warnung" : ""}">${t("ge.warnungen", {n: z.warnungen})}</span>
     </div>
     ${g.befunde.length ? g.befunde.map((b) => `<div class="befund">
       <span class="art-${b.schwere === "fehler" ? "fehler" : b.schwere === "warnung" ? "warnung" : ""}"
         style="flex:1">${esc(b.text)}</span>
       ${b.raum ? `<span class="b-raum">${esc(b.raum)}</span>` : ""}
-    </div>`).join("") : `<div class="leerhinweis">Nichts zu beanstanden.</div>`}`;
+    </div>`).join("") : `<div class="leerhinweis">${t("ge.leer")}</div>`}`;
 }
 
 /* ─────────────────────────────────────────────────────────────── Rahmen ─── */
@@ -1972,14 +2758,17 @@ async function ladeGesundheit(){
 async function aktualisieren(){
   try {
     [CONFIG, BERICHT] = await Promise.all([hole("api/config"), hole("api/status")]);
+    const gewuenscht = BERICHT?.sprache || "de";
+    if (gewuenscht !== SPRACHE && UI[gewuenscht]) { SPRACHE = gewuenscht; }
+    texteSetzen();
     $("#fassung").textContent = "v" + (CONFIG.version || "");
     const gut = BERICHT.zeit && !BERICHT.fehler;
     $("#punkt").classList.toggle("ok", Boolean(gut));
     $("#kopfstatus").textContent = BERICHT.fehler || BERICHT.hinweis
-      || (BERICHT.rauch ? "Rauchsperre"
-          : !BERICHT.automatik ? "Automatik aus"
-          : BERICHT.trockenlauf ? "Trockenlauf"
-          : BERICHT.urlaub ? "Urlaub" : "läuft");
+      || t(BERICHT.rauch ? "kopf.rauch"
+           : !BERICHT.automatik ? "kopf.automatik_aus"
+           : BERICHT.trockenlauf ? "kopf.trockenlauf"
+           : BERICHT.urlaub ? "kopf.urlaub" : "kopf.laeuft");
     zeichneUebersicht();
     zeichneRollos();
     zeichnePlaene();
@@ -2003,14 +2792,13 @@ $$("nav button").forEach((knopf) => knopf.onclick = () => {
 
 $("#btn-takt").onclick = async () => {
   $("#btn-takt").disabled = true;
-  try { BERICHT = await holeJSON("api/takt", "POST"); zeichneUebersicht(); melden("gerechnet"); }
+  try { BERICHT = await holeJSON("api/takt", "POST"); zeichneUebersicht(); melden(t("kopf.gerechnet")); }
   catch (err) { melden(err.message, true); }
   finally { $("#btn-takt").disabled = false; }
 };
 $("#btn-durchsetzen").onclick = async () => {
-  if (!confirm("Der Planer vergisst, was er zuletzt getan hat, und fährt alle Rollos "
-             + "auf den Stand, der jetzt gilt. Fortfahren?")) return;
-  try { await holeJSON("api/durchsetzen", "POST"); melden("wird durchgesetzt");
+  if (!confirm(t("kopf.durchsetzen_frage"))) return;
+  try { await holeJSON("api/durchsetzen", "POST"); melden(t("kopf.durchgesetzt"));
         setTimeout(aktualisieren, 1500); }
   catch (err) { melden(err.message, true); }
 };
@@ -2019,20 +2807,21 @@ $("#btn-plan-neu").onclick = () => planDialog(null);
 $("#btn-dlg-speichern").onclick = dialogSpeichern;
 $("#btn-dlg-loeschen").onclick = dialogLoeschen;
 $("#btn-schalter-neu").onclick = () => {
-  (SCHALTER = SCHALTER || []).push({name: "Neuer Schalter", art: "schalter",
+  (SCHALTER = SCHALTER || []).push({name: t("neu.schalter"), art: "schalter",
                                     optionen: [], vorgabe: "on", icon: ""});
   zeichneSchalter();
 };
 $("#btn-auswahl-neu").onclick = () => {
-  (SCHALTER = SCHALTER || []).push({name: "Neue Auswahl", art: "auswahl",
-                                    optionen: ["normal", "aus"], vorgabe: "normal",
+  (SCHALTER = SCHALTER || []).push({name: t("neu.auswahl"), art: "auswahl",
+                                    optionen: [t("neu.auswahl_normal"), t("neu.auswahl_aus")],
+                                    vorgabe: t("neu.auswahl_normal"),
                                     icon: ""});
   zeichneSchalter();
 };
 $("#btn-schalter-speichern").onclick = async () => {
   try {
     SCHALTER = await holeJSON("api/schalter", "PUT", {schalter: SCHALTER});
-    melden("gespeichert");
+    melden(t("allg.gespeichert"));
     await aktualisieren();
     await ladeSchalter();
   } catch (err) { melden(err.message, true); }
@@ -2041,15 +2830,13 @@ $("#btn-einst-speichern").onclick = einstellungenSpeichern;
 $("#btn-rauch-speichern").onclick = rauchalarmSpeichern;
 $("#btn-gruppen-speichern").onclick = gruppenSpeichern;
 $("#btn-gruppe-neu").onclick = () => {
-  GRUPPEN.push({name: "Neue Gruppe", rollos: [], plan: "", schalter: "", aktiv: true});
+  GRUPPEN.push({name: t("neu.gruppe"), rollos: [], plan: "", schalter: "", aktiv: true});
   zeichneGruppen();
 };
 $("#btn-gruppe-vorschlag").onclick = async () => {
   try {
     const v = await hole("api/gruppen/vorschlag");
-    if (!confirm(`Vorschlag: ${v.length} Gruppen aus deinen Etagen. `
-                 + "Das ersetzt den aktuellen Stand in diesem Reiter – "
-                 + "gespeichert wird erst mit „Speichern“.")) return;
+    if (!confirm(t("gr.vorschlag_frage", {n: v.length}))) return;
     GRUPPEN = v;
     zeichneGruppen();
   } catch (err) { melden(err.message, true); }
@@ -2057,17 +2844,18 @@ $("#btn-gruppe-vorschlag").onclick = async () => {
 $("#btn-rauch-probe").onclick = async () => {
   try {
     const a = await holeJSON("api/rauchalarm/probe", "POST", {});
-    melden(a.gesendet.length ? "Probemeldung gesendet an " + a.gesendet.join(", ")
-                             : "Nichts gesendet", !a.gesendet.length);
+    melden(a.gesendet.length
+      ? t("pb.gesendet_an", {liste: a.gesendet.join(", ")})
+      : t("pb.nichts"), !a.gesendet.length);
   } catch (err) { melden(err.message, true); }
 };
 $("#btn-probe").onclick = async () => {
   try { const r = await holeJSON("api/wachhund/probe", "POST");
-        melden(`gesendet an ${r.gesendet.join(", ") || "–"}`); }
+        melden(t("pb.wachhund", {liste: r.gesendet.join(", ") || "–"})); }
   catch (err) { melden(err.message, true); }
 };
 $("#btn-protokoll-leeren").onclick = async () => {
-  if (!confirm("Protokoll leeren?")) return;
+  if (!confirm(t("pr.leeren_frage"))) return;
   await holeJSON("api/logbuch", "DELETE"); ladeProtokoll();
 };
 $("#btn-gesundheit").onclick = ladeGesundheit;

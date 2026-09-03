@@ -102,9 +102,15 @@ TEXTE: dict[str, dict[str, str]] = {
         "lage.trockenlauf": "Trockenlauf",
         "lage.urlaub": "Urlaub",
         "lage.beschattet": "{n} Rollos beschattet",
+        "lage.beschattet_1": "ein Rollo beschattet",
         "lage.alle_mit_automatik": "Alle Rollos mit Automatik",
         "lage.mit_automatik": "{n} von {gesamt} Rollos mit Automatik",
         "lage.kein_wechsel": "kein Wechsel geplant",
+
+        # ── Übernahme aus den alten Automationen ─────────────────────────
+        "ueb.kein_ausloeser": "kein Zeit- oder Sonnenauslöser",
+        "ueb.toter_zweig": "{alias}: ein Zweig verlangt zwei Wochentags-Bedingungen "
+                           "gleichzeitig und läuft nie – übersprungen",
     },
     "en": {
         "punkt.satz": "{was} at {wann}{geltung}",
@@ -178,9 +184,14 @@ TEXTE: dict[str, dict[str, str]] = {
         "lage.trockenlauf": "Dry run",
         "lage.urlaub": "Holiday",
         "lage.beschattet": "{n} covers shaded",
+        "lage.beschattet_1": "one cover shaded",
         "lage.alle_mit_automatik": "All covers automated",
         "lage.mit_automatik": "{n} of {gesamt} covers automated",
         "lage.kein_wechsel": "no change scheduled",
+
+        "ueb.kein_ausloeser": "no time or sun trigger",
+        "ueb.toter_zweig": "{alias}: one branch demands two weekday conditions at "
+                           "once and never runs – skipped",
     },
 }
 
@@ -216,6 +227,10 @@ def t(schluessel: str, sprache: str | None = None, **werte) -> str:
     einer leeren Stelle.
     """
     tabelle = TEXTE.get(sprache or _aktuell) or TEXTE[VORGABE]
+    # Einzahl: Steht neben dem Schlüssel einer mit ``_1``, gilt der bei genau
+    # einem Stück. „1 covers shaded" liest sich wie ein Fehler.
+    if werte.get("n") == 1 and (schluessel + "_1") in TEXTE[VORGABE]:
+        schluessel += "_1"
     vorlage = tabelle.get(schluessel)
     if vorlage is None:
         vorlage = TEXTE[VORGABE].get(schluessel)

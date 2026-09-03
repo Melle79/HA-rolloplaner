@@ -367,6 +367,9 @@ ergänzt eine Tabelle in `backend/sprache.py` und eine in der Karte – kein
   beim Start gelesen) oder der Einstellung unter *Einstellungen → Sprache*.
   Danach richtet sich alles, was der Planer selbst formuliert: Protokoll und
   die Meldung bei Rauchalarm.
+* **Die Oberfläche des Add-ons** folgt derselben Einstellung wie der Planer –
+  sie ist schließlich der Ort, an dem sie gesetzt wird. Wer auf *Englisch*
+  stellt und speichert, sieht die Einrichtung beim nächsten Takt englisch.
 * **Die Karte** folgt dem **Betrachter** (`hass.locale.language`). Auf dem
   Wandtablett steht Deutsch, ein englischsprachiger Gast sieht dieselbe Karte
   auf Englisch, und niemand muss etwas umstellen.
@@ -381,12 +384,15 @@ seine Begründungen aus Bausteinen zusammen, und „zu um Sonnenuntergang,
 spätestens 22:00 wenn morgen schulfrei ist" heißt auf Englisch „closed at
 sunset, no later than 22:00 when tomorrow is a day off" – andere Wortstellung,
 andere Fügung. Deshalb steht je Sprache die ganze Vorlage da, nicht eine
-Wörterliste. Zwei Tests wachen darüber, dass beide Tabellen dieselben Schlüssel
-und dieselben Platzhalter führen; **Deutsch ist die Rückfallebene**, fehlt ein
-Schlüssel, kommt der deutsche Text und nie der nackte Schlüssel.
+Wörterliste. Tests wachen darüber, dass alle drei Tabellen – Planer, Karte,
+Oberfläche – dieselben Schlüssel und dieselben Platzhalter führen, dass kein
+Schlüssel doppelt vergeben ist und dass jeder benutzte Schlüssel auch wirklich
+in der Tabelle steht. **Deutsch ist die Rückfallebene**: Fehlt ein Schlüssel,
+kommt der deutsche Text und nie der nackte Schlüssel.
 
-**Die Oberfläche des Add-ons ist bisher deutsch.** Sie ist der Ort, an dem
-eingerichtet wird – die Übersetzung steht noch aus.
+Steht neben einem Schlüssel einer mit `_1`, gilt der bei genau einem Stück –
+„1 covers shaded" liest sich wie ein Fehler, und wer die Sprache nicht spricht,
+hält es auch für einen.
 
 ## Entitäten
 
