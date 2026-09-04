@@ -1,5 +1,19 @@
 # Änderungen
 
+## 2.19.0 – 04.09.2026
+
+**Ein eigenes Bild.** Bisher stand das Add-on im Store mit dem grauen
+Platzhalter da – zwischen den anderen war es nur am Namen zu finden.
+
+* `icon.png` (128×128) und `logo.png` (250×100). Das Motiv: ein Rollladen,
+  halb heruntergelassen, dahinter die Sonne – die beiden Dinge, um die es
+  geht.
+* Dieselbe Farbwelt wie beim Heizungsplaner, damit die beiden als Geschwister
+  zu erkennen sind: derselbe dunkle Grund, dieselbe Schrift, dasselbe Muster
+  aus Name und drei Stichworten. Unterscheiden lassen sie sich trotzdem auf
+  einen Blick – oranger Heizkörper gegen grauen Panzer.
+* Die Quellen liegen als SVG unter `doku/`, samt Anleitung zum Neuerzeugen.
+
 ## 2.18.0 – 03.09.2026
 
 **Halt und Schieber jetzt auch in der Karte** – dort, wo im Flur wirklich

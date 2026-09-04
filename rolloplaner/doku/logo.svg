@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 100" width="250" height="100">
+  <defs>
+    <linearGradient id="grund" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#232a35"/>
+      <stop offset="1" stop-color="#141920"/>
+    </linearGradient>
+    <linearGradient id="himmel" x1="0" y1="0.5" x2="0" y2="1">
+      <stop offset="0" stop-color="#6ba2e8"/>
+      <stop offset="1" stop-color="#bce2fb"/>
+    </linearGradient>
+    <linearGradient id="panzer" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2f5f9"/>
+      <stop offset="1" stop-color="#bcc5d0"/>
+    </linearGradient>
+    <!-- Wie im Icon in festen Koordinaten: Ein waagerechter Strahl hat eine
+         Bounding-Box ohne Höhe, und ein Verlauf darüber wird nicht gezeichnet. -->
+    <linearGradient id="sonne" gradientUnits="userSpaceOnUse"
+                    x1="0" y1="74" x2="0" y2="106">
+      <stop offset="0" stop-color="#ffdd93"/>
+      <stop offset="1" stop-color="#efa634"/>
+    </linearGradient>
+    <clipPath id="fenster">
+      <rect x="20" y="22" width="88" height="88" rx="10"/>
+    </clipPath>
+  </defs>
+
+  <rect width="250" height="100" rx="14" fill="url(#grund)"/>
+
+  <g transform="translate(5 13.9) scale(0.55)">
+    <g clip-path="url(#fenster)">
+      <rect x="20" y="22" width="88" height="88" fill="url(#himmel)"/>
+      <g stroke="url(#sonne)" stroke-width="5.5" stroke-linecap="round">
+        <path d="M48.5 90 H43"/><path d="M79.5 90 H85"/>
+        <path d="M53 101 L49 105"/><path d="M75 101 L79 105"/>
+        <path d="M53 79 L49 75"/><path d="M75 79 L79 75"/>
+      </g>
+      <circle cx="64" cy="90" r="13" fill="url(#sonne)"/>
+      <rect x="20" y="22" width="88" height="42" fill="url(#panzer)"/>
+      <g stroke="#7f8894" stroke-width="2">
+        <path d="M20 33.5 H108"/><path d="M20 44.5 H108"/><path d="M20 55.5 H108"/>
+      </g>
+      <rect x="20" y="64" width="88" height="7" fill="#8b95a2"/>
+      <rect x="20" y="64" width="88" height="2.5" fill="#cbd3dc"/>
+      <rect x="20" y="22" width="88" height="9" fill="#d2d9e1"/>
+    </g>
+  </g>
+
+  <text x="78" y="48" font-family="Avenir Next, Segoe UI, system-ui, sans-serif"
+        font-size="20" font-weight="600" fill="#e9edf2">Rolloplaner</text>
+  <text x="79" y="66" font-family="Avenir Next, Segoe UI, system-ui, sans-serif"
+        font-size="10.5" fill="#8b95a4">Zeitplan · Sonne · Hitzeschutz</text>
+</svg>
