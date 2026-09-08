@@ -568,6 +568,19 @@ nicht lesen, warum der Planer vor zwei Stunden etwas getan hat.
 Die Tasten sind dieselben wie in der großen Kachel, nicht nachgebaute: Zwei
 Fassungen liefen auseinander, sobald eine Taste dazukommt.
 
+Die Zeile steht auf **vier festen Spalten** – Bild, Name, Stellung, Tasten.
+Als Flexzeile stand jede Zeile woanders: Das Türbild ist schmaler als das
+Fensterbild (30 gegen 46 Pixel), und „100 %“ ist breiter als „0 %“. Alles
+dahinter rutschte mit, und die Tasten bildeten keine Spalte mehr. Ausgerichtet
+wird über feste Breiten, nicht über ein Raster über die ganze Karte: Jede
+Zeile ist ihr eigenes Raster, ein gemeinsames gäbe es nur mit subgrid – und
+feste Breiten tragen auch dann, wenn eine Zeile eine Taste weniger hat.
+
+**Zwei Schilder entfallen dort:** „Hitzeschutz“ und „Automatik aus“. Für beide
+steht in derselben Zeile schon ein Zeichen – die Sonne und der
+durchgestrichene Kalender, dazu der gestrichelte Rand. „Handbetrieb“ und
+„Fenster offen“ bleiben: Für die gibt es kein zweites Zeichen.
+
 **Die Beschriftung** lässt sich je Rollo überschreiben (*Beschriftung der
 Rollos* im Karteneditor). In einer Karte je Zimmer steht das Zimmer schon in
 der Überschrift – dort reicht „Fenster links“ statt „Wohnzimmer links“.

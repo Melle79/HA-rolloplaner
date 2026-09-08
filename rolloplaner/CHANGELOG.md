@@ -1,5 +1,23 @@
 # Änderungen
 
+## 2.23.0 – 08.09.2026
+
+**Die schlanke Zeile steht jetzt auf festen Spalten.** Vorher fluchtete
+nichts: Das Türbild ist schmaler als das Fensterbild (30 gegen 46 Pixel), und
+„100 %“ ist breiter als „0 %“ – alles dahinter rutschte mit, und die Tasten
+bildeten keine Spalte mehr.
+
+* Bild in einer Schachtel fester Breite, mittig – der Unterschied zwischen
+  Fenster und Tür bleibt sichtbar, ohne die Spalte zu verschieben.
+* Die Stellung rechtsbündig mit Ziffern gleicher Breite.
+* Die Tasten mit fester Kantenlänge statt Mindestmaß: Ein breiteres Zeichen
+  machte die Taste sonst breiter.
+* **Auch „Automatik aus“ fällt als Schild weg** – der durchgestrichene
+  Kalender in derselben Zeile sagt es, und der gestrichelte Rand dazu.
+* **Sonnenzeiten und Außentemperatur sind einzeln abschaltbar**, getrennt von
+  der Kopfzeile: Sie gelten fürs ganze Haus und drängen in einer schmalen
+  Karte den Titel weg.
+
 ## 2.22.1 – 08.09.2026
 
 * In der schlanken Zeile fällt das Schild „Hitzeschutz“ weg – die Sonne

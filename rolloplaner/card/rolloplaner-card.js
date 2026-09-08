@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.22.1";
+const CARD_VERSION = "2.23.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -46,6 +46,10 @@ const DEFAULTS = {
   // zweite kleine Karte neben einer Zimmerkarte steht das alles schon
   // woanders – dann ist er nur Höhe.
   show_kopf: true,
+  // Sonnenauf- und -untergang und die Außentemperatur rechts im Kopf. Sie
+  // gelten fürs ganze Haus – neben einer Zimmerkarte stehen sie schon
+  // woanders, und in einer schmalen Karte drängen sie den Titel weg.
+  show_sonnenzeiten: true,
   // Nur diese Zimmer. `gruppen` schneidet nach Obergruppe (Etage), das hier
   // nach dem Zimmer am Rollo – für eine kleine Karte je Zimmer. Beides lässt
   // sich kombinieren; null heißt alle.
@@ -139,7 +143,8 @@ const SPRACHEN = {
     "e.f.allow_fahren": "Tasten zum Fahren (auf · Halt · zu)",
     "e.f.allow_schieber": "Schieber für die Zwischenstellungen",
     "e.f.kompakt": "Schlank – eine Zeile je Rollo, ohne Begründung und Fahrplan",
-    "e.f.show_kopf": "Kopfzeile (Titel, Sonnenzeiten, Außentemperatur)",
+    "e.f.show_kopf": "Kopfzeile mit Titel und Zustand",
+    "e.f.show_sonnenzeiten": "Sonnenzeiten und Außentemperatur im Kopf",
     "e.f.gruppieren": "Nach Gruppen ordnen",
     "e.gruppen": "Gruppen: Auswahl und Reihenfolge",
     "e.gruppen.keine": "Noch keine Gruppen gefunden. Der Planer legt sie im Reiter "
@@ -202,7 +207,8 @@ const SPRACHEN = {
     "e.f.allow_fahren": "Buttons for moving (open · stop · close)",
     "e.f.allow_schieber": "Slider for the positions in between",
     "e.f.kompakt": "Slim – one line per cover, without reason and schedule",
-    "e.f.show_kopf": "Header (title, sun times, outside temperature)",
+    "e.f.show_kopf": "Header with title and state",
+    "e.f.show_sonnenzeiten": "Sun times and outside temperature in the header",
     "e.f.gruppieren": "Order by group",
     "e.gruppen": "Groups: selection and order",
     "e.gruppen.keine": "No groups found yet. The planner creates them in the Groups tab.",
@@ -462,12 +468,13 @@ class RolloplanerCard extends HTMLElement {
         <div class="k-status">${this._esc(status.state)}</div>
       </div>
       <div class="k-rechts">
+        ${!c.show_sonnenzeiten ? "" : `
         ${a.sonnenaufgang ? `<span title="${t('sonnenaufgang')}">
           <ha-icon icon="mdi:weather-sunset-up"></ha-icon>${this._uhr(a.sonnenaufgang)}</span>` : ""}
         ${a.sonnenuntergang ? `<span title="${t('sonnenuntergang')}">
           <ha-icon icon="mdi:weather-sunset-down"></ha-icon>${this._uhr(a.sonnenuntergang)}</span>` : ""}
         ${a.aussentemperatur !== null && a.aussentemperatur !== undefined
-          ? `<span><ha-icon icon="mdi:thermometer"></ha-icon>${a.aussentemperatur} °C</span>` : ""}
+          ? `<span><ha-icon icon="mdi:thermometer"></ha-icon>${a.aussentemperatur} °C</span>` : ""}`}
       </div>
     </div>`;
 
@@ -721,16 +728,23 @@ class RolloplanerCard extends HTMLElement {
     // sind dieselben, sonst liefen zwei Fassungen auseinander, sobald eine
     // dazukommt.
     if (c.kompakt) {
-      // „Hitzeschutz" als Schild wäre hier doppelt gesagt: Die Sonne daneben
-      // steht ohnehin für dieses Rollo. Dass gerade wirklich beschattet wird
-      // – und nicht nur der Schalter an ist –, sagt ihr Hinweistext. Die
-      // anderen Zustände bleiben: Für „Handbetrieb" oder „Fenster offen"
-      // gibt es in der Zeile kein zweites Zeichen.
-      const schildSchlank = zustand === "beschattung" ? "" : schild;
+      // Zwei Zustände haben in dieser Zeile schon ein eigenes Zeichen: Für
+      // den Hitzeschutz steht die Sonne daneben, für die abgeschaltete
+      // Automatik der durchgestrichene Kalender – und der gestrichelte Rand
+      // dazu. Ein Schild sagte dasselbe ein zweites Mal und nähme dem Namen
+      // den Platz. Die übrigen bleiben: Für „Handbetrieb" oder „Fenster
+      // offen" gibt es in der Zeile kein zweites Zeichen.
+      const MIT_EIGENEM_ZEICHEN = ["beschattung", "aus"];
+      const schildSchlank = MIT_EIGENEM_ZEICHEN.includes(zustand) ? "" : schild;
+      // Name und Schilder in einer Schachtel: Sonst wären es vier Spalten
+      // mehr oder weniger, je nachdem wie viele Schilder eine Zeile trägt –
+      // und die festen Spalten säßen bei jeder Zeile anders.
       return `<div class="raum schlank ${an ? "" : "ruht"}">
         ${rollobild(stellung, attrs.art)}
-        <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>
-        ${raumSchild}${schildSchlank}
+        <div class="s-name">
+          <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>
+          ${raumSchild}${schildSchlank}
+        </div>
         <span class="wert">${wert}<small>${Number.isNaN(zahl) ? "" : "%"}</small></span>
         <span class="knoepfe">${knoepfe}${sonne}${kippe}</span>
       </div>`;
@@ -1056,29 +1070,47 @@ class RolloplanerCard extends HTMLElement {
       .raum{display:flex; flex-direction:column;
         border:1px solid var(--divider-color); border-radius:10px;
         padding:10px 11px 8px}
-      /* Schlank: eine Zeile. Der Name nimmt den Platz, der übrig bleibt, und
-         schneidet ab statt umzubrechen – sonst wächst die Zeile doch wieder
-         in die Höhe, und genau das sollte sie nicht. */
-      .raum.schlank{flex-direction:row; align-items:center;
+      /* Schlank: eine Zeile, und zwar auf vier festen Spalten – Bild, Name,
+         Stellung, Tasten. Als Flexzeile standen Bild und Zahl in jeder Zeile
+         woanders: Das Türbild ist schmaler als das Fensterbild (30 gegen 46
+         Pixel), und „100 %" ist breiter als „0 %". Alles dahinter rutschte
+         mit, und die Tasten bildeten keine Spalte mehr.
+
+         Ausgerichtet wird über feste Breiten und nicht über ein Raster über
+         die ganze Karte: Jede Zeile ist ihr eigenes Raster, ein gemeinsames
+         gäbe es nur mit subgrid. Feste Breiten tun dasselbe und tragen
+         auch, wenn eine Zeile eine Taste weniger hat. */
+      .raum.schlank{display:grid; align-items:center;
+        grid-template-columns:auto minmax(0, 1fr) auto auto;
         gap:calc(8px * var(--skala)); padding:6px 8px}
       /* Eine Spalte: Nebeneinander bliebe für den Namen nichts übrig – er
          schrumpfte auf null, und die Zeile zeigte nur noch Schilder. */
       .raeume.schlank .gruppe{grid-template-columns:1fr}
-      .raum.schlank .name{flex:1 1 auto; min-width:4em; overflow:hidden;
-        text-overflow:ellipsis; white-space:nowrap}
-      /* In einer Zeile ist die große Zahl nur noch Platzfresser: Sie steht
-         direkt neben dem Bild, das dasselbe sagt. Und was sie an Breite
-         nimmt, fehlt dem Namen – „Wohnzimmer rechts" wurde zu „Wohnzimm…". */
-      .raum.schlank .wert{font-size:calc(1rem * var(--skala)); font-weight:500}
-      .raum.schlank .tipp{min-width:calc(30px * var(--skala));
-        min-height:calc(30px * var(--skala)); border-radius:8px}
+      /* Das Bild in einer Schachtel fester Breite, mittig: So bleibt der
+         Unterschied zwischen Fenster und Tür sichtbar, ohne die Spalte zu
+         verschieben. */
+      .raum.schlank .bild{height:calc(26px * var(--skala));
+        width:calc(32px * var(--skala)); justify-content:center;
+        padding-bottom:2px}
+      .raum.schlank .rollo.fenster{width:calc(30px * var(--skala))}
+      .raum.schlank .rollo.tuer{width:calc(20px * var(--skala))}
+      .raum.schlank .s-name{display:flex; align-items:center; min-width:0;
+        gap:calc(6px * var(--skala))}
+      .raum.schlank .name{overflow:hidden; text-overflow:ellipsis;
+        white-space:nowrap}
+      /* In einer Zeile ist die große Zahl nur Platzfresser – das Bild daneben
+         sagt dasselbe. Rechtsbündig und mit Ziffern gleicher Breite, damit
+         die Prozente untereinander stehen. */
+      .raum.schlank .wert{font-size:calc(1rem * var(--skala)); font-weight:500;
+        min-width:calc(3.4em * var(--skala)); text-align:right;
+        font-variant-numeric:tabular-nums}
+      .raum.schlank .knoepfe{margin-left:0}
+      /* Feste Kästchen statt Mindestmaß: Ein breiteres Zeichen machte die
+         Taste sonst breiter, und die Spalte wackelte. */
+      .raum.schlank .tipp{width:calc(30px * var(--skala));
+        height:calc(30px * var(--skala)); min-width:0; min-height:0;
+        border-radius:8px}
       .raum.schlank .tipp ha-icon{--mdc-icon-size:calc(19px * var(--skala))}
-      .raum.schlank .schild,
-      .raum.schlank .raumschild,
-      .raum.schlank .planschild{flex:none}
-      .raum.schlank .wert{flex:none; margin-left:auto}
-      .raum.schlank .knoepfe{flex:none; margin-left:0}
-      .raum.schlank .bild{height:calc(26px * var(--skala))}
       /* Automatik aus heißt: Der Planer fährt dieses Rollo nicht. Es heißt
          nicht, dass das Rollo weg ist – Stellung, Name und Tasten stimmen
          weiter. Die halbe Deckkraft über der ganzen Kachel las sich wie
@@ -1249,7 +1281,8 @@ class RolloplanerCard extends HTMLElement {
 
 const SCHALTER_FELDER = ["show_funktionen", "show_naechster", "show_stoerungen",
                          "show_helfer", "allow_fahren", "allow_schieber",
-                         "kompakt", "show_kopf", "gruppieren"];
+                         "kompakt", "show_kopf", "show_sonnenzeiten",
+                         "gruppieren"];
 
 class RolloplanerCardEditor extends HTMLElement {
   setConfig(config) {
