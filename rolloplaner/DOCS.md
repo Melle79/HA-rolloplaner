@@ -556,6 +556,18 @@ Halt und Schieber erscheinen nur, wo der Antrieb sie beherrscht
 Er behauptet, es ginge – und wer ihn drückt, sucht den Fehler beim Rollo statt
 beim Antrieb.
 
+### Schlank: eine Zeile je Rollo
+
+Die Karte hat einen zweiten Zuschnitt. **Schlank** (im Karteneditor
+*Schlank – eine Zeile je Rollo*) lässt Begründung, Fahrplan und Schieber weg
+und legt alles in eine Zeile: Bild, Name, Stellung, dann *auf · Halt · zu*,
+Hitzeschutz und Automatik. Zusammen mit *Kopfzeile aus* wird daraus eine
+kleine Karte, die neben eine Zimmerkarte passt – dort will man schalten und
+nicht lesen, warum der Planer vor zwei Stunden etwas getan hat.
+
+Die Tasten sind dieselben wie in der großen Kachel, nicht nachgebaute: Zwei
+Fassungen liefen auseinander, sobald eine Taste dazukommt.
+
 ### Die große Zahl: wo es steht, nicht wohin es soll
 
 Die Zahl an der Kachel sagt, **wo das Rollo steht**. Solange der Planer

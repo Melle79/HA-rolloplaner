@@ -1,5 +1,20 @@
 # Änderungen
 
+## 2.20.0 – 08.09.2026
+
+**Ein schlanker Zuschnitt der Karte.** Gedacht als kleine zweite Karte neben
+einer Zimmerkarte: schalten, ohne zu lesen.
+
+* **Schlank** legt jedes Rollo in *eine* Zeile – Bild, Name, Stellung, dann
+  *auf · Halt · zu*, Hitzeschutz und Automatik. Keine Begründung, kein
+  Fahrplan, kein Schieber; sonst wäre es keine Zeile mehr.
+* **Kopfzeile abschaltbar.** Titel, Sonnenzeiten und Außentemperatur stehen
+  neben einer Zimmerkarte ohnehin schon woanders und sind dort nur Höhe.
+* Beides steht im Karteneditor, beides ist aus in der Vorgabe: Das gewohnte
+  Bild bleibt, wie es war.
+* Die Tasten der schlanken Zeile sind dieselben wie in der großen Kachel und
+  keine zweite Fassung – die liefe auseinander, sobald eine Taste dazukommt.
+
 ## 2.19.1 – 08.09.2026
 
 **Der Hitzeschutz-Knopf an der Kachel war nie zu sehen.** Den Schalter je

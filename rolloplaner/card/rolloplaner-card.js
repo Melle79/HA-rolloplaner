@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.19.1";
+const CARD_VERSION = "2.20.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -37,6 +37,15 @@ const DEFAULTS = {
   // deshalb abschaltbar: Wer die Karte nur zum Nachsehen an die Wand hängt,
   // will die Höhe nicht dafür ausgeben.
   allow_schieber: true,
+  // Schlank: eine Zeile je Rollo, nur Name, Stellung und Tasten. Gedacht als
+  // zweite, kleine Karte neben einer Zimmerkarte – dort will man schalten
+  // und nicht lesen, warum der Planer etwas getan hat. Der Schieber entfällt
+  // dabei, sonst wäre es keine Zeile mehr.
+  kompakt: false,
+  // Der Kopf trägt Titel, Zustand, Sonnenzeiten und Außentemperatur. Als
+  // zweite kleine Karte neben einer Zimmerkarte steht das alles schon
+  // woanders – dann ist er nur Höhe.
+  show_kopf: true,
   // null = alle. Sonst eine Liste von Gruppennamen: Sie bestimmt zugleich,
   // **welche** gezeigt werden und **in welcher Reihenfolge**.
   gruppen: null,
@@ -119,6 +128,8 @@ const SPRACHEN = {
     "e.f.show_helfer": "Freigabeschalter an den Kacheln",
     "e.f.allow_fahren": "Tasten zum Fahren (auf · Halt · zu)",
     "e.f.allow_schieber": "Schieber für die Zwischenstellungen",
+    "e.f.kompakt": "Schlank – eine Zeile je Rollo, ohne Begründung und Fahrplan",
+    "e.f.show_kopf": "Kopfzeile (Titel, Sonnenzeiten, Außentemperatur)",
     "e.f.gruppieren": "Nach Gruppen ordnen",
     "e.gruppen": "Gruppen: Auswahl und Reihenfolge",
     "e.gruppen.keine": "Noch keine Gruppen gefunden. Der Planer legt sie im Reiter "
@@ -179,6 +190,8 @@ const SPRACHEN = {
     "e.f.show_helfer": "Release switches on the tiles",
     "e.f.allow_fahren": "Buttons for moving (open · stop · close)",
     "e.f.allow_schieber": "Slider for the positions in between",
+    "e.f.kompakt": "Slim – one line per cover, without reason and schedule",
+    "e.f.show_kopf": "Header (title, sun times, outside temperature)",
     "e.f.gruppieren": "Order by group",
     "e.gruppen": "Groups: selection and order",
     "e.gruppen.keine": "No groups found yet. The planner creates them in the Groups tab.",
@@ -426,7 +439,7 @@ class RolloplanerCard extends HTMLElement {
     const stoerung = this._hass.states["binary_sensor.rolloplaner_stoerung"];
     const naechster = this._hass.states["sensor.rolloplaner_naechster_wechsel"];
 
-    const kopf = `<div class="kopf">
+    const kopf = !c.show_kopf ? "" : `<div class="kopf">
       <ha-icon icon="mdi:window-shutter" class="k-icon"></ha-icon>
       <div class="k-text">
         <div class="k-titel">${this._esc(c.title)}</div>
@@ -535,7 +548,8 @@ class RolloplanerCard extends HTMLElement {
         });
         const alsUeberschrift =
           (this._config.zimmer ?? DEFAULTS.zimmer) === "ueberschrift";
-        rolloHtml = `<div class="raeume">${[...nachGruppe].map(([titel, liste]) =>
+        rolloHtml = `<div class="raeume${c.kompakt ? " schlank" : ""}">${
+          [...nachGruppe].map(([titel, liste]) =>
           `<section class="raumgruppe">
             <div class="raumtitel">${this._esc(titel)}</div>
             ${alsUeberschrift
@@ -543,7 +557,8 @@ class RolloplanerCard extends HTMLElement {
               : `<div class="gruppe">${liste.map((r) => this._rollo(r)).join("")}</div>`}
           </section>`).join("")}</div>`;
       } else {
-        rolloHtml = `<div class="raeume">${rollos.map((r) => this._rollo(r)).join("")}</div>`;
+        rolloHtml = `<div class="raeume${c.kompakt ? " schlank" : ""}">${
+          rollos.map((r) => this._rollo(r)).join("")}</div>`;
       }
     }
 
@@ -679,12 +694,27 @@ class RolloplanerCard extends HTMLElement {
       ? t("plan.ziel", {was: stellungstext(zielAnzeige, inv)})
       : stellungstext(zahl, inv);
 
+    const stellung = attrs.ist === null || attrs.ist === undefined
+      ? (attrs.stellung_ha === null || attrs.stellung_ha === undefined
+         ? r.sensor.state : attrs.stellung_ha)
+      : attrs.ist;
+
+    // Schlank: alles in eine Zeile. Kein eigener Bauplan für die Tasten – es
+    // sind dieselben, sonst liefen zwei Fassungen auseinander, sobald eine
+    // dazukommt.
+    if (c.kompakt) {
+      return `<div class="raum schlank ${an ? "" : "ruht"}">
+        ${rollobild(stellung, attrs.art)}
+        <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>
+        ${raumSchild}${schild}
+        <span class="wert">${wert}<small>${Number.isNaN(zahl) ? "" : "%"}</small></span>
+        <span class="knoepfe">${knoepfe}${sonne}${kippe}</span>
+      </div>`;
+    }
+
     return `<div class="raum ${an ? "" : "ruht"}">
       <div class="z1">
-        ${rollobild(attrs.ist === null || attrs.ist === undefined
-                    ? (attrs.stellung_ha === null || attrs.stellung_ha === undefined
-                       ? r.sensor.state : attrs.stellung_ha)
-                    : attrs.ist, attrs.art)}
+        ${rollobild(stellung, attrs.art)}
         <div class="z1-text">
           <div class="namenzeile">
             <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>${raumSchild}${schild}${
@@ -1002,6 +1032,22 @@ class RolloplanerCard extends HTMLElement {
       .raum{display:flex; flex-direction:column;
         border:1px solid var(--divider-color); border-radius:10px;
         padding:10px 11px 8px}
+      /* Schlank: eine Zeile. Der Name nimmt den Platz, der übrig bleibt, und
+         schneidet ab statt umzubrechen – sonst wächst die Zeile doch wieder
+         in die Höhe, und genau das sollte sie nicht. */
+      .raum.schlank{flex-direction:row; align-items:center;
+        gap:calc(8px * var(--skala)); padding:6px 8px}
+      /* Eine Spalte: Nebeneinander bliebe für den Namen nichts übrig – er
+         schrumpfte auf null, und die Zeile zeigte nur noch Schilder. */
+      .raeume.schlank .gruppe{grid-template-columns:1fr}
+      .raum.schlank .name{flex:1 1 6em; min-width:3em; overflow:hidden;
+        text-overflow:ellipsis; white-space:nowrap}
+      .raum.schlank .schild,
+      .raum.schlank .raumschild,
+      .raum.schlank .planschild{flex:none}
+      .raum.schlank .wert{flex:none; margin-left:auto}
+      .raum.schlank .knoepfe{flex:none; margin-left:0}
+      .raum.schlank .bild{height:calc(26px * var(--skala))}
       /* Automatik aus heißt: Der Planer fährt dieses Rollo nicht. Es heißt
          nicht, dass das Rollo weg ist – Stellung, Name und Tasten stimmen
          weiter. Die halbe Deckkraft über der ganzen Kachel las sich wie
@@ -1172,7 +1218,7 @@ class RolloplanerCard extends HTMLElement {
 
 const SCHALTER_FELDER = ["show_funktionen", "show_naechster", "show_stoerungen",
                          "show_helfer", "allow_fahren", "allow_schieber",
-                         "gruppieren"];
+                         "kompakt", "show_kopf", "gruppieren"];
 
 class RolloplanerCardEditor extends HTMLElement {
   setConfig(config) {
