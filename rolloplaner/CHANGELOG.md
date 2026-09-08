@@ -1,5 +1,17 @@
 # Änderungen
 
+## 2.22.0 – 08.09.2026
+
+* **Eigene Beschriftung je Rollo** im Karteneditor. In einer Karte je Zimmer
+  steht das Zimmer schon in der Überschrift – dort reicht „Fenster links“
+  statt „Wohnzimmer links“. Der Name des Planers bleibt unberührt: Protokoll
+  und Meldungen meinen das ganze Haus.
+* **Zwei Symbole ausgetauscht.** `mdi:sun-thermometer` ist eine Sonne *und*
+  ein Thermometer – bei 19 Pixeln wird daraus ein Fleck. Jetzt eine schlichte
+  Sonne. Und `mdi:robot` sagte „Automation“ nur dem, der Home Assistant kennt;
+  gemeint ist „dieses Rollo folgt seinem Zeitplan“, also steht dort jetzt ein
+  Kalender.
+
 ## 2.21.1 – 08.09.2026
 
 * In der schlanken Zeile war die große Stellungszahl nur Platzfresser – sie

@@ -568,6 +568,13 @@ nicht lesen, warum der Planer vor zwei Stunden etwas getan hat.
 Die Tasten sind dieselben wie in der großen Kachel, nicht nachgebaute: Zwei
 Fassungen liefen auseinander, sobald eine Taste dazukommt.
 
+**Die Beschriftung** lässt sich je Rollo überschreiben (*Beschriftung der
+Rollos* im Karteneditor). In einer Karte je Zimmer steht das Zimmer schon in
+der Überschrift – dort reicht „Fenster links“ statt „Wohnzimmer links“.
+Geändert wird nur die Beschriftung **dieser Karte**: Protokoll und Meldungen
+des Planers meinen das ganze Haus und behalten ihren Namen. Leer heißt: der
+Name aus dem Planer.
+
 **Eine Karte je Zimmer** macht der Schnitt *Welche Zimmer* im Karteneditor:
 Hakt man dort nur ein Zimmer an, zeigt die Karte nur dessen Rollos. Alle
 angehakt heißt keine Einschränkung – sonst sperrte die Liste jedes neue

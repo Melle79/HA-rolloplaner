@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.21.1";
+const CARD_VERSION = "2.22.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -50,6 +50,11 @@ const DEFAULTS = {
   // nach dem Zimmer am Rollo – für eine kleine Karte je Zimmer. Beides lässt
   // sich kombinieren; null heißt alle.
   nur_zimmer: null,
+  // Eigene Beschriftung je Rollo, nach der Kennung des Rollladens. In einer
+  // Karte je Zimmer steht das Zimmer schon in der Überschrift – „Balkontür
+  // Luna" ist dort einmal zu viel gesagt. Der Name des Planers bleibt davon
+  // unberührt: Protokoll und Meldungen sollen weiter das ganze Haus meinen.
+  namen: null,
   // null = alle. Sonst eine Liste von Gruppennamen: Sie bestimmt zugleich,
   // **welche** gezeigt werden und **in welcher Reihenfolge**.
   gruppen: null,
@@ -227,7 +232,7 @@ function t(schluessel, werte) {
 
 const FUNKTIONEN = [
   ["switch.rolloplaner_automatik", "fn.automatik", "mdi:home-automation"],
-  ["switch.rolloplaner_beschattung", "fn.hitzeschutz", "mdi:sun-thermometer"],
+  ["switch.rolloplaner_beschattung", "fn.hitzeschutz", "mdi:weather-sunny"],
   ["switch.rolloplaner_urlaubssimulation", "fn.urlaub", "mdi:shield-home"],
   ["switch.rolloplaner_fluchtweg", "fn.fluchtweg", "mdi:fire-alert"],
 ];
@@ -299,6 +304,7 @@ class RolloplanerCard extends HTMLElement {
     const signatur = JSON.stringify([
       _sprache,
       this._config.nur_zimmer,
+      this._config.namen,
       status && status.state,
       FUNKTIONEN.map(([e]) => hass.states[e] && hass.states[e].state),
       rollos.map((r) => [r.sensor.state, r.sensor.attributes.ist_anzeige,
@@ -366,8 +372,9 @@ class RolloplanerCard extends HTMLElement {
           // Home Assistant stellt den Gerätenamen voran: aus „Rollo Büro“ wird
           // „Rolloplaner Rollo Büro“. Beides muss weg, sonst steht auf jeder
           // Zeile zweimal dasselbe.
-          name: (sensor.attributes.friendly_name || e)
-            .replace(/^Rolloplaner\s+/, "").replace(/^Rollo\s+/, ""),
+          name: (this._config.namen || {})[sensor.attributes.cover]
+            || (sensor.attributes.friendly_name || e)
+              .replace(/^Rolloplaner\s+/, "").replace(/^Rollo\s+/, ""),
           raum: sensor.attributes.raum || "",
           gruppe: sensor.attributes.gruppe || "",
           platz: Number(sensor.attributes.gruppe_platz ?? 999),
@@ -661,7 +668,8 @@ class RolloplanerCard extends HTMLElement {
     const kippe = r.schalter ? `<button class="tipp ${an ? "an" : ""}"
         data-schalter="${r.schalter.entity_id}" data-an="${an ? "0" : "1"}"
         title="${this._esc(t("titel.automatik", {name: r.name}))}">
-        <ha-icon icon="mdi:${an ? "robot" : "robot-off"}"></ha-icon></button>` : "";
+        <ha-icon icon="mdi:${an ? "calendar-clock" : "calendar-remove"}"
+        ></ha-icon></button>` : "";
 
     // Ein Knopf für den Hitzeschutz dieses Rollos – aber nur, wo eine
     // Himmelsrichtung hinterlegt ist. Ohne sie weiß der Planer nicht, wann die
@@ -682,7 +690,7 @@ class RolloplanerCard extends HTMLElement {
           title="${this._esc(t("titel.hitzeschutz", {name: r.name,
             grad: String(attrs.ausrichtung)})
             + (hitzeRuht ? "\n" + t("titel.hitze_gesamt_aus") : ""))}">
-          <ha-icon icon="mdi:sun-thermometer"></ha-icon></button>` : "";
+          <ha-icon icon="mdi:weather-sunny"></ha-icon></button>` : "";
 
     // Die große Zahl sagt, **wo das Rollo steht** – der Sensor führt das Ziel
     // des Planers. Solange beide zusammenfallen, ist das dasselbe; nach einem
@@ -1273,6 +1281,26 @@ class RolloplanerCardEditor extends HTMLElement {
       name: n, an: !gewaehlt || !gewaehlt.length || gewaehlt.includes(n)}));
   }
 
+  _rollosImSchnitt() {
+    const zimmer = this._config.nur_zimmer;
+    const gruppen = this._config.gruppen || this._config.raeume;
+    const aus = [];
+    for (const eid of Object.keys(this._hass?.states || {})) {
+      if (!eid.startsWith("sensor.rolloplaner_rollo_")) continue;
+      const a = this._hass.states[eid].attributes || {};
+      if (zimmer && zimmer.length && !zimmer.includes(a.raum || "")) continue;
+      if (gruppen && !gruppen.includes(a.gruppe || a.raum || "")) continue;
+      if (!a.cover) continue;
+      aus.push({
+        cover: a.cover,
+        vorgabe: (a.friendly_name || eid)
+          .replace(/^Rolloplaner\s+/, "").replace(/^Rollo\s+/, ""),
+        eigen: (this._config.namen || {})[a.cover] || "",
+      });
+    }
+    return aus.sort((x, y) => x.vorgabe.localeCompare(y.vorgabe, "de"));
+  }
+
   _melden(aenderung) {
     this._config = { ...this._config, ...aenderung };
     this.dispatchEvent(new CustomEvent("config-changed", {
@@ -1286,6 +1314,7 @@ class RolloplanerCardEditor extends HTMLElement {
     const c = this._config;
     const gruppen = this._gruppen();
     const zimmer = this._zimmer();
+    const benennbar = this._rollosImSchnitt();
     const alleAn = gruppen.every((g) => g.an);
 
     this.innerHTML = `<style>
@@ -1307,7 +1336,10 @@ class RolloplanerCardEditor extends HTMLElement {
         border-radius:6px; color:var(--secondary-text-color); font-size:1rem}
       .rp-e .zeile button:hover{background:rgba(127,127,127,.18)}
       .rp-e .hinweis{font-size:.78rem; color:var(--secondary-text-color); margin:0}
-    </style>
+          .zeile .nameher{flex:0 0 42%; color:#6b7280; font-size:.85em;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+      .zeile input[type=text]{flex:1 1 auto; min-width:0}
+</style>
     <div class="rp-e">
       <label>Überschrift
         <input type="text" id="rp-titel" value="${(c.title || "").replace(/"/g, "&quot;")}"></label>
@@ -1346,6 +1378,20 @@ class RolloplanerCardEditor extends HTMLElement {
         Geschnitten wird nach dem Zimmer am Rollo, nicht nach der Obergruppe;
         die Gruppenauswahl weiter unten wirkt zusätzlich.</p>
 
+      <h4>Beschriftung der Rollos</h4>
+      ${benennbar.length ? benennbar.map((r) => `<div class="zeile">
+        <span class="nameher">${r.vorgabe}</span>
+        <input type="text" data-name="${r.cover.replace(/"/g, "&quot;")}"
+               value="${r.eigen.replace(/"/g, "&quot;")}"
+               placeholder="${r.vorgabe.replace(/"/g, "&quot;")}">
+      </div>`).join("")
+        : `<p class="hinweis">Kein Rollo im gewählten Schnitt.</p>`}
+      <p class="hinweis">Leer heißt: der Name aus dem Planer. In einer Karte je
+        Zimmer steht das Zimmer schon in der Überschrift – dort reicht
+        „Fenster links" statt „Wohnzimmer links". Geändert wird nur die
+        Beschriftung in <i>dieser</i> Karte; Protokoll und Meldungen des
+        Planers meinen weiter das ganze Haus und behalten ihren Namen.</p>
+
       <h4>Was die Karte zeigt</h4>
       ${SCHALTER_FELDER.map((feld) => `<label class="haken">
         <input type="checkbox" data-feld="${feld}" ${c[feld] ? "checked" : ""}>
@@ -1373,6 +1419,19 @@ class RolloplanerCardEditor extends HTMLElement {
       this._melden({ textgroesse: e.target.value });
     this.querySelector("#rp-zimmer").onchange = (e) =>
       this._melden({ zimmer: e.target.value });
+    this.querySelectorAll("[data-name]").forEach((el) => {
+      el.onchange = () => {
+        const namen = {};
+        this.querySelectorAll("[data-name]").forEach((x) => {
+          const wert = x.value.trim();
+          if (wert) namen[x.dataset.name] = wert;
+        });
+        // Kein einziger eigener Name heißt: gar keine Liste. Sonst bliebe ein
+        // leeres Wörterbuch in der Konfiguration stehen und sähe aus wie eine
+        // Einstellung, die es nicht gibt.
+        this._melden({ namen: Object.keys(namen).length ? namen : null });
+      };
+    });
     this.querySelectorAll("[data-zimmer]").forEach((el) => {
       el.onchange = () => {
         const kaesten = [...this.querySelectorAll("[data-zimmer]")];
