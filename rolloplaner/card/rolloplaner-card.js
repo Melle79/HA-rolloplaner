@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.21.0";
+const CARD_VERSION = "2.21.1";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -1047,8 +1047,15 @@ class RolloplanerCard extends HTMLElement {
       /* Eine Spalte: Nebeneinander bliebe für den Namen nichts übrig – er
          schrumpfte auf null, und die Zeile zeigte nur noch Schilder. */
       .raeume.schlank .gruppe{grid-template-columns:1fr}
-      .raum.schlank .name{flex:1 1 6em; min-width:3em; overflow:hidden;
+      .raum.schlank .name{flex:1 1 auto; min-width:4em; overflow:hidden;
         text-overflow:ellipsis; white-space:nowrap}
+      /* In einer Zeile ist die große Zahl nur noch Platzfresser: Sie steht
+         direkt neben dem Bild, das dasselbe sagt. Und was sie an Breite
+         nimmt, fehlt dem Namen – „Wohnzimmer rechts" wurde zu „Wohnzimm…". */
+      .raum.schlank .wert{font-size:calc(1rem * var(--skala)); font-weight:500}
+      .raum.schlank .tipp{min-width:calc(30px * var(--skala));
+        min-height:calc(30px * var(--skala)); border-radius:8px}
+      .raum.schlank .tipp ha-icon{--mdc-icon-size:calc(19px * var(--skala))}
       .raum.schlank .schild,
       .raum.schlank .raumschild,
       .raum.schlank .planschild{flex:none}

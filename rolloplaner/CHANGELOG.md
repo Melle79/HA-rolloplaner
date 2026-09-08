@@ -1,5 +1,12 @@
 # Änderungen
 
+## 2.21.1 – 08.09.2026
+
+* In der schlanken Zeile war die große Stellungszahl nur Platzfresser – sie
+  steht direkt neben dem Bild, das dasselbe sagt. Was sie an Breite nahm,
+  fehlte dem Namen: Aus „Wohnzimmer rechts“ wurde „Wohnzimm…“. Zahl und
+  Tasten sind dort jetzt etwas kleiner, der Name bekommt den Rest.
+
 ## 2.21.0 – 08.09.2026
 
 **Eine Karte je Zimmer.** Bisher ließ sich die Karte nur nach Obergruppe
