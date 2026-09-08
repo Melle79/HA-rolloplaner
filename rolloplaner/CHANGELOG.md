@@ -1,5 +1,20 @@
 # Änderungen
 
+## 2.21.0 – 08.09.2026
+
+**Eine Karte je Zimmer.** Bisher ließ sich die Karte nur nach Obergruppe
+schneiden – also nach Etage. Für eine kleine Karte neben einer Zimmerkarte
+ist das zu grob.
+
+* **Welche Zimmer** im Karteneditor: Haken je Zimmer, gefüllt aus dem, was
+  an den Rollos steht. Alle angehakt heißt keine Einschränkung – sonst
+  sperrte die gespeicherte Liste jedes neue Zimmer aus.
+* Zusammen mit *schlank* und ohne Kopfzeile wird daraus genau das: eine
+  Karte je Zimmer, eine Zeile je Rollo, mit *auf · Halt · zu*, Hitzeschutz
+  und Automatik.
+* Geschnitten wird nach dem Zimmer **am Rollo**, nicht nach der Obergruppe;
+  beide Schnitte lassen sich kombinieren.
+
 ## 2.20.0 – 08.09.2026
 
 **Ein schlanker Zuschnitt der Karte.** Gedacht als kleine zweite Karte neben

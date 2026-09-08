@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.20.0";
+const CARD_VERSION = "2.21.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -46,6 +46,10 @@ const DEFAULTS = {
   // zweite kleine Karte neben einer Zimmerkarte steht das alles schon
   // woanders – dann ist er nur Höhe.
   show_kopf: true,
+  // Nur diese Zimmer. `gruppen` schneidet nach Obergruppe (Etage), das hier
+  // nach dem Zimmer am Rollo – für eine kleine Karte je Zimmer. Beides lässt
+  // sich kombinieren; null heißt alle.
+  nur_zimmer: null,
   // null = alle. Sonst eine Liste von Gruppennamen: Sie bestimmt zugleich,
   // **welche** gezeigt werden und **in welcher Reihenfolge**.
   gruppen: null,
@@ -294,6 +298,7 @@ class RolloplanerCard extends HTMLElement {
     // jede Auswahlliste zu, während man noch darin liest.
     const signatur = JSON.stringify([
       _sprache,
+      this._config.nur_zimmer,
       status && status.state,
       FUNKTIONEN.map(([e]) => hass.states[e] && hass.states[e].state),
       rollos.map((r) => [r.sensor.state, r.sensor.attributes.ist_anzeige,
@@ -349,6 +354,7 @@ class RolloplanerCard extends HTMLElement {
 
   _rollosSammeln(hass) {
     const gewuenscht = this._config.gruppen || this._config.raeume;
+    const zimmer = this._config.nur_zimmer;
     return Object.keys(hass.states)
       .filter((e) => e.startsWith("sensor.rolloplaner_rollo_"))
       .map((e) => {
@@ -371,6 +377,7 @@ class RolloplanerCard extends HTMLElement {
         };
       })
       .filter((r) => (!gewuenscht || gewuenscht.includes(r.gruppe || r.raum)))
+      .filter((r) => (!zimmer || !zimmer.length || zimmer.includes(r.raum)))
       .sort((a, b) => {
         // Steht eine Reihenfolge in der Konfiguration, gilt sie. Sonst zählt
         // die Reihenfolge aus dem Add-on – dort ordnet man die Gruppen –, und
@@ -1246,6 +1253,19 @@ class RolloplanerCardEditor extends HTMLElement {
             ...gefunden.filter((n) => !gewaehlt.includes(n)).map((n) => ({ name: n, an: false }))];
   }
 
+  _zimmer() {
+    const gefunden = [];
+    for (const eid of Object.keys(this._hass?.states || {})) {
+      if (!eid.startsWith("sensor.rolloplaner_rollo_")) continue;
+      const raum = (this._hass.states[eid].attributes || {}).raum || "";
+      if (raum && !gefunden.includes(raum)) gefunden.push(raum);
+    }
+    gefunden.sort((a, b) => a.localeCompare(b, "de"));
+    const gewaehlt = this._config.nur_zimmer;
+    return gefunden.map((n) => ({
+      name: n, an: !gewaehlt || !gewaehlt.length || gewaehlt.includes(n)}));
+  }
+
   _melden(aenderung) {
     this._config = { ...this._config, ...aenderung };
     this.dispatchEvent(new CustomEvent("config-changed", {
@@ -1258,6 +1278,7 @@ class RolloplanerCardEditor extends HTMLElement {
     if (!this._config) return;
     const c = this._config;
     const gruppen = this._gruppen();
+    const zimmer = this._zimmer();
     const alleAn = gruppen.every((g) => g.an);
 
     this.innerHTML = `<style>
@@ -1307,6 +1328,17 @@ class RolloplanerCardEditor extends HTMLElement {
         aber jedes Zimmer fängt eine neue Reihe an – ein Zimmer mit einem Rollo
         lässt den Rest der Reihe leer.</p>
 
+      <h4>Welche Zimmer</h4>
+      ${zimmer.length ? zimmer.map((z) => `<label class="haken">
+        <input type="checkbox" data-zimmer="${z.name.replace(/"/g, "&quot;")}"
+               ${z.an ? "checked" : ""}>${z.name}</label>`).join("")
+        : `<p class="hinweis">Noch kein Zimmer an einem Rollo hinterlegt.</p>`}
+      <p class="hinweis">Alle angehakt heißt: keine Einschränkung. Ein einzelnes
+        Zimmer macht aus der Karte eine kleine Karte je Zimmer – zusammen mit
+        <i>schlank</i> und ohne Kopfzeile ist das eine Zeile je Rollo.
+        Geschnitten wird nach dem Zimmer am Rollo, nicht nach der Obergruppe;
+        die Gruppenauswahl weiter unten wirkt zusätzlich.</p>
+
       <h4>Was die Karte zeigt</h4>
       ${SCHALTER_FELDER.map((feld) => `<label class="haken">
         <input type="checkbox" data-feld="${feld}" ${c[feld] ? "checked" : ""}>
@@ -1334,6 +1366,15 @@ class RolloplanerCardEditor extends HTMLElement {
       this._melden({ textgroesse: e.target.value });
     this.querySelector("#rp-zimmer").onchange = (e) =>
       this._melden({ zimmer: e.target.value });
+    this.querySelectorAll("[data-zimmer]").forEach((el) => {
+      el.onchange = () => {
+        const kaesten = [...this.querySelectorAll("[data-zimmer]")];
+        const an = kaesten.filter((x) => x.checked).map((x) => x.dataset.zimmer);
+        // Alle angehakt heißt: keine Einschränkung. Sonst stünde in der
+        // Konfiguration eine Liste, die jedes neue Zimmer aussperrt.
+        this._melden({ nur_zimmer: an.length === kaesten.length ? null : an });
+      };
+    });
     this.querySelectorAll("[data-feld]").forEach((el) => {
       el.onchange = () => this._melden({ [el.dataset.feld]: el.checked });
     });

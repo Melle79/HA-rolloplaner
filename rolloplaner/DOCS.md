@@ -568,6 +568,12 @@ nicht lesen, warum der Planer vor zwei Stunden etwas getan hat.
 Die Tasten sind dieselben wie in der großen Kachel, nicht nachgebaute: Zwei
 Fassungen liefen auseinander, sobald eine Taste dazukommt.
 
+**Eine Karte je Zimmer** macht der Schnitt *Welche Zimmer* im Karteneditor:
+Hakt man dort nur ein Zimmer an, zeigt die Karte nur dessen Rollos. Alle
+angehakt heißt keine Einschränkung – sonst sperrte die Liste jedes neue
+Zimmer aus. Geschnitten wird nach dem Zimmer **am Rollo**, nicht nach der
+Obergruppe; die Gruppenauswahl wirkt zusätzlich.
+
 ### Die große Zahl: wo es steht, nicht wohin es soll
 
 Die Zahl an der Kachel sagt, **wo das Rollo steht**. Solange der Planer
