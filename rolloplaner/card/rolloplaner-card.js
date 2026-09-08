@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.22.0";
+const CARD_VERSION = "2.22.1";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -112,6 +112,7 @@ const SPRACHEN = {
     "titel.hitzeschutz": "Hitzeschutz für {name} (Fenster zeigt nach {grad}°)",
     "titel.hitze_gesamt_aus": "Der Hitzeschutz ist insgesamt aus – "
       + "dieser Schalter wirkt erst, wenn er oben eingeschaltet ist.",
+    "titel.beschattet_jetzt": "Beschattet gerade.",
     "titel.auf": "ganz auffahren", "titel.zu": "ganz zufahren",
     "alarm.offen": "Rauchalarm – Fluchtweg offen.",
     "alarm.entwarnung": "Entwarnung – Fluchtweg bleibt offen.",
@@ -175,6 +176,7 @@ const SPRACHEN = {
     "titel.hitzeschutz": "Heat shield for {name} (window faces {grad}°)",
     "titel.hitze_gesamt_aus": "The heat shield is off altogether – this switch "
       + "only takes effect once it is switched on above.",
+    "titel.beschattet_jetzt": "Shading right now.",
     "titel.auf": "open fully", "titel.zu": "close fully",
     "alarm.offen": "Smoke alarm – escape route open.",
     "alarm.entwarnung": "All clear – escape route stays open.",
@@ -689,6 +691,7 @@ class RolloplanerCard extends HTMLElement {
           data-an="${r.hitzeschutz.state === "on" ? "0" : "1"}"
           title="${this._esc(t("titel.hitzeschutz", {name: r.name,
             grad: String(attrs.ausrichtung)})
+            + (attrs.beschattet ? "\n" + t("titel.beschattet_jetzt") : "")
             + (hitzeRuht ? "\n" + t("titel.hitze_gesamt_aus") : ""))}">
           <ha-icon icon="mdi:weather-sunny"></ha-icon></button>` : "";
 
@@ -718,10 +721,16 @@ class RolloplanerCard extends HTMLElement {
     // sind dieselben, sonst liefen zwei Fassungen auseinander, sobald eine
     // dazukommt.
     if (c.kompakt) {
+      // „Hitzeschutz" als Schild wäre hier doppelt gesagt: Die Sonne daneben
+      // steht ohnehin für dieses Rollo. Dass gerade wirklich beschattet wird
+      // – und nicht nur der Schalter an ist –, sagt ihr Hinweistext. Die
+      // anderen Zustände bleiben: Für „Handbetrieb" oder „Fenster offen"
+      // gibt es in der Zeile kein zweites Zeichen.
+      const schildSchlank = zustand === "beschattung" ? "" : schild;
       return `<div class="raum schlank ${an ? "" : "ruht"}">
         ${rollobild(stellung, attrs.art)}
         <span class="name" title="${this._esc(r.name)}">${this._esc(r.name)}</span>
-        ${raumSchild}${schild}
+        ${raumSchild}${schildSchlank}
         <span class="wert">${wert}<small>${Number.isNaN(zahl) ? "" : "%"}</small></span>
         <span class="knoepfe">${knoepfe}${sonne}${kippe}</span>
       </div>`;

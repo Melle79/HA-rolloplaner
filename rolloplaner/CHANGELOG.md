@@ -1,5 +1,13 @@
 # Änderungen
 
+## 2.22.1 – 08.09.2026
+
+* In der schlanken Zeile fällt das Schild „Hitzeschutz“ weg – die Sonne
+  daneben steht ohnehin für dieses Rollo. Dass gerade wirklich beschattet
+  wird und nicht nur der Schalter an ist, sagt jetzt ihr Hinweistext. Die
+  anderen Zustände bleiben stehen: Für „Handbetrieb“ oder „Fenster offen“
+  gibt es in der Zeile kein zweites Zeichen.
+
 ## 2.22.0 – 08.09.2026
 
 * **Eigene Beschriftung je Rollo** im Karteneditor. In einer Karte je Zimmer
