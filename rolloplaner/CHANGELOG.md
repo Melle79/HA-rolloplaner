@@ -1,5 +1,19 @@
 # Änderungen
 
+## 2.25.1 – 08.09.2026
+
+* **Am Anschlag ist die Taste dorthin ausgegraut** – ganz oben gibt es kein
+  „auf“ mehr. Ausgegraut und nicht versteckt, damit die Reihe nicht bei jedem
+  Endanschlag zusammenrückt. Bei unbekannter Stellung bleiben beide
+  bedienbar.
+* **Auf, Halt und zu sind eine Spur größer** als Hitzeschutz und Automatik:
+  Fahren ist die Hauptsache in dieser Reihe.
+* **Der Schieber fuhr bei umgedrehter Zählweise andersherum.** Er zeigt die
+  Zählweise des Betrachters, schickte sie aber ungedreht an den Planer – aus
+  30 % wurden 70. Die Pfeiltasten waren nie betroffen: Ihre Stellung steht
+  schon in der Zählweise von Home Assistant. Gefunden beim Umbau der Tasten,
+  nicht im Betrieb.
+
 ## 2.25.0 – 08.09.2026
 
 **Der Karteneditor spricht jetzt auch Englisch.** Bisher waren es nur die

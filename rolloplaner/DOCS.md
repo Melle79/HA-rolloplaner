@@ -562,6 +562,16 @@ Halt und Schieber erscheinen nur, wo der Antrieb sie beherrscht
 Er behauptet, es ginge – und wer ihn drückt, sucht den Fehler beim Rollo statt
 beim Antrieb.
 
+**Auf, Halt und zu sind eine Spur größer** als Hitzeschutz und Automatik:
+Fahren ist die Hauptsache in dieser Reihe, die beiden anderen legt man einmal
+fest und lässt sie dann liegen.
+
+**Steht ein Rollo am Anschlag, ist die Taste dorthin ausgegraut** – ganz oben
+gibt es kein „auf" mehr. Ausgegraut und nicht versteckt: Die Taste behält
+ihren Platz, sonst rückte die Reihe bei jedem Endanschlag zusammen. Ist die
+Stellung unbekannt, bleiben beide bedienbar; nicht zu wissen ist kein Grund,
+es zu verbieten.
+
 Die Zeichen daneben: eine **Sonne** für den Hitzeschutz dieses Rollos, ein
 **Kalender** für seine Automatik – durchgestrichen, wenn sie aus ist. Vorher
 standen dort `mdi:sun-thermometer` und `mdi:robot`; die erste ist eine Sonne

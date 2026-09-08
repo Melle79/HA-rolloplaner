@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.25.0";
+const CARD_VERSION = "2.25.1";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -649,7 +649,14 @@ class RolloplanerCard extends HTMLElement {
         // er angekommen ist. Ohne die Frist spränge der Schieber beim nächsten
         // Zeichnen auf den alten Wert zurück.
         this._schieberBis = Date.now() + 15000;
-        this._fahrbefehl(el.dataset.schieber, Number(el.value));
+        // Der Schieber zeigt die Zählweise des Betrachters, der Planer
+        // erwartet die von Home Assistant. Ohne das Umdrehen fuhr ein Rollo
+        // bei umgedrehter Zählweise genau andersherum – 30 % wurden 70.
+        // Die Pfeiltasten daneben tragen ihre Stellung schon in der
+        // Zählweise von Home Assistant, die brauchen es nicht.
+        const wert = Number(el.value);
+        this._fahrbefehl(el.dataset.schieber,
+                         el.dataset.inv === "1" ? 100 - wert : wert);
         this._nachholen();
       });
     });
@@ -695,18 +702,34 @@ class RolloplanerCard extends HTMLElement {
                    zeit: this._esc(attrs.naechste_uhrzeit)})
       : "";
 
+    // Die Stellung in der Zählweise von Home Assistant: 100 ist offen, 0 zu.
+    // Danach richten sich das Bild und die beiden Endtasten.
+    const stellung = attrs.ist === null || attrs.ist === undefined
+      ? (attrs.stellung_ha === null || attrs.stellung_ha === undefined
+         ? r.sensor.state : attrs.stellung_ha)
+      : attrs.ist;
+    const p = Number(stellung);
+    // Steht es schon ganz oben, ist „auf" kein Angebot mehr. Ausgegraut statt
+    // versteckt: Die Taste behält ihren Platz, sonst rückte die Reihe bei
+    // jedem Endanschlag zusammen. Bei unbekannter Stellung bleibt beides
+    // bedienbar – nicht zu wissen ist kein Grund, es zu verbieten.
+    const ganzAuf = Number.isFinite(p) && p >= 100;
+    const ganzZu = Number.isFinite(p) && p <= 0;
+
     // auf · Halt · zu, in dieser Reihenfolge: So sitzt der Halt auf jedem
     // Handsender, und die Hand findet ihn am Wandtablett, ohne hinzusehen.
     // Den Halt gibt es nur, wo der Antrieb ihn beherrscht.
     const knoepfe = c.allow_fahren && attrs.cover ? `
-      <button class="tipp" data-fahren="${attrs.cover}" data-position="100"
+      <button class="tipp fahrt" data-fahren="${attrs.cover}" data-position="100"
+              ${ganzAuf ? "disabled" : ""}
               title="${this._esc(t("titel.auf"))}"
               ><ha-icon icon="mdi:arrow-up"></ha-icon></button>
-      ${attrs.kann_stop === false ? "" : `<button class="tipp"
+      ${attrs.kann_stop === false ? "" : `<button class="tipp fahrt"
               data-stop="${attrs.cover}"
               title="${this._esc(t("titel.halt", {name: r.name}))}"
               ><ha-icon icon="mdi:stop"></ha-icon></button>`}
-      <button class="tipp" data-fahren="${attrs.cover}" data-position="0"
+      <button class="tipp fahrt" data-fahren="${attrs.cover}" data-position="0"
+              ${ganzZu ? "disabled" : ""}
               title="${this._esc(t("titel.zu"))}"
               ><ha-icon icon="mdi:arrow-down"></ha-icon></button>` : "";
     const kippe = r.schalter ? `<button class="tipp ${an ? "an" : ""}"
@@ -753,11 +776,6 @@ class RolloplanerCard extends HTMLElement {
     const lage = weichtAb
       ? t("plan.ziel", {was: stellungstext(zielAnzeige, inv)})
       : stellungstext(zahl, inv);
-
-    const stellung = attrs.ist === null || attrs.ist === undefined
-      ? (attrs.stellung_ha === null || attrs.stellung_ha === undefined
-         ? r.sensor.state : attrs.stellung_ha)
-      : attrs.ist;
 
     // Schlank: alles in eine Zeile. Kein eigener Bauplan für die Tasten – es
     // sind dieselben, sonst liefen zwei Fassungen auseinander, sobald eine
@@ -808,7 +826,7 @@ class RolloplanerCard extends HTMLElement {
       ${c.allow_schieber && attrs.cover && attrs.kann_stellung !== false
         && !Number.isNaN(zahl) ? `<div class="z2s">
         <input type="range" min="0" max="100" step="5" value="${zahl}"
-               data-schieber="${attrs.cover}"
+               data-schieber="${attrs.cover}" data-inv="${inv ? "1" : "0"}"
                title="${this._esc(t("titel.schieber", {name: r.name}))}">
         <span class="s-wert">${zahl}%</span>
       </div>` : ""}
@@ -1142,10 +1160,13 @@ class RolloplanerCard extends HTMLElement {
       .raum.schlank .knoepfe{margin-left:0}
       /* Feste Kästchen statt Mindestmaß: Ein breiteres Zeichen machte die
          Taste sonst breiter, und die Spalte wackelte. */
-      .raum.schlank .tipp{width:calc(30px * var(--skala));
-        height:calc(30px * var(--skala)); min-width:0; min-height:0;
+      .raum.schlank .tipp{width:calc(28px * var(--skala));
+        height:calc(28px * var(--skala)); min-width:0; min-height:0;
         border-radius:8px}
-      .raum.schlank .tipp ha-icon{--mdc-icon-size:calc(19px * var(--skala))}
+      .raum.schlank .tipp ha-icon{--mdc-icon-size:calc(18px * var(--skala))}
+      .raum.schlank .tipp.fahrt{width:calc(34px * var(--skala));
+        height:calc(34px * var(--skala))}
+      .raum.schlank .tipp.fahrt ha-icon{--mdc-icon-size:calc(22px * var(--skala))}
       /* Automatik aus heißt: Der Planer fährt dieses Rollo nicht. Es heißt
          nicht, dass das Rollo weg ist – Stellung, Name und Tasten stimmen
          weiter. Die halbe Deckkraft über der ganzen Kachel las sich wie
@@ -1202,6 +1223,17 @@ class RolloplanerCard extends HTMLElement {
          Rückmeldung, die man bekommt. */
       .tipp:active{background:rgba(127,127,127,.3)}
       .tipp.an{color:var(--an-farbe)}
+      /* Fahren ist die Hauptsache in dieser Reihe; Hitzeschutz und Automatik
+         legt man einmal fest und lässt sie dann liegen. Deshalb sind auf,
+         Halt und zu eine Spur größer als die beiden daneben. */
+      .tipp.fahrt{min-width:calc(38px * var(--skala));
+        min-height:calc(38px * var(--skala))}
+      .tipp.fahrt ha-icon{--mdc-icon-size:calc(24px * var(--skala))}
+      /* Ganz oben gibt es kein „auf" mehr. Ausgegraut statt versteckt: Die
+         Taste behält ihren Platz, sonst rückte die Reihe bei jedem
+         Endanschlag zusammen. */
+      .tipp[disabled]{opacity:.28; cursor:default}
+      .tipp[disabled]:hover{background:none; color:var(--secondary-text-color)}
       /* Ein Schalter, der gerade nichts bewirkt, weil die Funktion insgesamt
          aus ist. Nicht ausgeblendet – man soll ihn vorbereiten können. */
       .tipp.ruhend{opacity:.4}
