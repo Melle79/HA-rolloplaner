@@ -703,6 +703,12 @@ die Obergruppe ist dafür zu grob.
 in der Konfiguration eine Liste, die jedes später angelegte Zimmer und jede
 neue Gruppe aussperrt.
 
+**Der Zustand im Kopf entfällt, sobald die Karte schneidet.** Er kommt vom
+Status-Sensor und meint das ganze Haus: „ein Rollo beschattet" zählt alle
+zehn. Über zwei Schlafzimmer-Rollos gedruckt, von denen keines beschattet
+wird, liest er sich wie eine Aussage über dieses Zimmer – und ist dann falsch,
+obwohl der Satz stimmt. Der Titel bleibt.
+
 ### Schriftgröße
 
 Die Karte hängt hier auch an einem Wandtablett im Flur, und was am Schreibtisch

@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.24.0";
+const CARD_VERSION = "2.24.1";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -461,11 +461,18 @@ class RolloplanerCard extends HTMLElement {
     const stoerung = this._hass.states["binary_sensor.rolloplaner_stoerung"];
     const naechster = this._hass.states["sensor.rolloplaner_naechster_wechsel"];
 
+    // Der Zustand im Kopf kommt vom Status-Sensor und meint **das ganze
+    // Haus**: „ein Rollo beschattet" zählt alle zehn. Auf einer Karte, die
+    // nur ein Zimmer zeigt, liest er sich wie eine Aussage über dieses
+    // Zimmer – und ist dann falsch, obwohl der Satz stimmt. Deshalb steht er
+    // nur da, wo die Karte auch alles zeigt.
+    const zeigtAlles = !(c.nur_zimmer || []).length
+                       && !((c.gruppen || c.raeume || []).length);
     const kopf = !c.show_kopf ? "" : `<div class="kopf">
       <ha-icon icon="mdi:window-shutter" class="k-icon"></ha-icon>
       <div class="k-text">
         <div class="k-titel">${this._esc(c.title)}</div>
-        <div class="k-status">${this._esc(status.state)}</div>
+        ${zeigtAlles ? `<div class="k-status">${this._esc(status.state)}</div>` : ""}
       </div>
       <div class="k-rechts">
         ${!c.show_sonnenzeiten ? "" : `

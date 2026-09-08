@@ -1,5 +1,12 @@
 # Änderungen
 
+## 2.24.1 – 08.09.2026
+
+* Der Zustand im Kopf („ein Rollo beschattet") meint das ganze Haus. Auf
+  einer Karte, die nur ein Zimmer zeigt, las er sich wie eine Aussage über
+  dieses Zimmer – und war dann falsch, obwohl der Satz stimmte. Er steht
+  jetzt nur noch da, wo die Karte auch alles zeigt; der Titel bleibt.
+
 ## 2.24.0 – 08.09.2026
 
 **Handbuch und README auf den Stand gebracht.** Die Karte hat in den letzten
