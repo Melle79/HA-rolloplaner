@@ -1,5 +1,21 @@
 # Änderungen
 
+## 2.25.0 – 08.09.2026
+
+**Der Karteneditor spricht jetzt auch Englisch.** Bisher waren es nur die
+Haken – Überschriften, Auswahlen und Erklärtexte standen fest auf Deutsch.
+
+* Die Bausteine dafür lagen seit 2.15 in beiden Tabellen bereit und wurden
+  nie abgerufen. Auf Deutsch sah alles richtig aus; deshalb fiel es
+  niemandem auf.
+* Für die drei Abschnitte, die seither dazugekommen sind – Zimmerwahl,
+  Beschriftung, die Zimmer-Auswahl im Kopf – gibt es die Texte jetzt auch.
+* **Ein Prüfschritt meldet ab jetzt jeden Baustein, den keiner benutzt.**
+  Beim Bauen fiel dabei auf, dass er selbst nichts fand: Sein Muster ließ die
+  zweite Sprachtabelle stehen, und damit galt jeder Schlüssel als benutzt.
+  Erst nach dieser Korrektur schlug er an – gegengeprüft an zwei von Hand
+  wieder eingedeutschten Stellen.
+
 ## 2.24.1 – 08.09.2026
 
 * Der Zustand im Kopf („ein Rollo beschattet") meint das ganze Haus. Auf

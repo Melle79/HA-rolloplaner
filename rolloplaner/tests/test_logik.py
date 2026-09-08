@@ -462,6 +462,21 @@ def test_kein_backtick_im_stilblock_der_karte():
             f"{anzahl} Backticks im Stilblock (1 ist richtig): " + "; ".join(zeilen))
 
 
+def _kartentabellen(karte):
+    """Die beiden Sprachtabellen der Karte als Wörterbücher."""
+    import re
+    tabellen = {}
+    for code in ("de", "en"):
+        block = re.search(rf"\n  {code}: \{{(.*?)\n  \}},\n", karte, re.S)
+        assert block, f"Sprachtabelle {code} nicht gefunden"
+        paare = re.findall(r'"([a-z][\w.]*)":\s*("[^"]*")', block.group(1))
+        namen = [n for n, _ in paare]
+        doppelt = sorted({n for n in namen if namen.count(n) > 1})
+        assert not doppelt, f"{code}: doppelt vergeben {doppelt}"
+        tabellen[code] = dict(paare)
+    return tabellen
+
+
 def test_die_karte_kennt_in_beiden_sprachen_dieselben_schluessel():
     """Derselbe Wächter wie im Backend, nur für die Karte.
 
@@ -648,6 +663,43 @@ def test_jeder_verwendete_textschluessel_steht_in_der_tabelle():
                 if s.endswith("_1") and s[:-2] in benutzt}
     assert not benutzt - set(tabelle), f"nicht in der Tabelle: {sorted(benutzt - set(tabelle))}"
     assert not set(tabelle) - benutzt, f"nie benutzt: {sorted(set(tabelle) - benutzt)}"
+
+
+def test_jeder_textschluessel_der_karte_wird_auch_benutzt():
+    """Ein Baustein, der in der Tabelle liegt und nirgends abgerufen wird,
+    heißt: Die Stelle spricht Deutsch, egal wer hinsieht.
+
+    Genau so war es im Karteneditor. Die Bausteine für Überschriften und
+    Erklärtexte lagen seit Fassung 2.15 in beiden Sprachen bereit – benutzt
+    wurden sie nie, und niemandem fiel es auf, weil auf Deutsch alles richtig
+    aussah.
+    """
+    import re
+    karte = (pathlib.Path(__file__).parent.parent / "card"
+             / "rolloplaner-card.js").read_text(encoding="utf-8")
+    tabelle = _kartentabellen(karte)["de"]
+
+    # Die Tabellen selbst ausblenden, sonst zählt jede Zeile als Benutzung.
+    # Der abschließende Zeilenumbruch bleibt stehen (Vorausschau statt
+    # Verbrauch): Sonst fehlt er der zweiten Tabelle als Anfang, und die
+    # bliebe ungestrichen im Text – der Wächter hielte dann jeden Schlüssel
+    # für benutzt und meldete nie etwas.
+    ohne = re.sub(r"\n  (?:de|en): \{.*?\n  \},?(?=\n)", "", karte, flags=re.S)
+    assert "Rolloplaner-Karte" not in ohne or len(ohne) < len(karte) - 8000, \
+        "die Sprachtabellen wurden nicht ausgeblendet"
+    # Gezählt wird jede Zeichenkette im Rest der Datei, die genau so heißt wie
+    # ein Schlüssel. Nicht nur die in `t(...)`: Manche stehen in einer eigenen
+    # Tabelle – FUNKTIONEN führt „fn.automatik", WIRKUNG führt „wirkung.*" –
+    # und werden erst später durchgereicht. Wer nur die Aufrufe zählte, hielte
+    # die für tot.
+    zeichenketten = set(re.findall(r'''["']([a-z][\w.]*)["']''', ohne))
+    benutzt = {k for k in tabelle if k in zeichenketten}
+    # Zusammengesetzte: t("e.f." + feld) und Geschwister.
+    for vorsilbe in re.findall(r'\bt\("([a-z][\w.]*\.)"\s*\+', ohne):
+        benutzt |= {k for k in tabelle if k.startswith(vorsilbe)}
+
+    nie = sorted(set(tabelle) - benutzt)
+    assert not nie, f"in der Tabelle, aber nirgends abgerufen: {nie}"
 
 
 def test_karte_ist_gueltiges_javascript():

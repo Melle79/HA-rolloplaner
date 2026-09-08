@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.24.1";
+const CARD_VERSION = "2.25.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -153,6 +153,20 @@ const SPRACHEN = {
       + "der aus dem Add-on.",
     "e.gruppen.auswahl": "Nur die angehakten Gruppen erscheinen auf dieser Karte.",
     "e.hoch": "nach oben", "e.runter": "nach unten",
+    "e.zimmerwahl": "Welche Zimmer",
+    "e.zimmerwahl.keine": "Noch kein Zimmer an einem Rollo hinterlegt.",
+    "e.zimmerwahl.hinweis": "Alle angehakt heißt: keine Einschränkung. Ein einzelnes "
+      + "Zimmer macht aus der Karte eine kleine Karte je Zimmer – zusammen mit "
+      + "<i>schlank</i> und ohne Kopfzeile ist das eine Zeile je Rollo. Geschnitten "
+      + "wird nach dem Zimmer am Rollo, nicht nach der Obergruppe; die "
+      + "Gruppenauswahl weiter unten wirkt zusätzlich.",
+    "e.namen": "Beschriftung der Rollos",
+    "e.namen.keine": "Kein Rollo im gewählten Schnitt.",
+    "e.namen.hinweis": "Leer heißt: der Name aus dem Planer. In einer Karte je "
+      + "Zimmer steht das Zimmer schon in der Überschrift – dort reicht "
+      + "„Fenster links“ statt „Wohnzimmer links“. Geändert wird nur die "
+      + "Beschriftung in <i>dieser</i> Karte; Protokoll und Meldungen des Planers "
+      + "meinen weiter das ganze Haus und behalten ihren Namen.",
   },
   en: {
     "fn.automatik": "Automation", "fn.hitzeschutz": "Heat shield",
@@ -216,6 +230,20 @@ const SPRACHEN = {
       + "the one from the add-on.",
     "e.gruppen.auswahl": "Only the ticked groups appear on this card.",
     "e.hoch": "move up", "e.runter": "move down",
+    "e.zimmerwahl": "Which rooms",
+    "e.zimmerwahl.keine": "No room set on any cover yet.",
+    "e.zimmerwahl.hinweis": "All ticked means no restriction. A single room turns "
+      + "the card into a small card for that room – together with <i>slim</i> and "
+      + "without the header that is one line per cover. It cuts by the room on the "
+      + "cover, not by the group above it; the group selection further down "
+      + "applies as well.",
+    "e.namen": "Labels for the covers",
+    "e.namen.keine": "No cover in the current selection.",
+    "e.namen.hinweis": "Empty means the name from the planner. On a card for one "
+      + "room the room is already in the heading – “window left” is enough there "
+      + "instead of “living room left”. Only the label on <i>this</i> card "
+      + "changes; the planner’s log and messages mean the whole house and keep "
+      + "their names.",
   },
 };
 
@@ -1390,76 +1418,57 @@ class RolloplanerCardEditor extends HTMLElement {
       .zeile input[type=text]{flex:1 1 auto; min-width:0}
 </style>
     <div class="rp-e">
-      <label>Überschrift
+      <label>${t("e.titel")}
         <input type="text" id="rp-titel" value="${(c.title || "").replace(/"/g, "&quot;")}"></label>
 
-      <label>Schriftgröße
+      <label>${t("e.groesse")}
         <select id="rp-groesse">
           ${Object.keys(TEXTSKALA).map((k) => `<option value="${k}"
             ${c.textgroesse === k ? "selected" : ""}>${k} (${TEXTSKALA[k]}×)</option>`).join("")}
         </select></label>
-      <p class="hinweis">Größer heißt auch breitere Kacheln und größere
-        Tasten – gedacht für ein Wandtablett, das man aus anderthalb Metern
-        abliest.</p>
+      <p class="hinweis">${t("e.groesse.hinweis")}</p>
 
-      <label>Zimmer
+      <label>${t("e.zimmer")}
         <select id="rp-zimmer">
-          <option value="schild" ${c.zimmer === "schild" ? "selected" : ""}
-            >als Schild am Rollo</option>
-          <option value="ueberschrift" ${c.zimmer === "ueberschrift" ? "selected" : ""}
-            >als Zwischenüberschrift in der Gruppe</option>
-          <option value="aus" ${c.zimmer === "aus" ? "selected" : ""}
-            >gar nicht</option>
+          ${["schild", "ueberschrift", "aus"].map((w) => `<option value="${w}"
+            ${c.zimmer === w ? "selected" : ""}>${t("e.zimmer." + w)}</option>`).join("")}
         </select></label>
-      <p class="hinweis">Als Schild bleibt es platzsparend und entfällt, wo der
-        Name das Zimmer schon nennt. Als Zwischenüberschrift trennt es sauber,
-        aber jedes Zimmer fängt eine neue Reihe an – ein Zimmer mit einem Rollo
-        lässt den Rest der Reihe leer.</p>
+      <p class="hinweis">${t("e.zimmer.hinweis")}</p>
 
-      <h4>Welche Zimmer</h4>
+      <h4>${t("e.zimmerwahl")}</h4>
       ${zimmer.length ? zimmer.map((z) => `<label class="haken">
         <input type="checkbox" data-zimmer="${z.name.replace(/"/g, "&quot;")}"
                ${z.an ? "checked" : ""}>${z.name}</label>`).join("")
-        : `<p class="hinweis">Noch kein Zimmer an einem Rollo hinterlegt.</p>`}
-      <p class="hinweis">Alle angehakt heißt: keine Einschränkung. Ein einzelnes
-        Zimmer macht aus der Karte eine kleine Karte je Zimmer – zusammen mit
-        <i>schlank</i> und ohne Kopfzeile ist das eine Zeile je Rollo.
-        Geschnitten wird nach dem Zimmer am Rollo, nicht nach der Obergruppe;
-        die Gruppenauswahl weiter unten wirkt zusätzlich.</p>
+        : `<p class="hinweis">${t("e.zimmerwahl.keine")}</p>`}
+      <p class="hinweis">${t("e.zimmerwahl.hinweis")}</p>
 
-      <h4>Beschriftung der Rollos</h4>
+      <h4>${t("e.namen")}</h4>
       ${benennbar.length ? benennbar.map((r) => `<div class="zeile">
         <span class="nameher">${r.vorgabe}</span>
         <input type="text" data-name="${r.cover.replace(/"/g, "&quot;")}"
                value="${r.eigen.replace(/"/g, "&quot;")}"
                placeholder="${r.vorgabe.replace(/"/g, "&quot;")}">
       </div>`).join("")
-        : `<p class="hinweis">Kein Rollo im gewählten Schnitt.</p>`}
-      <p class="hinweis">Leer heißt: der Name aus dem Planer. In einer Karte je
-        Zimmer steht das Zimmer schon in der Überschrift – dort reicht
-        „Fenster links" statt „Wohnzimmer links". Geändert wird nur die
-        Beschriftung in <i>dieser</i> Karte; Protokoll und Meldungen des
-        Planers meinen weiter das ganze Haus und behalten ihren Namen.</p>
+        : `<p class="hinweis">${t("e.namen.keine")}</p>`}
+      <p class="hinweis">${t("e.namen.hinweis")}</p>
 
-      <h4>Was die Karte zeigt</h4>
+      <h4>${t("e.zeigt")}</h4>
       ${SCHALTER_FELDER.map((feld) => `<label class="haken">
         <input type="checkbox" data-feld="${feld}" ${c[feld] ? "checked" : ""}>
         ${t("e.f." + feld)}</label>`).join("")}
 
-      <h4>Gruppen: Auswahl und Reihenfolge</h4>
+      <h4>${t("e.gruppen")}</h4>
       ${gruppen.length ? gruppen.map((g, i) => `<div class="zeile">
         <input type="checkbox" data-gruppe="${g.name.replace(/"/g, "&quot;")}"
                ${g.an ? "checked" : ""}>
         <span>${g.name}</span>
-        <button data-hoch="${i}" ${i ? "" : "disabled"} title="nach oben">↑</button>
-        <button data-runter="${i}" ${i === gruppen.length - 1 ? "" : ""}
-                ${i === gruppen.length - 1 ? "disabled" : ""} title="nach unten">↓</button>
+        <button data-hoch="${i}" ${i ? "" : "disabled"}
+                title="${t("e.hoch")}">↑</button>
+        <button data-runter="${i}" ${i === gruppen.length - 1 ? "disabled" : ""}
+                title="${t("e.runter")}">↓</button>
       </div>`).join("")
-        : `<p class="hinweis">Noch keine Gruppen gefunden. Der Planer legt sie
-             im Reiter <i>Gruppen</i> an.</p>`}
-      <p class="hinweis">${alleAn
-        ? "Alle Gruppen werden gezeigt. Die Reihenfolge hier gilt vor der aus dem Add-on."
-        : "Nur die angehakten Gruppen erscheinen auf dieser Karte."}</p>
+        : `<p class="hinweis">${t("e.gruppen.keine")}</p>`}
+      <p class="hinweis">${t(alleAn ? "e.gruppen.alle" : "e.gruppen.auswahl")}</p>
     </div>`;
 
     this.querySelector("#rp-titel").onchange = (e) =>

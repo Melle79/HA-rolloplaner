@@ -402,7 +402,13 @@ ergänzt eine Tabelle in `backend/sprache.py` und eine in der Karte – kein
   beim Start gelesen) oder der Einstellung unter *Einstellungen → Sprache*.
   Danach richtet sich alles, was der Planer selbst formuliert: Protokoll und
   die Meldung bei Rauchalarm.
-* **Die Oberfläche des Add-ons** folgt derselben Einstellung wie der Planer –
+* **Auch der Karteneditor** spricht beide Sprachen – Überschriften, Auswahlen
+und Erklärtexte. Das war lange nicht so: Die Bausteine lagen seit Fassung 2.15
+in beiden Tabellen bereit, abgerufen wurden nur die Haken. Auf Deutsch sah
+alles richtig aus, und deshalb fiel es niemandem auf. Ein Prüfschritt meldet
+jetzt jeden Baustein, den keiner benutzt.
+
+**Die Oberfläche des Add-ons** folgt derselben Einstellung wie der Planer –
   sie ist schließlich der Ort, an dem sie gesetzt wird. Wer auf *Englisch*
   stellt und speichert, sieht die Einrichtung beim nächsten Takt englisch.
 * **Die Karte** folgt dem **Betrachter** (`hass.locale.language`). Auf dem
