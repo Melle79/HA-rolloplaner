@@ -1,5 +1,23 @@
 # Änderungen
 
+## 2.19.1 – 08.09.2026
+
+**Der Hitzeschutz-Knopf an der Kachel war nie zu sehen.** Den Schalter je
+Rollo gibt es seit 2.12.0, in der Karte fehlte er trotzdem an *jeder* Kachel –
+und nichts wies darauf hin.
+
+* Die Bedingung für den Knopf hing an der Himmelsrichtung. Die stand aber nur
+  am Hitzeschutz-Schalter, nicht am Sensor, den die Karte liest. Also war die
+  Bedingung überall falsch. Der Sensor führt sie jetzt mit.
+* Der Schalter selbst bekommt endlich seinen Attributweg – bisher wurde die
+  Himmelsrichtung zwar veröffentlicht, aber von niemandem gelesen.
+* **Steht der Hitzeschutz insgesamt aus**, ist der Knopf an der Kachel jetzt
+  gedämpft und sagt beim Darüberfahren, warum. Vorher hätte man ihn gedrückt,
+  nichts wäre passiert, und man hätte den Fehler beim Rollo gesucht.
+* **Ein Wächter im Prüflauf** vergleicht, was die Karte am Sensor abfragt, mit
+  dem, was der Planer veröffentlicht. Genau diese Lücke war unsichtbar: kein
+  Fehler, kein Protokolleintrag, es fehlte einfach.
+
 ## 2.19.0 – 04.09.2026
 
 **Ein eigenes Bild.** Bisher stand das Add-on im Store mit dem grauen

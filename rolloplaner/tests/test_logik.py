@@ -532,6 +532,31 @@ def test_bei_einem_stueck_gilt_die_einzahl():
     assert "{" not in sprache.t("lage.mit_automatik", n=1, gesamt=9)
 
 
+def test_die_karte_bekommt_jedes_merkmal_das_sie_liest():
+    """Was die Karte am Sensor abfragt, muss der Planer auch veröffentlichen.
+
+    Der Fall, der das nötig machte: Der Hitzeschutz-Knopf an der Kachel hing
+    an ``attrs.ausrichtung``. Die Himmelsrichtung stand aber nur am Schalter,
+    nicht am Sensor – also war die Bedingung an **jeder** Kachel falsch und
+    der Knopf an keiner zu sehen. Nichts war kaputt, nichts stand im
+    Protokoll, es fehlte einfach.
+    """
+    import re
+    wurzel = pathlib.Path(__file__).parent.parent
+    karte = (wurzel / "card" / "rolloplaner-card.js").read_text(encoding="utf-8")
+    publisher = (wurzel / "backend" / "mqtt_publisher.py").read_text(encoding="utf-8")
+
+    block = re.search(r"self\._zustand\(key, str\(angezeigt\).*?\n            \}\)",
+                      publisher, re.S)
+    assert block, "der Attributblock des Rollo-Sensors wurde nicht gefunden"
+    veroeffentlicht = set(re.findall(r'^\s*"(\w+)":', block.group(0), re.M))
+    assert "zustand" in veroeffentlicht, "der Block wurde falsch gelesen"
+
+    gelesen = set(re.findall(r"\battrs\.(\w+)", karte))
+    fehlt = gelesen - veroeffentlicht
+    assert not fehlt, f"die Karte liest, was niemand sendet: {sorted(fehlt)}"
+
+
 def _oberflaechen_tabellen():
     """Die beiden Sprachtabellen aus `index.html` als Wörterbücher.
 

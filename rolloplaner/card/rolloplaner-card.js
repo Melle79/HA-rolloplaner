@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.19.0";
+const CARD_VERSION = "2.19.1";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -92,6 +92,8 @@ const SPRACHEN = {
     "titel.schieber": "{name}: Stellung wählen; gefahren wird beim Loslassen",
     "plan.ziel": "Plan: {was}",
     "titel.hitzeschutz": "Hitzeschutz für {name} (Fenster zeigt nach {grad}°)",
+    "titel.hitze_gesamt_aus": "Der Hitzeschutz ist insgesamt aus – "
+      + "dieser Schalter wirkt erst, wenn er oben eingeschaltet ist.",
     "titel.auf": "ganz auffahren", "titel.zu": "ganz zufahren",
     "alarm.offen": "Rauchalarm – Fluchtweg offen.",
     "alarm.entwarnung": "Entwarnung – Fluchtweg bleibt offen.",
@@ -151,6 +153,8 @@ const SPRACHEN = {
     "titel.schieber": "{name}: choose a position; it moves when you let go",
     "plan.ziel": "Plan: {was}",
     "titel.hitzeschutz": "Heat shield for {name} (window faces {grad}°)",
+    "titel.hitze_gesamt_aus": "The heat shield is off altogether – this switch "
+      + "only takes effect once it is switched on above.",
     "titel.auf": "open fully", "titel.zu": "close fully",
     "alarm.offen": "Smoke alarm – escape route open.",
     "alarm.entwarnung": "All clear – escape route stays open.",
@@ -641,13 +645,21 @@ class RolloplanerCard extends HTMLElement {
     // Himmelsrichtung hinterlegt ist. Ohne sie weiß der Planer nicht, wann die
     // Sonne in dieses Fenster steht; ein Knopf ohne Wirkung ist schlimmer als
     // keiner, weil man ihn für kaputt hält statt für unzuständig.
+    // Steht der Hitzeschutz insgesamt aus, wirkt der Schalter am einzelnen
+    // Rollo nicht. Er bleibt trotzdem stehen – man soll ihn vorbereiten
+    // können –, aber gedämpft und mit einem Wort dazu: Sonst drückt man ihn,
+    // nichts passiert, und man sucht den Fehler beim Rollo.
+    const gesamt = this._hass.states["switch.rolloplaner_beschattung"];
+    const hitzeRuht = Boolean(gesamt) && gesamt.state !== "on";
     const sonne = r.hitzeschutz && attrs.ausrichtung !== null
                   && attrs.ausrichtung !== undefined
-      ? `<button class="tipp ${r.hitzeschutz.state === "on" ? "an" : ""}"
+      ? `<button class="tipp ${r.hitzeschutz.state === "on" ? "an" : ""}${
+            hitzeRuht ? " ruhend" : ""}"
           data-schalter="${r.hitzeschutz.entity_id}"
           data-an="${r.hitzeschutz.state === "on" ? "0" : "1"}"
           title="${this._esc(t("titel.hitzeschutz", {name: r.name,
-            grad: String(attrs.ausrichtung)}))}">
+            grad: String(attrs.ausrichtung)})
+            + (hitzeRuht ? "\n" + t("titel.hitze_gesamt_aus") : ""))}">
           <ha-icon icon="mdi:sun-thermometer"></ha-icon></button>` : "";
 
     // Die große Zahl sagt, **wo das Rollo steht** – der Sensor führt das Ziel
@@ -1046,6 +1058,9 @@ class RolloplanerCard extends HTMLElement {
          Rückmeldung, die man bekommt. */
       .tipp:active{background:rgba(127,127,127,.3)}
       .tipp.an{color:var(--an-farbe)}
+      /* Ein Schalter, der gerade nichts bewirkt, weil die Funktion insgesamt
+         aus ist. Nicht ausgeblendet – man soll ihn vorbereiten können. */
+      .tipp.ruhend{opacity:.4}
       .tipp ha-icon{--mdc-icon-size:calc(22px * var(--skala)); display:block}
 
       /* Der Schieber: eine Zeile fuer sich. Zwischen die Tasten gequetscht

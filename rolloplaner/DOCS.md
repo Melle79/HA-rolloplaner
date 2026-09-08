@@ -291,6 +291,15 @@ Kachel. Der Knopf erscheint nur, wo eine Himmelsrichtung hinterlegt ist – ohne
 sie kann der Hitzeschutz nichts tun, und ein Knopf ohne Wirkung hält man für
 kaputt statt für unzuständig.
 
+Weil der Schalter eine gewöhnliche Entität ist, lässt er sich auch außerhalb
+der Karte verwenden – in einer Entitätenkarte, einem Sprachbefehl oder einer
+eigenen Automation.
+
+**Der Schalter am einzelnen Rollo wirkt erst, wenn der Hitzeschutz insgesamt
+eingeschaltet ist** (`switch.rolloplaner_beschattung`, oben in der Karte). Ist
+der aus, steht der Knopf an der Kachel gedämpft da und sagt beim Darüberfahren,
+warum – man soll ihn vorbereiten können, ohne ihn für kaputt zu halten.
+
 ### Wie weit zufahren?
 
 Die **Stellung beim Beschatten** steht unter *Einstellungen → Hitzeschutz* und

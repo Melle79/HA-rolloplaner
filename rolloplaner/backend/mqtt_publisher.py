@@ -363,6 +363,8 @@ class Publisher:
                               "unique_id": f"{DEVICE_ID}_{key}_hitzeschutz",
                               "default_entity_id": f"switch.{DEVICE_ID}_{key}_hitzeschutz",
                               "state_topic": f"{BASE_TOPIC}/{key}_hitzeschutz/state",
+                              "json_attributes_topic":
+                                  f"{BASE_TOPIC}/{key}_hitzeschutz/attributes",
                               "command_topic": f"{HITZE_TOPIC}/{rollo['entity_id']}/set",
                               "availability_topic": AVAILABILITY_TOPIC,
                               "payload_on": "ON", "payload_off": "OFF",
@@ -554,6 +556,13 @@ class Publisher:
                 # drückt, sucht den Fehler beim Rollo statt beim Antrieb.
                 "kann_stellung": rollo.get("kann_stellung", True),
                 "kann_stop": rollo.get("kann_stop", True),
+                # Die Himmelsrichtung entscheidet, ob die Karte den
+                # Hitzeschutz-Knopf zeigt: Ohne sie weiß der Planer nicht, wann
+                # die Sonne in dieses Fenster steht. Sie stand bisher nur am
+                # Schalter, und den liest die Karte nicht – der Knopf fehlte
+                # deshalb an **jeder** Kachel, ohne dass etwas kaputt war.
+                "ausrichtung": rollo.get("ausrichtung"),
+                "hitzeschutz": bool(rollo.get("hitzeschutz")),
                 "prozent_invertiert": invertiert,
                 "zustand": rollo.get("zustand"),
                 "begruendung": rollo.get("begruendung"),
