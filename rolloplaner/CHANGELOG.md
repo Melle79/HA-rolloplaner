@@ -1,5 +1,20 @@
 # Änderungen
 
+## 2.26.0 – 08.09.2026
+
+**README mit Bildern, und in beiden Sprachen.** `README.md` ist jetzt
+englisch (wie bei den Geschwister-Add-ons), `README.de.md` deutsch – jedes
+mit sechs Aufnahmen der eigenen Sprache.
+
+* Die Bilder sind **echt, mit echten Daten**: Die Oberfläche wird lokal gegen
+  die abgeholten Antworten des Add-ons gerendert, die Karte gegen die echten
+  Entitäten aus Home Assistant. Wie das geht – und welche zwei Fallstricke
+  dabei falsch messen lassen – steht in `doku/LIESMICH.md`.
+* **Die geteilten Freigabeschalter richten sich nach dem Schnitt der Karte.**
+  „Obergeschoss schließen“ stand auch über einer Karte, die nur das
+  Wohnzimmer zeigt. Der Planer liefert zu jedem Schalter die Zimmer mit, für
+  die er gilt – danach wird jetzt gefiltert.
+
 ## 2.25.1 – 08.09.2026
 
 * **Am Anschlag ist die Taste dorthin ausgegraut** – ganz oben gibt es kein

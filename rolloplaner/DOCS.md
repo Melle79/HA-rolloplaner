@@ -719,6 +719,11 @@ die Obergruppe ist dafür zu grob.
 in der Konfiguration eine Liste, die jedes später angelegte Zimmer und jede
 neue Gruppe aussperrt.
 
+**Die geteilten Freigabeschalter oben zeigen nur, was zum Schnitt passt.**
+Der Planer liefert zu jedem Schalter die Zimmer mit, für die er gilt; auf einer
+Karte für das Wohnzimmer verschwindet „Obergeschoss schließen“ damit von
+selbst. Fehlt die Angabe, bleibt der Schalter stehen.
+
 **Der Zustand im Kopf entfällt, sobald die Karte schneidet.** Er kommt vom
 Status-Sensor und meint das ganze Haus: „ein Rollo beschattet" zählt alle
 zehn. Über zwei Schlafzimmer-Rollos gedruckt, von denen keines beschattet

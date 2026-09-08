@@ -1,90 +1,119 @@
-# Melle79 Add-ons: Rolloplaner
+# Roller Shutter Planner · Rolloplaner
 
-Home-Assistant-Add-on zur Rollladensteuerung — mit eigener Lovelace-Karte.
+A Home Assistant add-on for roller shutters: one schedule per cover, by clock
+time or by the position of the sun — with its own Lovelace card.
+
+[![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FMelle79%2FHA-rolloplaner)
+
+> 📖 Full manual: **[DOCS.md](rolloplaner/DOCS.md)** (German) ·
+> 🇩🇪 Auf Deutsch: **[README.de.md](README.de.md)**
+
+Instead of three automations per cover there is one switching point: “close at
+sunset, no later than 20:30, on school days”. The planner recalculates on
+every cycle, moves only when a point is **newly due** — and writes down why.
+
+![The overview with every cover, its position and the reason](rolloplaner/doku/bilder/en/uebersicht.png)
 
 ## Installation
 
-Diese Adresse als Add-on-Repository in Home Assistant eintragen
-(*Einstellungen → Add-ons → Add-on Store → ⋮ → Repositories*):
+Add this address as an add-on repository in Home Assistant
+(*Settings → Add-ons → Add-on Store → ⋮ → Repositories*):
 
 ```
 https://github.com/Melle79/HA-rolloplaner
 ```
 
-Danach erscheint **Rolloplaner** im Store. Die Lovelace-Karte bringt das Add-on
-selbst mit; eine getrennte Installation über HACS ist nicht nötig.
+**Roller Shutter Planner** then appears in the store. The add-on brings its own
+Lovelace card; there is no separate HACS installation.
 
-## Was es tut
+## What the planner does
 
-**Ein Zeitplan je Rollo**, der nach Uhrzeit **oder** nach dem Stand der Sonne
-schaltet: „bei Sonnenuntergang zufahren, spätestens 20:30, an Schultagen“ ist
-ein Eintrag und nicht drei Automationen. Schulfrei, Feiertage und „morgen
-schulfrei“ kann er berücksichtigen.
+**One schedule per cover**, switching by clock time **or** by the position of
+the sun. It can take days off, public holidays and “tomorrow is a day off”
+into account, and a switching point may depend on a condition — on a switch
+the planner creates itself.
 
-Die Steuereinheit ist **das Rollo**, nicht der Raum — in jedem Haus, in dem ein
-Zimmer ein Fenster *und* eine Balkontür hat, geht es nicht anders. Darüber
-liegen **Obergruppen** (etwa Etagen) für alles, was zusammengehört: Sie können
-einen gemeinsamen Zeitplan tragen, der zu den einzelnen dazukommt, und einen
-Freigabeschalter für den ganzen Schnitt.
+![A shared schedule with switching points for school days and days off](rolloplaner/doku/bilder/en/zeitplan.png)
 
-Dazu:
+The unit of control is **the cover**, not the room — in any house where a room
+has a window *and* a balcony door there is no other way. Above it sit
+**groups** (floors, for instance) for everything that belongs together: they
+can carry a shared schedule that adds to the individual ones, and a release
+switch for the whole set.
 
-* **Hitzeschutz** nach Sonnenrichtung — fährt teilweise zu, wenn die Sonne in
-  *dieses* Fenster steht und es draußen warm ist. Je Rollo schaltbar.
-* **Fluchtweg-Freigabe** bei Rauchalarm: fährt jedes Rollo auf, über Automatik
-  und Zeitplan hinweg, und meldet, was **nicht** erreichbar war. Danach führt
-  der Planer keinen Schaltpunkt mehr aus, der den Weg wieder zumachen würde.
-* **Fenstersperre** — solange ein Kontakt offen ist, wird nicht zugefahren.
-  An einer Balkontür ist das der Unterschied zwischen „zu“ und „ausgesperrt“.
-* **Urlaub**: geschlossen halten oder Anwesenheit simulieren, mit Streuung.
-* **Wächter**, der meldet, wenn ein Antrieb sich nicht mehr rührt oder hängt.
-* **Trockenlauf**: rechnet und protokolliert, fährt aber nichts — zum
-  Mitlaufen neben den bestehenden Automationen.
+![Groups: assign, order and release covers](rolloplaner/doku/bilder/en/gruppen.png)
 
-Vorhandene Rollladen-Automationen liest das Add-on ein und schlägt vor, was es
-daraus machen würde. **Übernommen wird nichts von selbst.**
+On top of that:
 
-## Die Karte
+* **Heat shield** by sun direction — closes part way when the sun stands in
+  *this* window and it is warm outside. Switchable per cover.
+* **Window lock** — nothing closes while a contact is open. On a balcony door
+  that is the difference between “closed” and “locked out”.
+* **Holiday**: keep everything closed, or simulate presence with jitter.
+* **Watchdog** that reports a motor that stopped responding or is stuck.
+* **Dry run**: calculates and logs but moves nothing — to run alongside the
+  automations you already have.
 
-`custom:rolloplaner-card` — je Rollo eine Kachel mit einem **simulierten
-Rollladen** statt eines Balkens: Ein Balken sagt „65 %“, aber nicht, ob das
-Rollo dabei oben oder unten ist. Vor einer Tür sieht er anders aus als vor
-einem Fenster.
+The add-on reads existing shutter automations and proposes what it would make
+of them. **Nothing is taken over on its own.**
 
-Bedient wird direkt in der Kachel: **auf · Halt · zu** (der Halt in der Mitte,
-so wie auf jedem Handsender), ein **Schieber** für alles dazwischen, Automatik,
-Hitzeschutz — und die Freigabeschalter, an denen die Schaltpunkte hängen. Halt
-und Schieber erscheinen nur, wo der Antrieb sie beherrscht: Ein Knopf, der
-nichts tut, ist schlimmer als keiner.
+## Escape route on a smoke alarm
 
-**Oder schlank**, eine Zeile je Rollo: Bild, Name, Stellung und dieselben
-Tasten, ohne Begründung und Fahrplan. Zusammen mit dem Schnitt nach Zimmer
-wird daraus eine kleine Karte je Zimmer, die neben eine Zimmerkarte passt —
-dort will man schalten und nicht lesen, warum der Planer vor zwei Stunden
-etwas getan hat.
+When a smoke detector triggers, the planner opens **every** cover — overriding
+automation, schedule and manual operation — and sends a message to the phone
+saying which covers are open and which were **not reachable**. The message
+names the detector's room, not just its name. After that it runs no switching
+point that would close the way out again.
 
-Eingestellt wird alles im **Karteneditor**, ohne YAML: Schriftgröße (gedacht
-für ein Wandtablett), was die Karte zeigt, welche Zimmer und Gruppen in
-welcher Reihenfolge erscheinen — und die Beschriftung jedes Rollos, denn wo
-das Zimmer schon in der Überschrift steht, reicht „Fenster links“.
+![The smoke alarm tab: lock, escape route release, detectors and notification path](rolloplaner/doku/bilder/en/rauchalarm.png)
 
-## Zweisprachig
+The smoke alarm has a **tab of its own**. It is too important to sit inside the
+settings.
 
-Planer, Einrichtung und Karte sprechen **Deutsch und Englisch**. Add-on und
-Einrichtung folgen Home Assistant oder der Einstellung unter *Einstellungen →
-Sprache*; die Karte folgt dem **Betrachter** — auf dem Wandtablett steht
-Deutsch, ein englischsprachiger Gast sieht dieselbe Karte auf Englisch. Eine
-dritte Sprache ist eine weitere Tabelle, kein `gettext` und kein Bauschritt.
+## The card
 
-## Ausführlich
+`custom:rolloplaner-card` — one tile per cover, with a **simulated shutter**
+instead of a bar: a bar says “65 %”, but not whether the shutter is up or
+down. In front of a door it looks different than in front of a window.
 
-[rolloplaner/DOCS.md](rolloplaner/DOCS.md) — das Handbuch. Es erklärt nicht nur,
-was die Knöpfe tun, sondern warum die Entscheidungen so gefallen sind: warum
-auf der Flanke geschaltet wird und nicht auf dem Pegel, warum der Planer die
-Sonnenzeiten selbst rechnet, und was „aus“ jeweils bedeutet.
+![The card with every cover, ordered by floor](rolloplaner/doku/bilder/en/karte.png)
 
-[rolloplaner/CHANGELOG.md](rolloplaner/CHANGELOG.md) — was sich geändert hat.
+Operated straight from the tile: **open · stop · close** (the stop in the
+middle, the way it sits on every handset), a **slider** for everything in
+between, automation, heat shield — and the release switches the switching
+points hang on. Stop and slider only appear where the motor supports them: a
+button that does nothing is worse than no button. At the end of travel, the
+button leading there is greyed out.
 
-## Lizenz
+**Or slim**, one line per cover: picture, name, position and the same buttons,
+without the reason and the schedule. Together with the cut by room this makes
+a small card per room — there you want to switch, not to read why the planner
+did something two hours ago.
+
+![A slim card for one room: one line per cover](rolloplaner/doku/bilder/en/karte-zimmer.png)
+
+Everything is set in the **card editor**, without YAML: text size (meant for a
+wall tablet), what the card shows, which rooms and groups appear in which
+order — and the label of each cover, because where the room is already in the
+heading, “window left” is enough.
+
+## Bilingual
+
+Planner, setup, card and card editor speak **German and English**. The add-on
+and its setup follow Home Assistant or the setting under *Settings →
+Language*; the card follows the **viewer** — the wall tablet shows German while
+an English-speaking guest sees the same card in English. A third language is
+one more table, no `gettext` and no build step.
+
+## In detail
+
+[rolloplaner/DOCS.md](rolloplaner/DOCS.md) — the manual. It explains not only
+what the buttons do but why the decisions fell the way they did: why it
+switches on the edge and not on the level, why the planner computes the sun
+times itself, and what “off” means in each case. *Currently German only.*
+
+[rolloplaner/CHANGELOG.md](rolloplaner/CHANGELOG.md) — what has changed.
+
+## Licence
 
 MIT

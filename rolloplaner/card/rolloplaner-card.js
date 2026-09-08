@@ -21,7 +21,7 @@
  * einem dunklen ein Loch; Trennlinien nehmen die Farbe des Themes an und sehen
  * überall richtig aus.
  */
-const CARD_VERSION = "2.25.1";
+const CARD_VERSION = "2.26.0";
 console.info(`%c ROLLOPLANER-CARD %c v${CARD_VERSION} `,
   "color:#06172a;background:#5aa9e6;font-weight:700", "color:#5aa9e6;background:#1f2630");
 
@@ -572,9 +572,18 @@ class RolloplanerCard extends HTMLElement {
     // Die Schalter, die mehrere Räume betreffen, stehen einmal oben. Sonst
     // sähe in jeder Kachel derselbe Schalter aus wie ein eigener – und wer ihn
     // bei Nele ausschaltet, wundert sich, warum er bei Luna auch weg ist.
+    // Auf einer Karte, die nur ein Zimmer zeigt, gehört auch hier nur her,
+    // was dieses Zimmer betrifft: „Obergeschoss schließen" über dem
+    // Wohnzimmer ist ein Schalter, den man dort nicht sucht und nicht
+    // erwartet. Der Planer liefert zu jedem Schalter die Zimmer mit, für die
+    // er gilt; fehlt die Angabe, bleibt der Schalter stehen.
+    const gezeigteZimmer = new Set(rollos.map((r) => r.raum).filter(Boolean));
     let freigabenHtml = "";
     if (c.show_helfer) {
-      const geteilt = (a.freigaben || []).filter((f) => this._hass.states[f.entity_id]);
+      const geteilt = (a.freigaben || [])
+        .filter((f) => this._hass.states[f.entity_id])
+        .filter((f) => !(f.raeume || []).length
+                       || f.raeume.some((z) => gezeigteZimmer.has(z)));
       if (geteilt.length) {
         freigabenHtml = `<div class="freigaben">
           <div class="f-titel">${t("geteilt")}</div>
