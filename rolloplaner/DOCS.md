@@ -556,6 +556,13 @@ Halt und Schieber erscheinen nur, wo der Antrieb sie beherrscht
 Er behauptet, es ginge – und wer ihn drückt, sucht den Fehler beim Rollo statt
 beim Antrieb.
 
+Die Zeichen daneben: eine **Sonne** für den Hitzeschutz dieses Rollos, ein
+**Kalender** für seine Automatik – durchgestrichen, wenn sie aus ist. Vorher
+standen dort `mdi:sun-thermometer` und `mdi:robot`; die erste ist eine Sonne
+*und* ein Thermometer und wird bei 19 Pixeln zum Fleck, die zweite sagt
+„Automation" nur dem, der Home Assistant kennt. Gemeint ist „dieses Rollo
+folgt seinem Zeitplan", und das ist ein Kalender.
+
 ### Schlank: eine Zeile je Rollo
 
 Die Karte hat einen zweiten Zuschnitt. **Schlank** (im Karteneditor
@@ -622,10 +629,22 @@ beides las sich wie ein Defekt.
 ### Ein abgeschaltetes Rollo ist nicht verschwunden
 
 Steht die Automatik eines Rollos auf aus, bekommt seine Kachel einen
-**gestrichelten Rand** und das Schild *aus*; gedimmt wird nur die Begründung
-und der nächste Schaltpunkt. Vorher lag die halbe Deckkraft über der ganzen
-Kachel – das las sich wie „nicht verfügbar", obwohl Stellung, Name und Tasten
-weiter stimmen und das Rollo sich von Hand fahren lässt.
+**gestrichelten Rand**; gedimmt wird nur die Begründung und der nächste
+Schaltpunkt. Vorher lag die halbe Deckkraft über der ganzen Kachel – das las
+sich wie „nicht verfügbar", obwohl Stellung, Name und Tasten weiter stimmen
+und das Rollo sich von Hand fahren lässt.
+
+In der großen Kachel steht zusätzlich das Schild *Automatik aus*; in der
+schlanken Zeile entfällt es, weil dort schon der durchgestrichene Kalender
+steht. **Ein gestrichelter Rand neben einem durchgezogenen heißt also: Dieses
+Rollo fährt der Planer nicht.** Der Grund steht in der Kachel – meist
+*Automatik für dieses Rollo ist aus*, manchmal auch eine Gruppe, die nicht
+freigegeben ist.
+
+Beides sind zwei verschiedene Dinge: Der Schalter sagt, **ob** der Planer
+fahren darf, die Betriebsart sagt, **was** er dann täte. Ein Rollo auf *nur
+von Hand* rührt sich auch mit eingeschalteter Automatik nicht – es hat keine
+Schaltpunkte, die es ausführen könnte.
 
 ### Das Zimmer
 
@@ -646,18 +665,43 @@ Angabe. Die Kartenoption `zimmer` bestimmt, wie es erscheint:
 
 ### Einstellen ohne YAML
 
-Die Karte bringt einen **Editor** mit: In Home Assistant unter *Karte
-bearbeiten* stehen dort Überschrift, Schriftgröße, was die Karte zeigt, und
-eine Liste der Gruppen zum **An- und Abhaken und Sortieren**. Die Reihenfolge
-dort gilt vor der aus dem Add-on; sind alle angehakt und unverschoben, folgt
-die Karte dem Add-on.
+Die Karte bringt einen **Editor** mit. In Home Assistant unter *Karte
+bearbeiten* steht dort alles, was sie kann – von oben nach unten:
 
-In YAML heißt das `gruppen: [...]` – die Liste bestimmt zugleich, **welche**
-Gruppen erscheinen und **in welcher Reihenfolge**. Der Vorgänger `raeume` gilt
-weiter.
+| Im Editor | In YAML | Was es tut |
+|---|---|---|
+| Überschrift | `title` | der Titel im Kopf |
+| Schriftgröße | `textgroesse` | Textskala, siehe unten |
+| Zimmer | `zimmer` | wie das Zimmer erscheint: `schild`, `ueberschrift`, `aus` |
+| Welche Zimmer | `nur_zimmer` | schneidet nach dem Zimmer am Rollo |
+| Beschriftung der Rollos | `namen` | eigener Name je Rollo, nur in dieser Karte |
+| Die Knöpfe oben | `show_funktionen` | Automatik, Hitzeschutz, Urlaub, Fluchtweg |
+| Nächster Wechsel | `show_naechster` | die Zeile über den Kacheln |
+| Störungen melden | `show_stoerungen` | die Warnzeile |
+| Freigabeschalter | `show_helfer` | die Schalter an den Kacheln |
+| Tasten zum Fahren | `allow_fahren` | *auf · Halt · zu* |
+| Schieber | `allow_schieber` | die Zwischenstellungen |
+| Schlank | `kompakt` | eine Zeile je Rollo |
+| Kopfzeile | `show_kopf` | Titel und Zustand |
+| Sonnenzeiten | `show_sonnenzeiten` | Auf- und Untergang, Außentemperatur |
+| Nach Gruppen ordnen | `gruppieren` | Obergruppen als Überschriften |
+| Gruppen | `gruppen` | Auswahl **und** Reihenfolge |
+
+Die Gruppenliste lässt sich **an- und abhaken und sortieren**. Die Reihenfolge
+dort gilt vor der aus dem Add-on; sind alle angehakt und unverschoben, folgt
+die Karte dem Add-on. Der Vorgänger `raeume` gilt weiter.
 
 Innerhalb einer Gruppe zählt der Platz, den das Add-on vergibt: Wer die Rollos
 im Reiter *Gruppen* sortiert, meint damit die Karte.
+
+**Zwei Schnitte, die sich unterscheiden:** `gruppen` schneidet nach der
+Obergruppe (bei uns die Etage), `nur_zimmer` nach dem Zimmer am Rollo. Beide
+wirken zusammen. Für eine kleine Karte je Zimmer ist `nur_zimmer` gemeint –
+die Obergruppe ist dafür zu grob.
+
+**Alles angehakt heißt in beiden Listen: keine Einschränkung.** Sonst stünde
+in der Konfiguration eine Liste, die jedes später angelegte Zimmer und jede
+neue Gruppe aussperrt.
 
 ### Schriftgröße
 

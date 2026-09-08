@@ -54,9 +54,19 @@ einem Fenster.
 Bedient wird direkt in der Kachel: **auf · Halt · zu** (der Halt in der Mitte,
 so wie auf jedem Handsender), ein **Schieber** für alles dazwischen, Automatik,
 Hitzeschutz — und die Freigabeschalter, an denen die Schaltpunkte hängen. Halt
-und Schieber erscheinen nur, wo der Antrieb sie beherrscht. Eingestellt wird sie im
-**Karteneditor**, ohne YAML: Schriftgröße (gedacht für ein Wandtablett), was
-sie zeigt, und welche Gruppen in welcher Reihenfolge erscheinen.
+und Schieber erscheinen nur, wo der Antrieb sie beherrscht: Ein Knopf, der
+nichts tut, ist schlimmer als keiner.
+
+**Oder schlank**, eine Zeile je Rollo: Bild, Name, Stellung und dieselben
+Tasten, ohne Begründung und Fahrplan. Zusammen mit dem Schnitt nach Zimmer
+wird daraus eine kleine Karte je Zimmer, die neben eine Zimmerkarte passt —
+dort will man schalten und nicht lesen, warum der Planer vor zwei Stunden
+etwas getan hat.
+
+Eingestellt wird alles im **Karteneditor**, ohne YAML: Schriftgröße (gedacht
+für ein Wandtablett), was die Karte zeigt, welche Zimmer und Gruppen in
+welcher Reihenfolge erscheinen — und die Beschriftung jedes Rollos, denn wo
+das Zimmer schon in der Überschrift steht, reicht „Fenster links“.
 
 ## Zweisprachig
 

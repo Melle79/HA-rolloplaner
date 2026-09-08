@@ -1,5 +1,24 @@
 # Änderungen
 
+## 2.24.0 – 08.09.2026
+
+**Handbuch und README auf den Stand gebracht.** Die Karte hat in den letzten
+Fassungen einiges dazubekommen; die Anleitung hinkte hinterher.
+
+* Der Karteneditor steht jetzt vollständig im Handbuch – als Tabelle, die
+  jeden Haken seinem YAML-Schlüssel gegenüberstellt. Vorher waren nur vier
+  der sechzehn Einstellungen beschrieben.
+* **Die beiden Schnitte auseinandergehalten:** `gruppen` schneidet nach der
+  Obergruppe, `nur_zimmer` nach dem Zimmer am Rollo. Für eine Karte je Zimmer
+  ist der zweite gemeint.
+* **Warum ein Rand gestrichelt ist**, steht jetzt da – und dass Schalter und
+  Betriebsart zwei verschiedene Dinge sind: Der eine sagt, *ob* der Planer
+  fahren darf, die andere, *was* er dann täte. Ein Rollo auf „nur von Hand“
+  rührt sich auch mit eingeschalteter Automatik nicht.
+* Die neuen Symbole erklärt: Sonne für den Hitzeschutz, Kalender für die
+  Automatik – und warum die alten weichen mussten.
+* Das README nennt den schlanken Zuschnitt und die eigene Beschriftung.
+
 ## 2.23.0 – 08.09.2026
 
 **Die schlanke Zeile steht jetzt auf festen Spalten.** Vorher fluchtete
