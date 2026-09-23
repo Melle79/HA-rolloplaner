@@ -518,19 +518,36 @@ def test_alle_drei_stellen_nennen_dieselbe_fassung():
     ihre eigene Zeile. Läuft eine nach, meldet das Add-on beim Start eine
     Fassung, die es gar nicht mehr ist – und genau daran sucht man einen
     Fehler zuerst.
+
+    Zwei davon sind inzwischen dieselbe Quelle: `version.py` rechnet die
+    Nummer aus der `config.yaml` aus, statt sie noch einmal hinzuschreiben.
+    Geprüft wird trotzdem, was das Programm am Ende *sagt* – eine abgeleitete
+    Nummer, die im Abbild nicht ankommt, wäre genauso falsch wie eine
+    vergessene.
     """
     import re
+    import version
     wurzel = pathlib.Path(__file__).parent.parent
     yaml = re.search(r'^version:\s*"([^"]+)"',
                      (wurzel / "config.yaml").read_text(encoding="utf-8"), re.M)
-    py = re.search(r'VERSION\s*=\s*"([^"]+)"',
-                   (wurzel / "backend" / "version.py").read_text(encoding="utf-8"))
     karte = re.search(r'CARD_VERSION\s*=\s*"([^"]+)"',
                       (wurzel / "card" / "rolloplaner-card.js").read_text(encoding="utf-8"))
-    assert yaml and py and karte, "eine der drei Fassungszeilen ist nicht auffindbar"
-    fassungen = {"config.yaml": yaml.group(1), "version.py": py.group(1),
+    assert yaml and karte, "eine der Fassungszeilen ist nicht auffindbar"
+    fassungen = {"config.yaml": yaml.group(1), "version.py": version.VERSION,
                  "rolloplaner-card.js": karte.group(1)}
     assert len(set(fassungen.values())) == 1, f"uneinig: {fassungen}"
+
+    # Und die Ableitung muss auch dann greifen, wenn der Supervisor nichts
+    # durchreicht – im Abbild liegt die config.yaml genau dafuer daneben.
+    import importlib
+    import os
+    alt_wert = os.environ.pop("ADDON_VERSION", None)
+    try:
+        assert importlib.reload(version).VERSION == yaml.group(1)
+    finally:
+        if alt_wert is not None:
+            os.environ["ADDON_VERSION"] = alt_wert
+        importlib.reload(version)
 
 
 def test_bei_einem_stueck_gilt_die_einzahl():
