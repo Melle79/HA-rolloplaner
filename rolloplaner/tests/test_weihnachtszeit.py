@@ -104,7 +104,7 @@ def _vergleich(config, frei, von, tage):
         if rollo["betriebsart"] == "von_hand":
             continue
         punkte = _punkte(config, rollo)
-        programm = regelung._programm_fuer(rollo, config["einstellungen"], lage, s)
+        programm = regelung._programm_fuer(rollo, config["einstellungen"], lage, s, kal, punkte)
         for jetzt in _schritte(von, tage):
             alt = zeitplan_alt.letzter_zeitpunkt(punkte, jetzt, kal, s, None, lage["zustaende"])
             neu = zeitplan.letzter_zeitpunkt(punkte, jetzt, kal, s, None, lage["zustaende"],
@@ -195,13 +195,15 @@ STARTWERTE = {"aktiv": True, "lichter": ["light.kette", "switch.terrasse"],
         "rollos": {EG[0]: 40, EG[1]: 40, EG[2]: 40, TUER: "offen"}}
 
 
-def _ablauf(config, eid, tag, frei=False):
+def _ablauf(config, eid, tag, frei=False, schalter=None):
     s = _sonnenstand()
     rollo = next(r for r in config["rollos"] if r["entity_id"] == eid)
     lage = _lage(config)
+    lage["zustaende"].update(schalter or {})
+    punkte, kal = _punkte(config, rollo), _kalender(frei)
     return [(p["zeit"], p["position"]) for p in zeitplan.tagesablauf(
-        _punkte(config, rollo), tag, _kalender(frei), s, lage["zustaende"],
-        regelung._programm_fuer(rollo, config["einstellungen"], lage, s))["punkte"]]
+        punkte, tag, kal, s, lage["zustaende"],
+        regelung._programm_fuer(rollo, config["einstellungen"], lage, s, kal, punkte))["punkte"]]
 
 
 def test_zwischenstellung_statt_zu_bei_sonnenuntergang():
@@ -219,11 +221,39 @@ def test_schulfrei_morgens_halb_bis_zehn():
     assert zeiten[:2] == [("09:30", 40), ("10:00", 100)], zeiten
 
 
-def test_terrassentuer_bleibt_offen_bis_licht_aus():
+AUSWAHL = "rolloplaner:s3"   # Terrassentür schließen: normal / 24 Uhr / aus
+
+
+def test_terrassentuer_24_uhr_schliesst_weiter_um_mitternacht():
+    """Die Weihnachtszeit darf das Schließen nur hinauszögern, nie vorziehen."""
+    mit, ohne = _config(STARTWERTE), _config()
+    tag = date(2026, 12, 1)
+    zeiten = _ablauf(mit, TUER, tag, schalter={AUSWAHL: "24 Uhr"})
+    assert zeiten == _ablauf(ohne, TUER, tag, schalter={AUSWAHL: "24 Uhr"}), zeiten
+    assert ("00:00", 0) in zeiten and not [z for z in zeiten if z[0] == "22:30"], zeiten
+
+
+def test_terrassentuer_normal_bleibt_offen_bis_licht_aus():
     config = _config(STARTWERTE)
-    zeiten = _ablauf(config, TUER, date(2026, 12, 1))
-    assert ("22:30", 0) in zeiten and ("06:30", 100) in zeiten, zeiten
-    assert not [z for z in zeiten if z[1] == 40], zeiten
+    zeiten = _ablauf(config, TUER, date(2026, 12, 1), schalter={AUSWAHL: "normal"})
+    assert zeiten == [("06:30", 100), ("22:30", 0)], zeiten
+
+
+def test_terrassentuer_aus_wird_nie_geschlossen():
+    mit, ohne = _config(STARTWERTE), _config()
+    tag = date(2026, 12, 1)
+    zeiten = _ablauf(mit, TUER, tag, schalter={AUSWAHL: "aus"})
+    assert zeiten == _ablauf(ohne, TUER, tag, schalter={AUSWAHL: "aus"}), zeiten
+    assert not [z for z in zeiten if z[1] < 100], zeiten
+
+
+def test_zwischenstellung_zieht_kein_offenes_rollo_zu():
+    """Lässt der Plan ein Rollo abends offen (Schließen abgeschaltet), bleibt es
+    offen – die Zwischenstellung hebt nur an, sie senkt nie."""
+    mit, ohne = _config(STARTWERTE), _config()
+    tag = date(2026, 12, 1)
+    aus = {"rolloplaner:s2": "off"}          # „EG schließen“ aus
+    assert _ablauf(mit, EG[0], tag, schalter=aus) == _ablauf(ohne, EG[0], tag, schalter=aus)
 
 
 def test_kinderzimmer_unberuehrt_in_der_weihnachtszeit():

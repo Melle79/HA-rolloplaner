@@ -1,5 +1,17 @@
 # Änderungen
 
+## 3.0.1 – 20.11.2026
+
+* **Die Weihnachtszeit zögert das Schließen nur hinaus, sie erzwingt es nie.**
+  In 3.0.0 schloss die Terrassentür mit „bleibt offen bis Licht aus“ um 22:30
+  – auch auf „24 Uhr“ (eigentlich Mitternacht) und auf „aus“ (eigentlich gar
+  nicht). Jetzt geht ein Rollo bei Licht aus dorthin, wo sein Plan es dann
+  hätte, und nur, wenn das Programm vorher etwas verändert hat. Die
+  Zwischenstellung hebt nur an und senkt nie; morgens kommt sie nur, wenn das
+  Rollo sonst weiter zu wäre. Geprüft für alle drei Stellungen der
+  Terrassentür. Aufgefallen beim Nachfragen, bevor die Weihnachtszeit
+  begonnen hatte.
+
 ## 3.0.0 – 20.11.2026
 
 **Eine neue Oberfläche, und die Weihnachtszeit.**

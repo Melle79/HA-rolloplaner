@@ -158,35 +158,74 @@ def _punkt(position: int, name: str) -> dict:
             "programm": PROGRAMM_KENNUNG, "gilt": "immer", "wenn": []}
 
 
+def _stand(punkte: list[tuple[datetime, dict]], zeit: datetime, start) -> int | None:
+    """Wo der normale Plan das Rollo zu dieser Zeit hätte (Punkt zur selben
+    Minute eingeschlossen)."""
+    stand = start
+    for zeitpunkt, eintrag in punkte:
+        if zeitpunkt > zeit:
+            break
+        stand = int(eintrag.get("position", 100))
+    return stand
+
+
 def umbauen(cfg: dict, wert, tag: date, punkte: list[tuple[datetime, dict]],
-            sonnenstand, position_zu: int = 0, texte=None) -> list[tuple[datetime, dict]]:
+            sonnenstand, position_zu: int = 0, texte=None,
+            start: int | None = None) -> list[tuple[datetime, dict]]:
     """Die Schaltpunkte eines Tages unter dem Programm.
 
-    ``punkte`` sind die nach Zeit sortierten Punkte des Rollos an diesem Tag.
-    Zurück kommen die Punkte, die tatsächlich gelten: Was im Lichtfenster
-    zufahren würde, fällt weg; dazu kommen Licht an, Licht aus und – wenn
-    eingestellt – die Zwischenstellung vor dem Öffnen am Morgen.
+    ``punkte`` sind die nach Zeit sortierten Punkte des Rollos an diesem Tag –
+    schon nach Bedingungen und Auswahlschaltern gefiltert; ``start`` ist die
+    Stellung um Mitternacht.
+
+    **Die Weihnachtszeit darf das Schließen nur hinauszögern, nie vorziehen
+    oder erzwingen.** Deshalb:
+
+    * Im Lichtfenster wird ein Punkt, der weiter zufahren würde als die
+      Zwischenstellung, auf sie angehoben („bleibt offen“: er fällt weg).
+      Ein Rollo, das der Plan offen ließe, bleibt offen.
+    * Bei Licht aus geht das Rollo dorthin, wo der Plan es *jetzt* hätte –
+      und nur, wenn das Programm im Fenster überhaupt etwas verändert hat.
+      Steht die Terrassentür auf „24 Uhr“, schließt sie also weiter um
+      Mitternacht und nicht schon um 22:30; steht sie auf „aus“, bleibt sie
+      offen.
+    * Morgens kommt die Zwischenstellung nur, wenn das Rollo dann weiter zu
+      wäre als sie.
     """
     if wert == PLAN:
         return punkte
     texte = texte or {}
+    ziel = 100 if wert == OFFEN else int(wert)
+    zu = position_zu if start is None else start
+    out = []
     fenster = abend(cfg, tag, sonnenstand)
-    out = list(punkte)
+    veraendert = False
     if fenster:
         an, aus = fenster
-        out = [(z, e) for z, e in out
-               if not (an <= z < aus and int(e.get("position", 100)) < 100)]
-        if wert != OFFEN:
-            out.append((an, _punkt(wert, texte.get("abend", "Weihnachtszeit: {n} %")
-                                   .format(n=wert))))
-        out.append((aus, _punkt(position_zu, texte.get("aus", "Weihnachtszeit: Licht aus"))))
+        for zeitpunkt, eintrag in punkte:
+            pos = int(eintrag.get("position", 100))
+            if an <= zeitpunkt < aus and pos < ziel:
+                veraendert = True
+                if wert != OFFEN:
+                    out.append((zeitpunkt, _punkt(ziel, texte.get(
+                        "abend", "Weihnachtszeit: {n} %").format(n=ziel))))
+                continue
+            out.append((zeitpunkt, eintrag))
+        if veraendert:
+            normal = _stand(punkte, aus, zu)
+            out.append((aus, _punkt(normal if normal is not None else position_zu,
+                                    texte.get("aus", "Weihnachtszeit: Licht aus"))))
+    else:
+        out = list(punkte)
     vorlauf = int(cfg.get("morgens_vorlauf") or 0)
     if vorlauf and wert != OFFEN:
         oeffnen = erstes_oeffnen(punkte)
         if oeffnen is not None:
-            out.append((oeffnen - timedelta(minutes=vorlauf),
-                        _punkt(wert, texte.get("morgen", "Weihnachtszeit: {n} %")
-                               .format(n=wert))))
+            frueh = oeffnen - timedelta(minutes=vorlauf)
+            normal = _stand(punkte, frueh, zu)
+            if normal is None or normal < ziel:
+                out.append((frueh, _punkt(ziel, texte.get(
+                    "morgen", "Weihnachtszeit: {n} %").format(n=ziel))))
     out.sort(key=lambda p: p[0])
     return out
 

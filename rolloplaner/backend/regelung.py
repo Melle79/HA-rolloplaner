@@ -482,7 +482,8 @@ def _programm_texte() -> dict:
             "morgen": sprache.t("prog.weihnacht_morgen")}
 
 
-def _programm_fuer(rollo: dict, einstellungen: dict, lage: dict, sonnenstand):
+def _programm_fuer(rollo: dict, einstellungen: dict, lage: dict, sonnenstand,
+                   kalender=None, punkte: list | None = None):
     """Die Weihnachtszeit als Umbau der Schaltpunkte – oder None.
 
     None heißt: Das Programm fasst dieses Rollo nicht an. Dann rechnet der
@@ -497,10 +498,19 @@ def _programm_fuer(rollo: dict, einstellungen: dict, lage: dict, sonnenstand):
     zu = int(rollo.get("position_zu", 0))
     texte = _programm_texte()
 
-    def umbau(tag, punkte):
+    def umbau(tag, tagespunkte):
         if not aktiv_am(tag):
-            return punkte
-        return programme.umbauen(cfg, wert, tag, punkte, sonnenstand, zu, texte)
+            return tagespunkte
+        # Die Stellung um Mitternacht nach dem *normalen* Plan – ohne sie
+        # wüsste das Programm nicht, ob der Plan das Rollo morgens offen
+        # oder zu hätte.
+        start = None
+        if kalender is not None and punkte is not None:
+            vorher = zeitplanmodul.letzter_zeitpunkt(
+                punkte, datetime.combine(tag, datetime.min.time()) - timedelta(seconds=1),
+                kalender, sonnenstand, None, lage["zustaende"])
+            start = int(vorher[1]["position"]) if vorher else None
+        return programme.umbauen(cfg, wert, tag, tagespunkte, sonnenstand, zu, texte, start)
     return umbau
 
 
@@ -717,7 +727,7 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
     # Der Zeitplan ist die Grundlage; Urlaub und Hitzeschutz verschieben ihn.
     anpassen = _urlaubsversatz(rollo, einstellungen, lage)
     zustaende = lage["zustaende"]
-    programm = _programm_fuer(rollo, einstellungen, lage, sonnenstand)
+    programm = _programm_fuer(rollo, einstellungen, lage, sonnenstand, kalender, punkte)
     treffer = zeitplanmodul.letzter_zeitpunkt(punkte, jetzt, kalender, sonnenstand,
                                               anpassen, zustaende, programm)
     naechster = zeitplanmodul.naechster_wechsel(punkte, jetzt, kalender, sonnenstand,
@@ -1389,7 +1399,7 @@ def tagesablauf(config: dict, state: dict, index: dict, tag, art: str,
                 or not punkte)
         ablauf = ({"start": None, "punkte": []} if ohne else zeitplanmodul.tagesablauf(
             punkte, tag, kalender, sonnenstand, lage["zustaende"],
-            _programm_fuer(rollo, einstellungen, lage, sonnenstand)))
+            _programm_fuer(rollo, einstellungen, lage, sonnenstand, kalender, punkte)))
         rollos.append({"entity_id": rollo["entity_id"],
                        "name": anzeigename(rollo, index),
                        "raum": rollo.get("raum") or "",

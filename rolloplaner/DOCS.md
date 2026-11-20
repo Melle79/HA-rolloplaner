@@ -66,9 +66,16 @@ Morgens dasselbe in kurz: Licht an, Rollos halb, zur gewohnten Zeit auf.
 Zeitraums: am 3. Januar ausgeschaltet heißt „dieses Jahr nicht mehr“, im
 nächsten Advent läuft es wieder von selbst.
 
-**Wie es rechnet.** Das Programm legt seine Punkte über den Tag des Rollos –
-Licht an, Licht aus, Morgenlicht – und blendet aus, was im Lichtfenster
-zufahren würde. Der Zeitplan selbst bleibt unverändert; nach dem Zeitraum gilt
+**Wie es rechnet.** Das Programm legt seine Punkte über den Tag des Rollos
+und **darf das Schließen nur hinauszögern, nie vorziehen oder erzwingen**:
+Im Lichtfenster wird angehoben, was weiter zufahren würde als die
+Zwischenstellung („bleibt offen“: es fällt weg); bei Licht aus geht das Rollo
+dorthin, wo der Plan es *dann* hätte – und nur, wenn das Programm vorher
+etwas verändert hat; morgens kommt die Zwischenstellung nur, wenn das Rollo
+sonst weiter zu wäre. Bedingungen und Auswahlschalter gelten also weiter. Am
+Beispiel der Terrassentür mit „bleibt offen“: auf *normal* schließt sie um
+22:30 statt bei Sonnenuntergang, auf *24 Uhr* weiter um Mitternacht, auf
+*aus* gar nicht. Der Zeitplan selbst bleibt unverändert; nach dem Zeitraum gilt
 er wie vorher. Es braucht keine Bedingungen und keine Gegenbedingungen an den
 bestehenden Schaltpunkten.
 
