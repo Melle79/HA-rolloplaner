@@ -1,5 +1,24 @@
 # Änderungen
 
+## 3.2.0 – 20.11.2026
+
+**Die Weihnachtszeit hat Abläufe.** Das Erdgeschoss leuchtet bis 22:30, die
+Kinderzimmer sollen eigene Zeiten haben – jetzt geht beides nebeneinander.
+
+* Unter *Programme › Weihnachtszeit* steht jeder Ablauf als Karte; *+ Ablauf*
+  legt einen an: Name, Rollos mit Stellung, Lichter und Steckdosen mit Suche,
+  Licht an (Sonnenuntergang, Dämmerung, Uhrzeit), Licht aus – auf Wunsch vor
+  freien Tagen anders –, Morgen-Vorlauf.
+* Ein Rollo und ein Licht gehören höchstens zu einem Ablauf; was anderswo
+  vergeben ist, steht ausgegraut mit dem Namen des Ablaufs da.
+* **Darf früher schließen** als ausdrückliche Option je Ablauf, Standard
+  aus – ohne sie bleibt es bei „nur hinauszögern“.
+* Im Tagesablauf hat jeder Ablauf seine eigene Lichter-Zeile.
+* Die bisherige Einstellung wird beim ersten Start zum Ablauf „Erdgeschoss“
+  (Sicherung `config-vor-3.2.json`). Geprüft: dieselben Fahrten an fünf Tagen
+  zwischen Ende November und Dreikönig, Schultag und schulfrei, alle zehn
+  Rollos.
+
 ## 3.1.0 – 20.11.2026
 
 **Die erweiterte Ansicht ist aufgelöst** – jede ihrer Funktionen steht jetzt

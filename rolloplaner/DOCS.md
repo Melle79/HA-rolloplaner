@@ -60,14 +60,28 @@ davor sollen dann nicht bei Sonnenuntergang zufahren, sondern offen bleiben
 oder auf eine Zwischenstellung gehen, und erst zu, wenn das Licht ausgeht.
 Morgens dasselbe in kurz: Licht an, Rollos halb, zur gewohnten Zeit auf.
 
-**Einstellen** unter *Programme › Weihnachtszeit*:
+**Abläufe (seit 3.2).** Die Weihnachtszeit kann mehrere Abläufe haben – etwa
+„Erdgeschoss“ bis 22:30 und „Kinder“ bis 20:30, vor freien Tagen 22:00. Jeder
+Ablauf hat seinen Namen, seine Lichter und Steckdosen, seine Rollos mit
+Stellung und seine Zeiten. Ein Rollo und ein Licht gehören höchstens zu einem
+Ablauf; was anderswo vergeben ist, steht im Dialog ausgegraut mit dem Namen
+des Ablaufs. Zeitraum und Handschalter teilen sich alle Abläufe. Eine
+Einstellung aus 3.0/3.1 wird beim ersten Start zum Ablauf „Erdgeschoss“ –
+mit denselben Fahrten.
+
+**Einstellen** unter *Programme › Weihnachtszeit*, für jeden Ablauf über
+*Bearbeiten* bzw. *+ Ablauf*:
 
 * **Zeitraum** – „ab 1. Advent“ (rechnet jedes Jahr selbst) oder feste Daten;
   *bis einschließlich* ist voreingestellt 06.01.
 * **Jedes Jahr von selbst** – ohne Haken läuft das Programm nur, wenn man es
   von Hand einschaltet.
 * **Licht an** abends bei Sonnenuntergang, bei Dämmerung (mit Versatz) oder zu
-  einer festen Uhrzeit; **Licht aus und Rollos zu** um 22:30.
+  einer festen Uhrzeit; **Licht aus und Rollos zu** um 22:30 – auf Wunsch
+  *vor freien Tagen anders* (dann gilt „morgen schulfrei“).
+* **Darf früher schließen** – Standard aus. Ohne Haken zögert der Ablauf das
+  Schließen nur hinaus; mit Haken gehen seine Rollos bei Licht aus zu, auch
+  wenn der normale Plan sie dann noch offen hätte.
 * **Morgens vor dem Öffnen** – 15 bis 60 Minuten vor dem ersten Öffnen des
   Tages Licht an und Rollos auf die Zwischenstellung; „morgens nicht“ schaltet
   das ab.

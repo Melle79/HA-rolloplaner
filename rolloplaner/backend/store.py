@@ -685,6 +685,39 @@ def validate_rollo(rollo: dict) -> dict:
     }
 
 
+def _ablauf_pruefen(roh: dict, nummer: int) -> dict:
+    """Ein Ablauf der Weihnachtszeit."""
+    a = {**programme.STANDARD_ABLAUF, **(roh or {})}
+    a["id"] = str(a.get("id") or "").strip() or uuid.uuid4().hex[:8]
+    a["name"] = str(a.get("name") or "").strip()[:40] or f"Ablauf {nummer + 1}"
+    if a.get("licht_an") not in ("sonnenuntergang", "daemmerung", "uhrzeit"):
+        a["licht_an"] = "sonnenuntergang"
+    for schluessel, name in (("licht_an_zeit", "Licht an"), ("licht_aus", "Licht aus")):
+        wert = str(a.get(schluessel) or "").strip()
+        if not _TIME_RE.match(wert):
+            raise ValidationError(f"{a['name']} – {name}: ungültige Uhrzeit {wert!r}")
+        a[schluessel] = wert
+    wert = str(a.get("licht_aus_vor_schulfrei") or "").strip()
+    if wert and not _TIME_RE.match(wert):
+        raise ValidationError(f"{a['name']} – Licht aus vor freien Tagen: ungültige Uhrzeit {wert!r}")
+    a["licht_aus_vor_schulfrei"] = wert
+    a["licht_an_versatz"] = int(_zahl(a.get("licht_an_versatz") or 0, "Versatz Licht an", -180, 180))
+    a["morgens_vorlauf"] = int(_zahl(a.get("morgens_vorlauf") or 0, "Vorlauf am Morgen", 0, 180))
+    a["frueher_schliessen"] = bool(a.get("frueher_schliessen"))
+    a["lichter"] = list(dict.fromkeys(
+        str(l).strip() for l in (a.get("lichter") or [])
+        if str(l).strip().split(".", 1)[0] in ("light", "switch")))
+    rollos = {}
+    for eid, wert in (a.get("rollos") or {}).items():
+        if wert in (programme.PLAN, programme.OFFEN):
+            if wert != programme.PLAN:
+                rollos[str(eid)] = wert
+            continue
+        rollos[str(eid)] = int(_position(wert, "Weihnachtszeit – Stellung"))
+    a["rollos"] = rollos
+    return {k: a[k] for k in programme.STANDARD_ABLAUF}
+
+
 def validate_einstellungen(roh: dict) -> dict:
     """Nur bekannte Felder übernehmen und in vernünftige Grenzen zwingen."""
     e = _merge(STANDARD_EINSTELLUNGEN, roh or {})
@@ -739,28 +772,20 @@ def validate_einstellungen(roh: dict) -> dict:
         if not _MMTT_RE.match(wert):
             raise ValidationError(f"{name}: ungültiges Datum {wert!r} (MM-TT)")
         x[schluessel] = wert
-    if x.get("licht_an") not in ("sonnenuntergang", "daemmerung", "uhrzeit"):
-        x["licht_an"] = "sonnenuntergang"
-    for schluessel, name in (("licht_an_zeit", "Licht an"), ("licht_aus", "Licht aus")):
-        wert = str(x.get(schluessel) or "").strip()
-        if not _TIME_RE.match(wert):
-            raise ValidationError(f"Weihnachtszeit – {name}: ungültige Uhrzeit {wert!r}")
-        x[schluessel] = wert
-    x["licht_an_versatz"] = int(_zahl(x.get("licht_an_versatz") or 0,
-                                      "Versatz Licht an", -180, 180))
-    x["morgens_vorlauf"] = int(_zahl(x.get("morgens_vorlauf") or 0,
-                                     "Vorlauf am Morgen", 0, 180))
-    x["lichter"] = list(dict.fromkeys(
-        str(l).strip() for l in (x.get("lichter") or [])
-        if str(l).strip().split(".", 1)[0] in ("light", "switch")))
-    rollos = {}
-    for eid, wert in (x.get("rollos") or {}).items():
-        if wert in (programme.PLAN, programme.OFFEN):
-            if wert != programme.PLAN:
-                rollos[str(eid)] = wert
-            continue
-        rollos[str(eid)] = int(_position(wert, "Weihnachtszeit – Stellung"))
-    x["rollos"] = rollos
+    # Bis 3.1 standen Lichter, Zeiten und Rollos direkt hier – daraus wird der
+    # Ablauf „Erdgeschoss“. Die alten Felder fallen danach weg.
+    ablaeufe = programme.ablaeufe(x)
+    for alt in programme._ALTE_FELDER:
+        x.pop(alt, None)
+    x["ablaeufe"] = [_ablauf_pruefen(a, i) for i, a in enumerate(ablaeufe)]
+    vergeben = {}
+    for ablauf in x["ablaeufe"]:
+        for eid in list(ablauf["rollos"]) + ablauf["lichter"]:
+            if eid in vergeben:
+                raise ValidationError(
+                    f"Weihnachtszeit: {eid} steht in „{vergeben[eid]}“ und in "
+                    f"„{ablauf['name']}“ – es gehört höchstens zu einem Ablauf")
+            vergeben[eid] = ablauf["name"]
 
     w = e["wachhund"]
     w["aktiv"] = bool(w["aktiv"])

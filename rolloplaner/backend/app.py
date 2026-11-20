@@ -1305,6 +1305,14 @@ def main() -> None:
     gesichert = store.vor_fassung_sichern("3.0")
     if gesichert:
         _LOGGER.info("Einrichtung vor 3.0 gesichert: %s", gesichert)
+    # 3.2: Die Weihnachtszeit hat Abläufe. Eine Einstellung aus 3.0/3.1 wird
+    # einmal durch die Prüfung geschickt und kommt als Ablauf „Erdgeschoss“
+    # zurück – gerechnet wird mit beiden Formen gleich (programme.ablaeufe).
+    weihnacht = store.load_config()["einstellungen"].get("weihnachtszeit") or {}
+    if not weihnacht.get("ablaeufe") and (weihnacht.get("lichter") or weihnacht.get("rollos")):
+        store.vor_fassung_sichern("3.2")
+        store.update_einstellungen({})
+        _LOGGER.info("Weihnachtszeit in Abläufe übertragen")
     if not ha_api.available():
         _LOGGER.error("Kein SUPERVISOR_TOKEN – der Planer kann nichts fahren")
     cardsync.sync()

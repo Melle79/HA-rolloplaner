@@ -273,7 +273,7 @@ const UI = {
     "zs.nur_schliessen":"Nur schließen","zs.weihnachtszeit":"Weihnachtszeit",
     "ab.titel":"So fahren die Rollos","ab.hilfe":"Ein Balken je Rollo, von 0 bis 24 Uhr. Antippen zum Ändern.",
     "ab.schultag":"Schultag","ab.schulfrei":"Schulfrei / Ferien","ab.mit_weihnacht":"mit Weihnachtszeit",
-    "ab.ohne_weihnacht":"ohne","ab.licht":"Weihnachtslicht","ab.nur_hand":"nur von Hand",
+    "ab.ohne_weihnacht":"ohne","ab.nur_hand":"nur von Hand",
     "ab.l_offen":"offen","ab.l_teil":"teilweise","ab.l_zu":"zu","ab.l_licht":"Weihnachtslicht an",
     "ed.folgt":"Folgt","ed.eigener":"einem eigenen Plan",
     "ed.neu_auf":"+ Öffnen","ed.neu_zu":"+ Schließen",
@@ -382,6 +382,23 @@ const UI = {
     "es.schwere.warnung":"Warnung",
     "es.schwere.hinweis":"Hinweis",
     "es.alles_gut":"Nichts aufgefallen.",
+    "pg.k_zeiten":"Licht an {an}, aus und zu {aus}",
+    "pg.k_frei":"(vor freien Tagen {zeit})",
+    "pg.k_morgens":"morgens {n} min vor dem Öffnen",
+    "pg.frueher_kurz":"darf früher schließen",
+    "pg.k_rollos":"Rollos",
+    "pg.offen_kurz":"offen",
+    "pg.ablaeufe":"Abläufe",
+    "pg.keine_ablaeufe":"Noch kein Ablauf – „+ Ablauf“ legt einen an.",
+    "pg.ablauf_neu":"+ Ablauf",
+    "pg.ablauf_name":"Neuer Ablauf",
+    "pg.frei_anders":"vor freien Tagen anders",
+    "pg.frueher":"darf früher schließen als der normale Plan",
+    "pg.frueher_hilfe":"Ohne Haken zögert der Ablauf das Schließen nur hinaus. Mit Haken gehen seine Rollos bei Licht aus zu, auch wenn der Plan sie noch offen hätte.",
+    "pg.in_ablauf":"(in „{name}“)",
+    "pg.ablauf_weg":"Ablauf löschen",
+    "pg.ablauf_weg_frage":"Den Ablauf „{name}“ löschen?",
+    "ab.licht_ablauf":"Licht {name}",
     "es.rollo_neu":"+ Rollo hinzufügen …","es.uebernahme":"Aus vorhandenen Automationen übernehmen","es.uebernahme_frage":"Die Rollos und Zeitpläne aus den vorhandenen Automationen übernehmen?","rd.entfernen":"Rollo aus dem Planer nehmen","rd.entfernen_frage":"Das Rollo aus dem Planer nehmen? In Home Assistant bleibt es, wie es ist.",
     "es.hinzufuegen":"+ hinzufügen …",
     "rd.etage":"Etage",
@@ -433,7 +450,7 @@ const UI = {
     "zs.nur_schliessen":"Close only","zs.weihnachtszeit":"Christmas time",
     "ab.titel":"How the shutters move","ab.hilfe":"One bar per shutter, midnight to midnight. Tap to change.",
     "ab.schultag":"School day","ab.schulfrei":"Day off / holidays","ab.mit_weihnacht":"with Christmas time",
-    "ab.ohne_weihnacht":"without","ab.licht":"Christmas lights","ab.nur_hand":"manual only",
+    "ab.ohne_weihnacht":"without","ab.nur_hand":"manual only",
     "ab.l_offen":"open","ab.l_teil":"partly","ab.l_zu":"closed","ab.l_licht":"Christmas lights on",
     "ed.folgt":"Follows","ed.eigener":"its own schedule",
     "ed.neu_auf":"+ Open","ed.neu_zu":"+ Close",
@@ -542,6 +559,23 @@ const UI = {
     "es.schwere.warnung":"Warning",
     "es.schwere.hinweis":"Note",
     "es.alles_gut":"Nothing stands out.",
+    "pg.k_zeiten":"lights on {an}, off and closed {aus}",
+    "pg.k_frei":"(before days off {zeit})",
+    "pg.k_morgens":"mornings {n} min before opening",
+    "pg.frueher_kurz":"may close earlier",
+    "pg.k_rollos":"Shutters",
+    "pg.offen_kurz":"open",
+    "pg.ablaeufe":"Routines",
+    "pg.keine_ablaeufe":"No routine yet – “+ Routine” creates one.",
+    "pg.ablauf_neu":"+ Routine",
+    "pg.ablauf_name":"New routine",
+    "pg.frei_anders":"different before days off",
+    "pg.frueher":"may close earlier than the normal schedule",
+    "pg.frueher_hilfe":"Unticked, the routine only delays closing. Ticked, its shutters close when the lights go off, even if the schedule would still have them open.",
+    "pg.in_ablauf":"(in “{name}”)",
+    "pg.ablauf_weg":"Delete routine",
+    "pg.ablauf_weg_frage":"Delete the routine “{name}”?",
+    "ab.licht_ablauf":"Lights {name}",
     "es.rollo_neu":"+ Add shutter …","es.uebernahme":"Take over from existing automations","es.uebernahme_frage":"Take over the shutters and schedules from the existing automations?","rd.entfernen":"Remove shutter from the planner","rd.entfernen_frage":"Remove this shutter from the planner? It stays in Home Assistant as it is.",
     "es.hinzufuegen":"+ add …",
     "rd.etage":"Floor",
@@ -798,7 +832,7 @@ function balkenHTML(segs){
 }
 function zeichneAblauf(){
   const x = BERICHT?.weihnachtszeit || {};
-  const zeigeX = x.eingerichtet || x.aktiv || (CONFIG?.einstellungen?.weihnachtszeit?.lichter || []).length;
+  const zeigeX = x.eingerichtet || x.aktiv || xAblaeufe().length;
   $("#ab-steuer").innerHTML = `
     <div class="wahl" role="group">${["schultag","schulfrei"].map((a) =>
       `<button data-art="${a}" class="${AB_ART === a ? "an" : ""}" aria-pressed="${AB_ART === a}">${esc(t("ab." + a))}</button>`).join("")}</div>
@@ -814,14 +848,15 @@ function zeichneAblauf(){
     if (r.von_hand) html += `<div class="balken hand" data-sel="${esc(r.entity_id)}">${esc(t("ab.nur_hand"))}</div>`;
     else html += `<div class="balken" data-sel="${esc(r.entity_id)}" role="img" aria-label="${esc(name)}">${balkenHTML(segmente(r))}${heute ? `<i class="jetzt" style="left:${jm / 14.4}%"></i>` : ""}</div>`;
   }
-  if ((ABLAUF?.licht || []).length){
-    html += `<span class="lbl" style="cursor:default">${esc(t("ab.licht"))}</span><div class="balken licht">${ABLAUF.licht.map((l) =>
-      `<i style="left:${minuten(l.von) / 14.4}%; width:${(minuten(l.bis) - minuten(l.von)) / 14.4}%"></i>`).join("")}</div>`;
+  for (const l of (ABLAUF?.licht || [])){
+    if (!(l.fenster || []).length) continue;
+    html += `<span class="lbl" style="cursor:default">${esc(t("ab.licht_ablauf", {name: l.name}))}</span><div class="balken licht">${l.fenster.map((f) =>
+      `<i style="left:${minuten(f.von) / 14.4}%; width:${(minuten(f.bis) - minuten(f.von)) / 14.4}%"></i>`).join("")}</div>`;
   }
   html += `<span></span><div class="achse"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>`;
   $("#ab-balken").innerHTML = html;
   $("#ab-legende").innerHTML = [["var(--offen)","ab.l_offen"],["var(--teil)","ab.l_teil"],["var(--zu)","ab.l_zu"]]
-    .concat((ABLAUF?.licht || []).length ? [["var(--sonne)","ab.l_licht"]] : [])
+    .concat((ABLAUF?.licht || []).some((l) => (l.fenster || []).length) ? [["var(--sonne)","ab.l_licht"]] : [])
     .map(([f, k]) => `<span><i style="background:${f}"></i>${esc(t(k))}</span>`).join("");
 }
 $("#ab-steuer").addEventListener("click", (ev) => {
@@ -1062,45 +1097,35 @@ function zeichneProgramme(){
     : xb.eingerichtet && xb.von ? `<span class="chip">${esc(t("pg.ab", {datum: datum(xb.von)}).toUpperCase())}</span>`
     : `<span class="chip">${esc(t("pg.aus").toUpperCase())}</span>`;
   const handText = xb.hand ? (xb.hand.wert === "on" ? t("pg.hand_an", {datum: datum(xb.hand.bis)}) : t("pg.hand_aus", {datum: datum(xb.hand.bis)})) : "";
-  const lichter = (x.lichter || []).map((eid) => {
-    const l = (LICHTER || []).find((y) => y.entity_id === eid) || (xb.lichter || []).find((y) => y.entity_id === eid) || {name: eid, zustand: ""};
-    return `<div><span class="n">${esc(l.name)} <span class="leise klein">${esc(eid)}</span></span><span class="leise klein">${esc(l.zustand || "")}</span>
-      <button class="knopf klein" data-licht-weg="${esc(eid)}">${esc(t("knopf.entfernen"))}</button></div>`;
-  }).join("");
-  const rolloZeilen = rollosSortiert().filter((r) => (rolloCfg(r.entity_id) || {}).betriebsart !== "von_hand").map((r) => {
-    const w = (x.rollos || {})[r.entity_id] ?? "plan";
-    return `<div><span class="n">${esc(zeilenname(r))}</span>
-      <select data-xrollo="${esc(r.entity_id)}"><option value="plan" ${w === "plan" ? "selected" : ""}>${esc(t("pg.normal"))}</option>
-        <option value="offen" ${w === "offen" ? "selected" : ""}>${esc(t("pg.bleibt_offen"))}</option>
-        ${[10,20,30,40,50,60,70,80,90].map((n) => `<option value="${n}" ${Number(w) === n ? "selected" : ""}>${esc(t("pg.zwischen", {n}))}</option>`).join("")}</select></div>`;
-  }).join("");
+  const abl = xAblaeufe();
+  const rolloName = (eid) => { const r = (BERICHT?.rollos || []).find((y) => y.entity_id === eid); return r ? zeilenname(r) : eid; };
+  const zeitText = (a) => {
+    const an = a.licht_an === "uhrzeit" ? a.licht_an_zeit : t("ed." + a.licht_an) + (Number(a.licht_an_versatz) ? ` ${a.licht_an_versatz > 0 ? "+" : ""}${a.licht_an_versatz} min` : "");
+    let s = t("pg.k_zeiten", {an, aus: a.licht_aus});
+    if (a.licht_aus_vor_schulfrei) s += " " + t("pg.k_frei", {zeit: a.licht_aus_vor_schulfrei});
+    s += " · " + (Number(a.morgens_vorlauf) ? t("pg.k_morgens", {n: a.morgens_vorlauf}) : t("pg.vorlauf_aus"));
+    if (a.frueher_schliessen) s += " · " + t("pg.frueher_kurz");
+    return s;
+  };
+  const karten = abl.map((a, i) => `<div class="punktkarte"><div class="zeile" style="align-items:center; justify-content:space-between">
+      <h3>${esc(a.name)}</h3><button class="knopf klein" data-ablauf="${i}">${esc(t("knopf.bearbeiten"))}</button></div>
+      <p class="klein" style="margin-top:6px">${esc(zeitText(a))}</p>
+      <p class="leise klein">${esc(t("pg.k_rollos"))}: ${esc(Object.entries(a.rollos || {}).map(([eid, w]) => rolloName(eid) + " " + (w === "offen" ? t("pg.offen_kurz") : w + " %")).join(", ") || "–")}</p>
+      <p class="leise klein">${esc(t("pg.lichter"))}: ${esc((a.lichter || []).map((eid) => ((xb.lichter || []).find((l) => l.entity_id === eid) || {}).name || eid).join(", ") || "–")}</p></div>`).join("");
   const weihnacht = `
     <div class="zeile"><button class="knopf ${xb.aktiv ? "" : "sonne"}" data-x-jetzt="${xb.aktiv ? "aus" : "an"}">${esc(xb.aktiv ? t("pg.jetzt_aus") : t("pg.jetzt_an"))}</button>
       <span class="leise klein">${esc(handText)}</span></div>
+    <h2 style="margin-top:14px">${esc(t("pg.ablaeufe"))}</h2>
+    ${karten || `<p class="leise klein">${esc(t("pg.keine_ablaeufe"))}</p>`}
+    <div class="zeile" style="margin-top:10px"><button class="knopf" data-ablauf-neu>${esc(t("pg.ablauf_neu"))}</button></div>
+    <h2 style="margin-top:16px">${esc(t("pg.zeitraum"))}</h2>
     <div class="zeile"><label class="haken"><input type="checkbox" data-x="aktiv" ${x.aktiv ? "checked" : ""}>${esc(t("pg.jaehrlich"))}</label></div>
-    <h2 style="margin-top:14px">${esc(t("pg.zeitraum"))}</h2>
     <div class="zeile">
       <div class="wahl"><button data-x-zeitraum="advent" class="${x.zeitraum === "advent" ? "an" : ""}">${esc(t("pg.advent"))}</button><button data-x-zeitraum="fest" class="${x.zeitraum === "fest" ? "an" : ""}">${esc(t("pg.fest"))}</button></div>
       ${x.zeitraum === "fest" ? `<label class="feld">${esc(t("pg.von"))}<input type="text" data-x="von" value="${esc(x.von)}" pattern="\\d\\d-\\d\\d" size="6"></label>` : ""}
       <label class="feld">${esc(t("pg.bis"))}<input type="text" data-x="bis" value="${esc(x.bis)}" pattern="\\d\\d-\\d\\d" size="6"></label>
       <span class="leise klein">${xb.von || xb.bis ? esc(t("pg.diesmal", {von: xb.von ? datum(xb.von) : "…", bis: datum(xb.bis)})) : ""}</span>
     </div>
-    <h2 style="margin-top:16px">${esc(t("pg.licht"))}</h2>
-    <div class="zeile">
-      <label class="feld">${esc(t("pg.licht_an"))}<select data-x="licht_an">${["sonnenuntergang","daemmerung","uhrzeit"].map((a) =>
-        `<option value="${a}" ${x.licht_an === a ? "selected" : ""}>${esc(t("ed." + a))}</option>`).join("")}</select></label>
-      ${x.licht_an === "uhrzeit" ? `<label class="feld">&nbsp;<input type="time" data-x="licht_an_zeit" value="${esc(x.licht_an_zeit)}"></label>`
-        : `<label class="feld">${esc(t("ed.versatz"))}<input type="number" data-x="licht_an_versatz" value="${Number(x.licht_an_versatz || 0)}"></label>`}
-      <label class="feld">${esc(t("pg.licht_aus"))}<input type="time" data-x="licht_aus" value="${esc(x.licht_aus)}"></label>
-      <label class="feld">${esc(t("pg.vorlauf"))}<select data-x="morgens_vorlauf">${[0,15,30,45,60].map((n) =>
-        `<option value="${n}" ${Number(x.morgens_vorlauf) === n ? "selected" : ""}>${esc(n ? t("pg.min", {n}) : t("pg.vorlauf_aus"))}</option>`).join("")}</select></label>
-    </div>
-    <h2 style="margin-top:16px">${esc(t("pg.lichter"))}</h2>
-    <div class="liste">${lichter || `<p class="leise klein">${esc(t("pg.lichter_leer"))}</p>`}</div>
-    <input type="search" id="licht-suche" placeholder="${esc(t("pg.suche"))}" style="margin-top:10px; width:100%">
-    <div class="treffer" id="licht-treffer" hidden></div>
-    <h2 style="margin-top:16px">${esc(t("pg.rollos"))}</h2>
-    <div class="liste">${rolloZeilen}</div>
     <div class="zeile" style="margin-top:14px; justify-content:flex-end">
       <button class="knopf" data-x-verwerfen>${esc(t("knopf.verwerfen"))}</button>
       <button class="knopf haupt" data-x-speichern>${esc(t("knopf.speichern"))}</button></div>`;
@@ -1171,15 +1196,16 @@ $("#programme").addEventListener("click", async (ev) => {
   const k = ev.target.closest("button"); if (!k) return;
   if (k.dataset.auf){ offenProgramm.has(k.dataset.auf) ? offenProgramm.delete(k.dataset.auf) : offenProgramm.add(k.dataset.auf); zeichneProgramme(); return; }
   if (k.dataset.xZeitraum){ XENTWURF.zeitraum = k.dataset.xZeitraum; zeichneProgramme(); return; }
-  if (k.dataset.lichtWeg){ XENTWURF.lichter = XENTWURF.lichter.filter((x) => x !== k.dataset.lichtWeg); zeichneProgramme(); return; }
-  if (k.dataset.lichtNeu){ if (!XENTWURF.lichter.includes(k.dataset.lichtNeu)) XENTWURF.lichter.push(k.dataset.lichtNeu); zeichneProgramme(); return; }
+  if (k.dataset.ablauf !== undefined && k.dataset.ablauf !== ""){ return ablaufDialog(Number(k.dataset.ablauf)); }
+  if (k.dataset.ablaufNeu !== undefined){ return ablaufDialog(-1); }
   if (k.dataset.xVerwerfen !== undefined){ XENTWURF = null; zeichneProgramme(); return; }
   if (k.dataset.xJetzt){
     try { await versuch(() => sende("api/weihnachtszeit", "POST", {an: k.dataset.xJetzt === "an"})); } catch { return; }
     await nachrechnen(); zeichneProgramme(); return;
   }
   if (k.dataset.xSpeichern !== undefined){
-    try { await versuch(() => sende("api/einstellungen", "PUT", {weihnachtszeit: XENTWURF}), t("allg.gespeichert")); } catch { return; }
+    const {aktiv, zeitraum, von, bis} = XENTWURF;
+    try { await versuch(() => sende("api/einstellungen", "PUT", {weihnachtszeit: {aktiv, zeitraum, von, bis, ablaeufe: xAblaeufe()}}), t("allg.gespeichert")); } catch { return; }
     XENTWURF = null; await nachrechnen(); zeichneProgramme(); return;
   }
   if (k.dataset.probe){ try { await versuch(() => sende(`api/${k.dataset.probe}/probe`, "POST"), t("es.probe_gesendet")); } catch {} return; }
@@ -1196,27 +1222,95 @@ $("#programme").addEventListener("click", async (ev) => {
 });
 $("#programme").addEventListener("change", (ev) => {
   const el = ev.target;
-  if (el.dataset.x){
-    const f = el.dataset.x;
-    XENTWURF[f] = ["licht_an_versatz","morgens_vorlauf"].includes(f) ? Number(el.value) : feldWert(el);
-    if (f === "licht_an") zeichneProgramme();
-  }
-  if (el.dataset.xrollo){
-    XENTWURF.rollos = XENTWURF.rollos || {};
-    const v = el.value;
-    XENTWURF.rollos[el.dataset.xrollo] = v === "plan" || v === "offen" ? v : Number(v);
-  }
+  if (el.dataset.x) XENTWURF[el.dataset.x] = feldWert(el);
 });
-$("#programme").addEventListener("input", async (ev) => {
-  if (ev.target.id !== "licht-suche") return;
-  const q = ev.target.value.trim().toLowerCase(); const box = $("#licht-treffer");
-  if (q.length < 2){ box.hidden = true; return; }
+
+/* ═══ Abläufe der Weihnachtszeit ═══
+   Je Ablauf: Name, Zeiten, Rollos mit Stellung, Lichter. Ein Rollo oder Licht
+   gehört höchstens zu einem Ablauf; was anderswo vergeben ist, steht
+   ausgegraut mit dem Namen des Ablaufs da. */
+const STANDARD_ABLAUF = {id: "", name: "", licht_an: "sonnenuntergang", licht_an_zeit: "17:00", licht_an_versatz: 0,
+  licht_aus: "22:30", licht_aus_vor_schulfrei: "", morgens_vorlauf: 30, frueher_schliessen: false, lichter: [], rollos: {}};
+function xAblaeufe(){
+  const x = CONFIG?.einstellungen?.weihnachtszeit || {};
+  if ((x.ablaeufe || []).length) return kopie(x.ablaeufe);
+  if ((x.lichter || []).length || Object.keys(x.rollos || {}).length)
+    return [{...STANDARD_ABLAUF, ...Object.fromEntries(["licht_an","licht_an_zeit","licht_an_versatz","licht_aus","morgens_vorlauf","lichter","rollos"]
+      .filter((k) => k in x).map((k) => [k, kopie(x[k])])), id: "eg", name: "Erdgeschoss"}];
+  return [];
+}
+async function ablaufDialog(i){
   if (!LICHTER){ try { LICHTER = await hole("api/lichter"); } catch { LICHTER = []; } }
-  const treffer = LICHTER.filter((l) => !XENTWURF.lichter.includes(l.entity_id)
-    && (l.name.toLowerCase().includes(q) || l.entity_id.includes(q) || (l.bereich || "").toLowerCase().includes(q))).slice(0, 30);
-  box.hidden = !treffer.length;
-  box.innerHTML = treffer.map((l) => `<button data-licht-neu="${esc(l.entity_id)}"><span style="flex:1">${esc(l.name)}<br><span class="leise klein">${esc(l.entity_id)}${l.bereich ? " · " + esc(l.bereich) : ""}</span></span><span class="leise klein">${esc(l.zustand)}</span></button>`).join("");
-});
+  const liste = xAblaeufe();
+  const a = i >= 0 ? kopie(liste[i]) : {...kopie(STANDARD_ABLAUF), name: t("pg.ablauf_name")};
+  const vergeben = {};
+  liste.forEach((b, j) => { if (j === i) return; Object.keys(b.rollos || {}).forEach((eid) => { vergeben[eid] = b.name; }); (b.lichter || []).forEach((eid) => { vergeben[eid] = b.name; }); });
+  const lichtName = (eid) => (LICHTER.find((l) => l.entity_id === eid) || {name: eid}).name;
+  const zeichne = () => {
+    $("#dlg-inhalt").innerHTML = `
+      <div class="zeile"><label class="feld" style="flex:1">${esc(t("rd.name"))}<input type="text" data-a="name" value="${esc(a.name)}"></label></div>
+      <h2 style="margin-top:14px">${esc(t("pg.licht"))}</h2>
+      <div class="zeile">
+        <label class="feld">${esc(t("pg.licht_an"))}<select data-a="licht_an">${["sonnenuntergang","daemmerung","uhrzeit"].map((x) =>
+          `<option value="${x}" ${a.licht_an === x ? "selected" : ""}>${esc(t("ed." + x))}</option>`).join("")}</select></label>
+        ${a.licht_an === "uhrzeit" ? `<label class="feld">${esc(t("ed.uhrzeit"))}<input type="time" data-a="licht_an_zeit" value="${esc(a.licht_an_zeit)}"></label>`
+          : `<label class="feld">${esc(t("ed.versatz"))}<input type="number" data-a="licht_an_versatz" value="${Number(a.licht_an_versatz || 0)}"></label>`}
+        <label class="feld">${esc(t("pg.licht_aus"))}<input type="time" data-a="licht_aus" value="${esc(a.licht_aus)}"></label></div>
+      <div class="zeile" style="align-items:center"><label class="haken"><input type="checkbox" data-a-frei ${a.licht_aus_vor_schulfrei ? "checked" : ""}>${esc(t("pg.frei_anders"))}</label>
+        ${a.licht_aus_vor_schulfrei ? `<input type="time" data-a="licht_aus_vor_schulfrei" value="${esc(a.licht_aus_vor_schulfrei)}" aria-label="${esc(t("pg.frei_anders"))}">` : ""}</div>
+      <div class="zeile"><label class="feld">${esc(t("pg.vorlauf"))}<select data-a="morgens_vorlauf">${[0,15,30,45,60].map((n) =>
+          `<option value="${n}" ${Number(a.morgens_vorlauf) === n ? "selected" : ""}>${esc(n ? t("pg.min", {n}) : t("pg.vorlauf_aus"))}</option>`).join("")}</select></label></div>
+      <label class="haken"><input type="checkbox" data-a="frueher_schliessen" ${a.frueher_schliessen ? "checked" : ""}>${esc(t("pg.frueher"))}</label>
+      <p class="leise klein">${esc(t("pg.frueher_hilfe"))}</p>
+      <h2 style="margin-top:14px">${esc(t("pg.rollos"))}</h2>
+      <div class="liste">${rollosSortiert().filter((r) => (rolloCfg(r.entity_id) || {}).betriebsart !== "von_hand").map((r) => {
+        const w = (a.rollos || {})[r.entity_id] ?? "plan"; const anderswo = vergeben[r.entity_id];
+        return `<div><span class="n">${esc(zeilenname(r))}${anderswo ? ` <span class="leise klein">${esc(t("pg.in_ablauf", {name: anderswo}))}</span>` : ""}</span>
+          <select data-a-rollo="${esc(r.entity_id)}" ${anderswo ? "disabled" : ""}><option value="plan" ${w === "plan" ? "selected" : ""}>${esc(t("pg.normal"))}</option>
+            <option value="offen" ${w === "offen" ? "selected" : ""}>${esc(t("pg.bleibt_offen"))}</option>
+            ${[10,20,30,40,50,60,70,80,90].map((n) => `<option value="${n}" ${Number(w) === n ? "selected" : ""}>${esc(t("pg.zwischen", {n}))}</option>`).join("")}</select></div>`; }).join("")}</div>
+      <h2 style="margin-top:14px">${esc(t("pg.lichter"))}</h2>
+      <div class="liste">${(a.lichter || []).map((eid) => `<div><span class="n">${esc(lichtName(eid))} <span class="leise klein">${esc(eid)}</span></span>
+        <button type="button" class="knopf klein" data-a-licht-weg="${esc(eid)}">${esc(t("knopf.entfernen"))}</button></div>`).join("") || `<p class="leise klein">${esc(t("pg.lichter_leer"))}</p>`}</div>
+      <input type="search" id="dlg-licht-suche" placeholder="${esc(t("pg.suche"))}" style="margin-top:8px; width:100%">
+      <div class="treffer" id="dlg-licht-treffer" hidden></div>
+      ${i >= 0 ? `<div class="trenn"></div><button type="button" class="knopf klein" data-a-weg>${esc(t("pg.ablauf_weg"))}</button>` : ""}`;
+  };
+  const speichern = async (neueListe) => {
+    const {aktiv, zeitraum, von, bis} = CONFIG.einstellungen.weihnachtszeit;
+    try { await versuch(() => sende("api/einstellungen", "PUT", {weihnachtszeit: {aktiv, zeitraum, von, bis, ablaeufe: neueListe}}), t("allg.gespeichert")); } catch { return; }
+    XENTWURF = null; await nachrechnen(); zeichneProgramme();
+  };
+  oeffneDialog(i >= 0 ? a.name : t("pg.ablauf_neu"), zeichne, () => {
+    const neu = xAblaeufe(); if (i >= 0) neu[i] = a; else neu.push(a); speichern(neu);
+  });
+  const inhalt = $("#dlg-inhalt");
+  inhalt.onchange = (ev) => {
+    const el = ev.target;
+    if (el.dataset.a){ a[el.dataset.a] = el.type === "checkbox" ? el.checked : ["licht_an_versatz","morgens_vorlauf"].includes(el.dataset.a) ? Number(el.value) : el.value;
+      if (el.dataset.a === "licht_an") zeichne(); }
+    if (el.dataset.aFrei !== undefined){ a.licht_aus_vor_schulfrei = el.checked ? (a.licht_aus_vor_schulfrei || a.licht_aus) : ""; zeichne(); }
+    if (el.dataset.aRollo){ a.rollos = a.rollos || {}; const v = el.value;
+      if (v === "plan") delete a.rollos[el.dataset.aRollo]; else a.rollos[el.dataset.aRollo] = v === "offen" ? v : Number(v); }
+  };
+  inhalt.oninput = (ev) => {
+    if (ev.target.id !== "dlg-licht-suche") return;
+    const q = ev.target.value.trim().toLowerCase(); const box = $("#dlg-licht-treffer");
+    if (q.length < 2){ box.hidden = true; return; }
+    const treffer = LICHTER.filter((l) => !(a.lichter || []).includes(l.entity_id)
+      && (l.name.toLowerCase().includes(q) || l.entity_id.includes(q) || (l.bereich || "").toLowerCase().includes(q))).slice(0, 30);
+    box.hidden = !treffer.length;
+    box.innerHTML = treffer.map((l) => { const anderswo = vergeben[l.entity_id];
+      return `<button type="button" data-a-licht-neu="${esc(l.entity_id)}" ${anderswo ? "disabled" : ""}><span style="flex:1">${esc(l.name)}<br><span class="leise klein">${esc(l.entity_id)}${l.bereich ? " · " + esc(l.bereich) : ""}${anderswo ? " · " + esc(t("pg.in_ablauf", {name: anderswo})) : ""}</span></span><span class="leise klein">${esc(l.zustand)}</span></button>`; }).join("");
+  };
+  inhalt.onclick = (ev) => {
+    const k = ev.target.closest("button"); if (!k) return;
+    if (k.dataset.aLichtNeu){ a.lichter = [...(a.lichter || []), k.dataset.aLichtNeu]; zeichne(); }
+    if (k.dataset.aLichtWeg){ a.lichter = (a.lichter || []).filter((x) => x !== k.dataset.aLichtWeg); zeichne(); }
+    if (k.dataset.aWeg !== undefined && confirm(t("pg.ablauf_weg_frage", {name: a.name}))){
+      $("#dialog").close("ab"); const neu = xAblaeufe(); neu.splice(i, 1); speichern(neu); }
+  };
+}
 
 /* ═══ Einstellungen ═══
    Oben eine Kachel je Abschnitt; ein Abschnitt öffnet sich an derselben

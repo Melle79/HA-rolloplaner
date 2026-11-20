@@ -281,6 +281,69 @@ def test_licht_aus_nach_mitternacht():
     assert zeiten[0] == ("00:30", 0), zeiten
 
 
+# ------------------------------------------------------- Abläufe (3.2) ----
+
+def _config_ablaeufe(ablaeufe):
+    config = _config()
+    config["einstellungen"]["weihnachtszeit"] = store.validate_einstellungen(
+        {"weihnachtszeit": {"aktiv": True, "ablaeufe": ablaeufe}})["weihnachtszeit"]
+    return config
+
+
+KINDER_ABLAUF = {"name": "Kinder", "licht_aus": "20:30", "licht_aus_vor_schulfrei": "22:00",
+                 "morgens_vorlauf": 0, "lichter": ["light.stern"],
+                 "rollos": {KINDER[0]: 40, KINDER[1]: 40, KINDER[2]: 40}}
+
+
+def test_alte_einstellung_wird_zum_ablauf_erdgeschoss():
+    """3.1 → 3.2: dieselben Fahrten, ob flach oder als Ablauf gespeichert."""
+    flach = _config(STARTWERTE)
+    migriert = _config()
+    migriert["einstellungen"]["weihnachtszeit"] = store.validate_einstellungen(
+        {"weihnachtszeit": STARTWERTE})["weihnachtszeit"]
+    assert migriert["einstellungen"]["weihnachtszeit"]["ablaeufe"][0]["name"] == "Erdgeschoss"
+    assert "lichter" not in migriert["einstellungen"]["weihnachtszeit"]
+    for eid in EG + [TUER] + KINDER:
+        for tag in (date(2026, 12, 1), date(2026, 12, 4)):
+            assert _ablauf(flach, eid, tag) == _ablauf(migriert, eid, tag), eid
+
+
+def test_kinder_eigener_ablauf_abhaengig_von_morgen():
+    eg = {**{k: v for k, v in STARTWERTE.items() if k != "aktiv"}, "name": "Erdgeschoss"}
+    config = _config_ablaeufe([eg, KINDER_ABLAUF])
+    untergang = _sonnenstand().untergang(date(2026, 12, 1)).strftime("%H:%M")
+    # morgen Schule: bis 20:30, morgen frei: bis 22:00
+    assert _ablauf(config, KINDER[2], date(2026, 12, 1)) == [
+        ("06:30", 100), (untergang, 40), ("20:30", 0)], _ablauf(config, KINDER[2], date(2026, 12, 1))
+    frei = _ablauf(config, KINDER[2], date(2026, 12, 4), frei=True)
+    assert frei[-1] == ("22:00", 0), frei
+    # das Erdgeschoss bleibt, wie es war
+    assert _ablauf(config, EG[0], date(2026, 12, 1)) == _ablauf(_config(STARTWERTE), EG[0], date(2026, 12, 1))
+
+
+def test_ein_rollo_hoechstens_in_einem_ablauf():
+    try:
+        _config_ablaeufe([{"name": "A", "rollos": {EG[0]: 40}}, {"name": "B", "rollos": {EG[0]: 20}}])
+    except store.ValidationError:
+        return
+    raise AssertionError("doppelt vergebenes Rollo hätte abgelehnt werden müssen")
+
+
+def test_lichter_je_ablauf():
+    eg = {**{k: v for k, v in STARTWERTE.items() if k != "aktiv"}, "name": "Erdgeschoss"}
+    config = _config_ablaeufe([eg, KINDER_ABLAUF])
+    state = {}
+    index = {e: _licht(e) for e in ("light.kette", "switch.terrasse", "light.stern")}
+    with _Lichter() as l:
+        _licht_takt(config, state, datetime(2026, 12, 1, 12, 0), index)
+        _licht_takt(config, state, datetime(2026, 12, 1, 17, 0), index)
+        assert sorted(l.befehle) == [("light.kette", True), ("light.stern", True), ("switch.terrasse", True)]
+        _licht_takt(config, state, datetime(2026, 12, 1, 20, 31), index)
+        assert l.befehle[3:] == [("light.stern", False)], l.befehle
+        _licht_takt(config, state, datetime(2026, 12, 1, 22, 31), index)
+        assert sorted(l.befehle[4:]) == [("light.kette", False), ("switch.terrasse", False)]
+
+
 # ------------------------------------------------------- Die Lichter ----
 
 class _Lichter:
@@ -367,16 +430,36 @@ def test_ausserhalb_der_saison_kein_licht():
 
 def test_einstellungen_werden_geprueft():
     try:
-        store.validate_einstellungen({"weihnachtszeit": {"licht_aus": "25:00"}})
+        store.validate_einstellungen({"weihnachtszeit": {"ablaeufe": [{"name": "A", "licht_aus": "25:00"}]}})
     except store.ValidationError:
         pass
     else:
         raise AssertionError("25:00 hätte abgelehnt werden müssen")
-    e = store.validate_einstellungen({"weihnachtszeit": {
+    e = store.validate_einstellungen({"weihnachtszeit": {"ablaeufe": [{"name": "A",
         "lichter": ["light.a", "cover.b", "switch.c", "light.a"],
-        "rollos": {"cover.x": "plan", "cover.y": "offen", "cover.z": "40"}}})
-    assert e["weihnachtszeit"]["lichter"] == ["light.a", "switch.c"]
-    assert e["weihnachtszeit"]["rollos"] == {"cover.y": "offen", "cover.z": 40}
+        "rollos": {"cover.x": "plan", "cover.y": "offen", "cover.z": "40"}}]}})
+    a = e["weihnachtszeit"]["ablaeufe"][0]
+    assert a["lichter"] == ["light.a", "switch.c"]
+    assert a["rollos"] == {"cover.y": "offen", "cover.z": 40}
+    try:
+        store.validate_einstellungen({"weihnachtszeit": {"ablaeufe": [
+            {"name": "A", "lichter": ["light.a"]}, {"name": "B", "lichter": ["light.a"]}]}})
+    except store.ValidationError:
+        pass
+    else:
+        raise AssertionError("ein Licht in zwei Abläufen hätte abgelehnt werden müssen")
+
+
+def test_darf_frueher_schliessen_nur_ausdruecklich():
+    """Standard: nur hinauszögern. Mit der Option schließt der Ablauf um Licht
+    aus, auch wenn der Plan das Rollo noch offen hätte."""
+    tag = date(2026, 12, 1)
+    tuer = {AUSWAHL: "24 Uhr"}
+    normal = _config_ablaeufe([{"name": "EG", "licht_aus": "21:00", "rollos": {TUER: "offen"}}])
+    assert ("21:00", 0) not in _ablauf(normal, TUER, tag, schalter=tuer)
+    frueher = _config_ablaeufe([{"name": "EG", "licht_aus": "21:00", "frueher_schliessen": True,
+                                 "rollos": {TUER: "offen"}}])
+    assert ("21:00", 0) in _ablauf(frueher, TUER, tag, schalter=tuer), _ablauf(frueher, TUER, tag, schalter=tuer)
 
 
 if __name__ == "__main__":
