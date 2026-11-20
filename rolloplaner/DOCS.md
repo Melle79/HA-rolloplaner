@@ -70,27 +70,34 @@ Einstellung aus 3.0/3.1 wird beim ersten Start zum Ablauf „Erdgeschoss“ –
 mit denselben Fahrten.
 
 **Einstellen** unter *Programme › Weihnachtszeit*, für jeden Ablauf über
-*Bearbeiten* bzw. *+ Ablauf*:
+*Bearbeiten* bzw. *+ Ablauf*. Seit 3.3 hat jeder Ablauf einen **Morgen** und
+einen **Abend**, jeweils mit Umschalter:
 
-* **Zeitraum** – „ab 1. Advent“ (rechnet jedes Jahr selbst) oder feste Daten;
-  *bis einschließlich* ist voreingestellt 06.01.
-* **Jedes Jahr von selbst** – ohne Haken läuft das Programm nur, wenn man es
-  von Hand einschaltet.
-* **Licht an** abends bei Sonnenuntergang, bei Dämmerung (mit Versatz) oder zu
-  einer festen Uhrzeit; **Licht aus und Rollos zu** um 22:30 – auf Wunsch
-  *vor freien Tagen anders* (dann gilt „morgen schulfrei“).
-* **Darf früher schließen** – Standard aus. Ohne Haken zögert der Ablauf das
-  Schließen nur hinaus; mit Haken gehen seine Rollos bei Licht aus zu, auch
-  wenn der normale Plan sie dann noch offen hätte.
-* **Morgens vor dem Öffnen** – 15 bis 60 Minuten vor dem ersten Öffnen des
-  Tages Licht an und Rollos auf die Zwischenstellung; „morgens nicht“ schaltet
-  das ab.
-* **Lichter und Steckdosen** – beliebige `light.` und `switch.` aus Home
-  Assistant, mit Suche. Die Segmente einer Lichterkette stehen nicht in der
-  Liste; geschaltet wird die Kette.
-* **Rollos, während das Licht brennt** – je Rollo *normaler Plan* (das
-  Programm fasst es nicht an), *bleibt offen bis Licht aus* oder eine
-  Zwischenstellung in Prozent offen.
+* **Morgens: Schultag | schulfrei** – zählt, ob *heute* Schule ist.
+  * *Licht an:* kein Licht · x Minuten vor dem Öffnen · um Uhrzeit · bei
+    Sonnenaufgang ± Minuten
+  * *Licht aus:* beim Öffnen der Rollos · um Uhrzeit · bei Sonnenaufgang ±
+    Minuten
+  * *Rollos auf ihre Stellung:* normaler Plan · mit dem Licht · um Uhrzeit ·
+    bei Sonnenaufgang ± Minuten – das darf vor dem normalen Öffnen liegen;
+    danach öffnet der Plan wie gewohnt.
+* **Abends: morgen Schule | morgen frei** – zählt, ob *morgen* Schule ist.
+  * *Licht an:* kein Licht · bei Sonnenuntergang/Dämmerung ± Minuten · um
+    Uhrzeit
+  * *Licht aus:* Uhrzeit – dann gehen die Rollos zurück zu ihrem Plan
+  * *Rollos auf Stellung ab:* normaler Plan · mit dem Licht · um Uhrzeit · bei
+    Sonnenuntergang/Dämmerung ± Minuten
+* „schulfrei“ bzw. „morgen frei“ ist zunächst **wie am Schultag**; ohne den
+  Haken lässt es sich eigenständig einstellen – etwa: an freien Tagen morgens
+  kein Licht, Rollos nach Plan.
+* **Licht und Rollos sind unabhängig.** Das Licht kann zum Sonnenaufgang
+  ausgehen, nachdem das Rollo längst offen ist.
+* **Zeitraum** (ab 1. Advent oder feste Daten, bis einschließlich 06.01.) und
+  *Jedes Jahr von selbst* gelten für alle Abläufe.
+* **Lichter und Steckdosen** – beliebige `light.` und `switch.`, mit Suche.
+* **Rollos, während das Licht brennt** – je Rollo *normaler Plan*, *bleibt
+  offen* oder eine Zwischenstellung in Prozent offen.
+* **Darf früher schließen** – Standard aus.
 
 **Von Hand** schaltet *Jetzt einschalten/ausschalten* oder der Schalter
 `switch.rolloplaner_weihnachtszeit`. Das gilt bis zur nächsten Grenze des

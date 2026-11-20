@@ -513,8 +513,9 @@ def _programm_fuer(rollo: dict, einstellungen: dict, lage: dict, sonnenstand,
             start = int(vorher[1]["position"]) if vorher else None
         morgen_frei = (kalender.fuer(tag + timedelta(days=1), tag)
                        if kalender is not None else None)
+        heute_frei = kalender.fuer(tag, tag) if kalender is not None else None
         return programme.umbauen(ablauf, wert, tag, tagespunkte, sonnenstand, zu, texte,
-                                 start, morgen_frei)
+                                 start, morgen_frei, heute_frei)
     return umbau
 
 
@@ -559,7 +560,8 @@ def _weihnachtslichter(config: dict, einstellungen: dict, index: dict, state: di
                 ablauf, tag, sonnenstand,
                 _fruehestes_oeffnen(config, ablauf, kalender, sonnenstand, tag,
                                     heute, lage, plaene, gruppe_von),
-                kalender.fuer(tag + timedelta(days=1), heute))
+                kalender.fuer(tag + timedelta(days=1), heute),
+                kalender.fuer(tag, heute))
         soll_ablauf = programme.licht_soll(fenster, jetzt)
         for eid in ablauf.get("lichter") or []:
             soll_je_licht[eid] = soll_je_licht.get(eid, False) or soll_ablauf
@@ -1438,7 +1440,8 @@ def tagesablauf(config: dict, state: dict, index: dict, tag, art: str,
                            ablauf, tag, sonnenstand,
                            _fruehestes_oeffnen(config, ablauf, kalender, sonnenstand, tag,
                                                tag, lage, plaene, gruppe_von),
-                           kalender.fuer(tag + timedelta(days=1), tag))]
+                           kalender.fuer(tag + timedelta(days=1), tag),
+                           kalender.fuer(tag, tag))]
             licht.append({"name": ablauf.get("name") or "", "fenster": fenster})
     return {"datum": tag.isoformat(), "art": art, "weihnachtszeit": aktiv_am(tag),
             "sonne": {"aufgang": _iso(sonnenstand.aufgang(tag)),

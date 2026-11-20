@@ -1309,8 +1309,9 @@ def main() -> None:
     # einmal durch die Prüfung geschickt und kommt als Ablauf „Erdgeschoss“
     # zurück – gerechnet wird mit beiden Formen gleich (programme.ablaeufe).
     weihnacht = store.load_config()["einstellungen"].get("weihnachtszeit") or {}
-    if not weihnacht.get("ablaeufe") and (weihnacht.get("lichter") or weihnacht.get("rollos")):
-        store.vor_fassung_sichern("3.2")
+    alt_32 = any("morgens" not in a for a in weihnacht.get("ablaeufe") or [])
+    if alt_32 or (not weihnacht.get("ablaeufe") and (weihnacht.get("lichter") or weihnacht.get("rollos"))):
+        store.vor_fassung_sichern("3.3")
         store.update_einstellungen({})
         _LOGGER.info("Weihnachtszeit in Abläufe übertragen")
     if not ha_api.available():

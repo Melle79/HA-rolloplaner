@@ -1,5 +1,24 @@
 # Änderungen
 
+## 3.3.0 – 20.11.2026
+
+**Weihnachtszeit: Morgen und Abend je nach Schultag.**
+
+* Jeder Ablauf hat einen **Morgen** (Schultag | schulfrei – nach *heute*) und
+  einen **Abend** (morgen Schule | morgen frei – nach *morgen*). Schulfrei
+  ist zunächst „wie am Schultag“ und lässt sich eigenständig einstellen.
+* Je Variante: **Licht an** (kein Licht, Uhrzeit, Sonnenaufgang/-untergang
+  oder Dämmerung ± Minuten, x Minuten vor dem Öffnen), **Licht aus**
+  (Uhrzeit, Sonnenaufgang ± Minuten, beim Öffnen der Rollos) und **wann die
+  Rollos auf ihre Stellung gehen** (normaler Plan, mit dem Licht, Uhrzeit,
+  Sonnenereignis). Licht und Rollos sind unabhängig: Das Licht kann zum
+  Sonnenaufgang ausgehen, nachdem das Rollo schon offen ist.
+* Morgens darf das Rollo vor seinem normalen Öffnen auf die Stellung gehen;
+  abends gilt weiter „nur hinauszögern“, außer mit *darf früher schließen*.
+* Abläufe aus 3.2 werden übertragen (Sicherung `config-vor-3.3.json`) und tun
+  genau dasselbe – geprüft an fünf Stichtagen, Schultag und schulfrei, Rollos
+  und Lichter.
+
 ## 3.2.0 – 20.11.2026
 
 **Die Weihnachtszeit hat Abläufe.** Das Erdgeschoss leuchtet bis 22:30, die

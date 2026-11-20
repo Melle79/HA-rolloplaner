@@ -344,6 +344,64 @@ def test_lichter_je_ablauf():
         assert sorted(l.befehle[4:]) == [("light.kette", False), ("switch.terrasse", False)]
 
 
+# ------------------------------------------------- Morgen/Abend (3.3) ----
+
+SCHULMORGEN = {"name": "Kinder", "lichter": ["light.stern"],
+               "rollos": {KINDER[2]: 40},
+               "morgens": {"schultag": {"licht": "uhrzeit", "licht_zeit": "05:45",
+                                        "licht_aus": "sonnenaufgang", "licht_aus_versatz": 0,
+                                        "rollos": "uhrzeit", "rollos_zeit": "06:00"},
+                           "schulfrei": {"licht": "aus", "rollos": "plan"}},
+               "abends": {"schultag": {"licht": "uhrzeit", "licht_zeit": "17:00",
+                                       "licht_aus_zeit": "20:30", "rollos": "sonnenuntergang"},
+                          "schulfrei": {"licht": "uhrzeit", "licht_zeit": "17:00",
+                                        "licht_aus_zeit": "22:00", "rollos": "sonnenuntergang"}}}
+
+
+def test_alte_32_form_wird_uebertragen():
+    """Ein Ablauf aus 3.2 (Licht an/aus, vor freien Tagen, Vorlauf) rechnet
+    nach der Übertragung genau wie vorher."""
+    eg32 = {**{k: v for k, v in STARTWERTE.items() if k != "aktiv"}, "name": "Erdgeschoss",
+            "licht_aus_vor_schulfrei": "23:00"}
+    neu = _config_ablaeufe([eg32])
+    a = neu["einstellungen"]["weihnachtszeit"]["ablaeufe"][0]
+    assert a["abends"]["schulfrei"]["licht_aus_zeit"] == "23:00" and a["morgens"]["schultag"]["licht"] == "vor_oeffnen"
+    # Gegenprobe: dieselbe 3.2-Form ungeprüft gelesen (so rechnet ein
+    # laufender Planer, bevor er die Einstellung neu speichert).
+    roh = _config()
+    roh["einstellungen"]["weihnachtszeit"] = {"aktiv": True, "zeitraum": "advent",
+                                              "von": "12-01", "bis": "01-06", "ablaeufe": [eg32]}
+    for eid in EG + [TUER]:
+        for tag, frei in ((date(2026, 12, 1), False), (date(2026, 12, 4), False), (date(2026, 12, 5), True)):
+            assert _ablauf(neu, eid, tag, frei) == _ablauf(roh, eid, tag, frei), (eid, tag)
+    assert _ablauf(neu, EG[0], date(2026, 12, 5), True)[-1] == ("23:00", 0)
+    assert _ablauf(neu, EG[0], date(2026, 12, 1), False)[-1] == ("22:30", 0)
+
+
+def test_schulmorgen_licht_um_uhrzeit_aus_bei_sonnenaufgang():
+    config = _config_ablaeufe([SCHULMORGEN])
+    tag = date(2026, 12, 1)
+    s = _sonnenstand()
+    ablauf = config["einstellungen"]["weihnachtszeit"]["ablaeufe"][0]
+    fenster = programme.lichtfenster(ablauf, tag, s, None, False, False)
+    assert fenster[0][0].strftime("%H:%M") == "05:45"
+    assert fenster[0][1] == s.aufgang(tag), fenster
+    assert fenster[1][0].strftime("%H:%M") == "17:00" and fenster[1][1].strftime("%H:%M") == "20:30"
+    zeiten = _ablauf(config, KINDER[2], tag)
+    untergang = s.untergang(tag).strftime("%H:%M")
+    assert zeiten == [("06:00", 40), ("06:30", 100), (untergang, 40), ("20:30", 0)], zeiten
+
+
+def test_schulfrei_morgens_kein_licht_und_normaler_plan():
+    config = _config_ablaeufe([SCHULMORGEN])
+    tag = date(2026, 12, 5)
+    ablauf = config["einstellungen"]["weihnachtszeit"]["ablaeufe"][0]
+    fenster = programme.lichtfenster(ablauf, tag, _sonnenstand(), None, True, True)
+    assert len(fenster) == 1 and fenster[0][1].strftime("%H:%M") == "22:00", fenster
+    zeiten = _ablauf(config, KINDER[2], tag, frei=True)
+    assert zeiten[0] == ("10:00", 100) and zeiten[-1] == ("22:00", 0), zeiten
+
+
 # ------------------------------------------------------- Die Lichter ----
 
 class _Lichter:

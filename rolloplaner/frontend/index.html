@@ -294,9 +294,7 @@ const UI = {
     "pg.hand_an":"Von Hand eingeschaltet bis {datum}.","pg.hand_aus":"Von Hand ausgeschaltet bis {datum}.",
     "pg.jaehrlich":"Jedes Jahr im Zeitraum von selbst","pg.zeitraum":"Zeitraum","pg.advent":"ab 1. Advent",
     "pg.fest":"festes Datum","pg.von":"ab (MM-TT)","pg.bis":"bis einschließlich (MM-TT)",
-    "pg.diesmal":"Diesmal: {von} bis {bis}","pg.licht":"Wann leuchtet es","pg.licht_an":"abends an",
-    "pg.licht_aus":"aus und Rollos zu um","pg.vorlauf":"morgens vor dem Öffnen","pg.vorlauf_aus":"morgens nicht",
-    "pg.min":"{n} Minuten","pg.lichter":"Lichter und Steckdosen","pg.lichter_leer":"Noch keine – unten suchen und hinzufügen.",
+    "pg.diesmal":"Diesmal: {von} bis {bis}","pg.licht_aus":"aus und Rollos zu um","pg.lichter":"Lichter und Steckdosen","pg.lichter_leer":"Noch keine – unten suchen und hinzufügen.",
     "pg.suche":"Licht oder Steckdose suchen …","pg.rollos":"Rollos, während das Licht brennt",
     "pg.normal":"normaler Plan","pg.bleibt_offen":"bleibt offen bis Licht aus","pg.zwischen":"{n} % offen",
     "pg.urlaub":"Urlaub","pg.urlaub_text":"Folgt dem Urlaubsschalter. Dann gilt statt des Zeitplans das Urlaubsprogramm.",
@@ -382,9 +380,35 @@ const UI = {
     "es.schwere.warnung":"Warnung",
     "es.schwere.hinweis":"Hinweis",
     "es.alles_gut":"Nichts aufgefallen.",
-    "pg.k_zeiten":"Licht an {an}, aus und zu {aus}",
-    "pg.k_frei":"(vor freien Tagen {zeit})",
-    "pg.k_morgens":"morgens {n} min vor dem Öffnen",
+    "pg.w_vor_oeffnen":"{n} min vor dem Öffnen",
+    "pg.w_oeffnen":"beim Öffnen",
+    "pg.w_mit_licht":"mit dem Licht",
+    "pg.k_kein_licht":"kein Licht",
+    "pg.k_licht":"Licht {an} bis {aus}",
+    "pg.k_rollos_plan":"Rollos nach Plan",
+    "pg.k_rollos_um":"Rollos {wann} auf ihre Stellung",
+    "pg.k_rollos_bis":"Rollos ab {wann} auf ihrer Stellung bis {zeit}",
+    "pg.morgens":"Morgens",
+    "pg.abends":"Abends",
+    "pg.v_schultag":"Schultag",
+    "pg.v_schulfrei":"schulfrei",
+    "pg.v_morgen_schule":"morgen Schule",
+    "pg.v_morgen_frei":"morgen frei",
+    "pg.wie_schultag":"wie am Schultag",
+    "pg.a.aus":"kein Licht",
+    "pg.a.vor_oeffnen":"vor dem Öffnen",
+    "pg.a.uhrzeit":"um Uhrzeit",
+    "pg.a.sonnenaufgang":"bei Sonnenaufgang",
+    "pg.a.sonnenuntergang":"bei Sonnenuntergang",
+    "pg.a.daemmerung":"bei Dämmerung",
+    "pg.a.oeffnen":"beim Öffnen der Rollos",
+    "pg.a.plan":"normaler Plan",
+    "pg.a.mit_licht":"mit dem Licht",
+    "pg.min_vorher":"min vorher",
+    "pg.min_versatz":"± min",
+    "pg.licht_aus_kurz":"Licht aus","pg.licht_an_kurz":"Licht an",
+    "pg.rollos_morgens":"Rollos auf Stellung",
+    "pg.rollos_abends":"Rollos auf Stellung ab",
     "pg.frueher_kurz":"darf früher schließen",
     "pg.k_rollos":"Rollos",
     "pg.offen_kurz":"offen",
@@ -392,7 +416,6 @@ const UI = {
     "pg.keine_ablaeufe":"Noch kein Ablauf – „+ Ablauf“ legt einen an.",
     "pg.ablauf_neu":"+ Ablauf",
     "pg.ablauf_name":"Neuer Ablauf",
-    "pg.frei_anders":"vor freien Tagen anders",
     "pg.frueher":"darf früher schließen als der normale Plan",
     "pg.frueher_hilfe":"Ohne Haken zögert der Ablauf das Schließen nur hinaus. Mit Haken gehen seine Rollos bei Licht aus zu, auch wenn der Plan sie noch offen hätte.",
     "pg.in_ablauf":"(in „{name}“)",
@@ -471,9 +494,7 @@ const UI = {
     "pg.hand_an":"Switched on by hand until {datum}.","pg.hand_aus":"Switched off by hand until {datum}.",
     "pg.jaehrlich":"Every year by itself during the period","pg.zeitraum":"Period","pg.advent":"from 1st Advent",
     "pg.fest":"fixed dates","pg.von":"from (MM-DD)","pg.bis":"until and including (MM-DD)",
-    "pg.diesmal":"This time: {von} to {bis}","pg.licht":"When the lights are on","pg.licht_an":"on in the evening",
-    "pg.licht_aus":"off and shutters closed at","pg.vorlauf":"in the morning before opening","pg.vorlauf_aus":"not in the morning",
-    "pg.min":"{n} minutes","pg.lichter":"Lights and sockets","pg.lichter_leer":"None yet – search below and add.",
+    "pg.diesmal":"This time: {von} to {bis}","pg.licht_aus":"off and shutters closed at","pg.lichter":"Lights and sockets","pg.lichter_leer":"None yet – search below and add.",
     "pg.suche":"Search light or socket …","pg.rollos":"Shutters while the lights are on",
     "pg.normal":"normal schedule","pg.bleibt_offen":"stays open until lights off","pg.zwischen":"{n} % open",
     "pg.urlaub":"Vacation","pg.urlaub_text":"Follows the vacation switch. The vacation program then replaces the schedule.",
@@ -559,9 +580,35 @@ const UI = {
     "es.schwere.warnung":"Warning",
     "es.schwere.hinweis":"Note",
     "es.alles_gut":"Nothing stands out.",
-    "pg.k_zeiten":"lights on {an}, off and closed {aus}",
-    "pg.k_frei":"(before days off {zeit})",
-    "pg.k_morgens":"mornings {n} min before opening",
+    "pg.w_vor_oeffnen":"{n} min before opening",
+    "pg.w_oeffnen":"at opening",
+    "pg.w_mit_licht":"with the lights",
+    "pg.k_kein_licht":"no lights",
+    "pg.k_licht":"lights {an} to {aus}",
+    "pg.k_rollos_plan":"shutters by schedule",
+    "pg.k_rollos_um":"shutters to their position {wann}",
+    "pg.k_rollos_bis":"shutters at their position from {wann} to {zeit}",
+    "pg.morgens":"Mornings",
+    "pg.abends":"Evenings",
+    "pg.v_schultag":"school day",
+    "pg.v_schulfrei":"day off",
+    "pg.v_morgen_schule":"school tomorrow",
+    "pg.v_morgen_frei":"day off tomorrow",
+    "pg.wie_schultag":"same as school day",
+    "pg.a.aus":"no lights",
+    "pg.a.vor_oeffnen":"before opening",
+    "pg.a.uhrzeit":"at a time",
+    "pg.a.sonnenaufgang":"at sunrise",
+    "pg.a.sonnenuntergang":"at sunset",
+    "pg.a.daemmerung":"at dusk",
+    "pg.a.oeffnen":"when the shutters open",
+    "pg.a.plan":"normal schedule",
+    "pg.a.mit_licht":"with the lights",
+    "pg.min_vorher":"min before",
+    "pg.min_versatz":"± min",
+    "pg.licht_aus_kurz":"Lights off","pg.licht_an_kurz":"Lights on",
+    "pg.rollos_morgens":"Shutters to position",
+    "pg.rollos_abends":"Shutters to position from",
     "pg.frueher_kurz":"may close earlier",
     "pg.k_rollos":"Shutters",
     "pg.offen_kurz":"open",
@@ -569,7 +616,6 @@ const UI = {
     "pg.keine_ablaeufe":"No routine yet – “+ Routine” creates one.",
     "pg.ablauf_neu":"+ Routine",
     "pg.ablauf_name":"New routine",
-    "pg.frei_anders":"different before days off",
     "pg.frueher":"may close earlier than the normal schedule",
     "pg.frueher_hilfe":"Unticked, the routine only delays closing. Ticked, its shutters close when the lights go off, even if the schedule would still have them open.",
     "pg.in_ablauf":"(in “{name}”)",
@@ -1100,16 +1146,18 @@ function zeichneProgramme(){
   const abl = xAblaeufe();
   const rolloName = (eid) => { const r = (BERICHT?.rollos || []).find((y) => y.entity_id === eid); return r ? zeilenname(r) : eid; };
   const zeitText = (a) => {
-    const an = a.licht_an === "uhrzeit" ? a.licht_an_zeit : t("ed." + a.licht_an) + (Number(a.licht_an_versatz) ? ` ${a.licht_an_versatz > 0 ? "+" : ""}${a.licht_an_versatz} min` : "");
-    let s = t("pg.k_zeiten", {an, aus: a.licht_aus});
-    if (a.licht_aus_vor_schulfrei) s += " " + t("pg.k_frei", {zeit: a.licht_aus_vor_schulfrei});
-    s += " · " + (Number(a.morgens_vorlauf) ? t("pg.k_morgens", {n: a.morgens_vorlauf}) : t("pg.vorlauf_aus"));
-    if (a.frueher_schliessen) s += " · " + t("pg.frueher_kurz");
-    return s;
+    const zeilen = [];
+    for (const [teil, schl] of [["morgens", "pg.morgens"], ["abends", "pg.abends"]]){
+      const s = a[teil].schultag, f = a[teil].schulfrei;
+      zeilen.push(t(schl) + (f ? " (" + t(teil === "morgens" ? "pg.v_schultag" : "pg.v_morgen_schule") + ")" : "") + ": " + varianteText(teil, s));
+      if (f) zeilen.push(t(schl) + " (" + t(teil === "morgens" ? "pg.v_schulfrei" : "pg.v_morgen_frei") + "): " + varianteText(teil, {...s, ...f}));
+    }
+    if (a.frueher_schliessen) zeilen.push(t("pg.frueher_kurz"));
+    return zeilen.join("\n");
   };
   const karten = abl.map((a, i) => `<div class="punktkarte"><div class="zeile" style="align-items:center; justify-content:space-between">
       <h3>${esc(a.name)}</h3><button class="knopf klein" data-ablauf="${i}">${esc(t("knopf.bearbeiten"))}</button></div>
-      <p class="klein" style="margin-top:6px">${esc(zeitText(a))}</p>
+      <p class="klein" style="margin-top:6px; white-space:pre-line">${esc(zeitText(a))}</p>
       <p class="leise klein">${esc(t("pg.k_rollos"))}: ${esc(Object.entries(a.rollos || {}).map(([eid, w]) => rolloName(eid) + " " + (w === "offen" ? t("pg.offen_kurz") : w + " %")).join(", ") || "–")}</p>
       <p class="leise klein">${esc(t("pg.lichter"))}: ${esc((a.lichter || []).map((eid) => ((xb.lichter || []).find((l) => l.entity_id === eid) || {}).name || eid).join(", ") || "–")}</p></div>`).join("");
   const weihnacht = `
@@ -1229,37 +1277,94 @@ $("#programme").addEventListener("change", (ev) => {
    Je Ablauf: Name, Zeiten, Rollos mit Stellung, Lichter. Ein Rollo oder Licht
    gehört höchstens zu einem Ablauf; was anderswo vergeben ist, steht
    ausgegraut mit dem Namen des Ablaufs da. */
-const STANDARD_ABLAUF = {id: "", name: "", licht_an: "sonnenuntergang", licht_an_zeit: "17:00", licht_an_versatz: 0,
-  licht_aus: "22:30", licht_aus_vor_schulfrei: "", morgens_vorlauf: 30, frueher_schliessen: false, lichter: [], rollos: {}};
+const STANDARD_MORGEN = {licht: "vor_oeffnen", licht_zeit: "06:00", licht_versatz: 30, licht_aus: "oeffnen",
+  licht_aus_zeit: "07:30", licht_aus_versatz: 0, rollos: "mit_licht", rollos_zeit: "06:00", rollos_versatz: 0};
+const STANDARD_ABEND = {licht: "sonnenuntergang", licht_zeit: "17:00", licht_versatz: 0, licht_aus_zeit: "22:30",
+  rollos: "mit_licht", rollos_zeit: "17:00", rollos_versatz: 0};
+const STANDARD_ABLAUF = {id: "", name: "", morgens: {schultag: {...STANDARD_MORGEN}, schulfrei: null},
+  abends: {schultag: {...STANDARD_ABEND}, schulfrei: null}, frueher_schliessen: false, lichter: [], rollos: {}};
+/* Abläufe aus 3.2 (Licht an/aus, „vor freien Tagen“, Vorlauf) wie im Backend übertragen. */
+function ablaufNeu(a){
+  if (a.morgens && a.abends) return a;
+  const abend = {...STANDARD_ABEND, licht: a.licht_an || "sonnenuntergang", licht_zeit: a.licht_an_zeit || "17:00",
+    licht_versatz: Number(a.licht_an_versatz || 0), licht_aus_zeit: a.licht_aus || "22:30", rollos: "mit_licht"};
+  const v = Number(a.morgens_vorlauf ?? 30);
+  const morgen = v ? {...STANDARD_MORGEN, licht: "vor_oeffnen", licht_versatz: v, licht_aus: "oeffnen", rollos: "mit_licht"}
+                   : {...STANDARD_MORGEN, licht: "aus", rollos: "plan"};
+  const {licht_an, licht_an_zeit, licht_an_versatz, licht_aus, licht_aus_vor_schulfrei, morgens_vorlauf, ...rest} = a;
+  return {...STANDARD_ABLAUF, ...rest, morgens: {schultag: morgen, schulfrei: null},
+    abends: {schultag: abend, schulfrei: licht_aus_vor_schulfrei ? {...abend, licht_aus_zeit: licht_aus_vor_schulfrei} : null}};
+}
 function xAblaeufe(){
   const x = CONFIG?.einstellungen?.weihnachtszeit || {};
-  if ((x.ablaeufe || []).length) return kopie(x.ablaeufe);
+  if ((x.ablaeufe || []).length) return kopie(x.ablaeufe).map(ablaufNeu);
   if ((x.lichter || []).length || Object.keys(x.rollos || {}).length)
-    return [{...STANDARD_ABLAUF, ...Object.fromEntries(["licht_an","licht_an_zeit","licht_an_versatz","licht_aus","morgens_vorlauf","lichter","rollos"]
-      .filter((k) => k in x).map((k) => [k, kopie(x[k])])), id: "eg", name: "Erdgeschoss"}];
+    return [ablaufNeu({...Object.fromEntries(["licht_an","licht_an_zeit","licht_an_versatz","licht_aus","morgens_vorlauf","lichter","rollos"]
+      .filter((k) => k in x).map((k) => [k, kopie(x[k])])), id: "eg", name: "Erdgeschoss"})];
   return [];
+}
+/* Ein Zeitpunkt in Worten: „Sonnenaufgang +15 min“, „06:00“, „30 min vor dem Öffnen“. */
+function wannText(art, zeit, versatz){
+  const v = Number(versatz || 0);
+  if (art === "uhrzeit") return zeit;
+  if (art === "vor_oeffnen") return t("pg.w_vor_oeffnen", {n: v});
+  if (art === "oeffnen") return t("pg.w_oeffnen");
+  if (art === "mit_licht") return t("pg.w_mit_licht");
+  return t("ed." + art) + (v ? ` ${v > 0 ? "+" : ""}${v} min` : "");
+}
+function varianteText(teil, v){
+  if (teil === "morgens"){
+    const licht = v.licht === "aus" ? t("pg.k_kein_licht") : t("pg.k_licht", {an: wannText(v.licht, v.licht_zeit, v.licht_versatz), aus: wannText(v.licht_aus, v.licht_aus_zeit, v.licht_aus_versatz)});
+    const rollos = v.rollos === "plan" ? t("pg.k_rollos_plan") : t("pg.k_rollos_um", {wann: wannText(v.rollos, v.rollos_zeit, v.rollos_versatz)});
+    return licht + " · " + rollos;
+  }
+  const licht = v.licht === "aus" ? t("pg.k_kein_licht") : t("pg.k_licht", {an: wannText(v.licht, v.licht_zeit, v.licht_versatz), aus: v.licht_aus_zeit});
+  const rollos = v.rollos === "plan" ? t("pg.k_rollos_plan") : t("pg.k_rollos_bis", {wann: wannText(v.rollos, v.rollos_zeit, v.rollos_versatz), zeit: v.licht_aus_zeit});
+  return licht + " · " + rollos;
+}
+let REITER_V = {morgens: "schultag", abends: "schultag"};
+/* Morgen oder Abend eines Ablaufs: Umschalter Schultag | schulfrei, dann je
+   Zeile Licht an, Licht aus, Rollos – jeweils Art und Zeit/Minuten. */
+function blockHTML(a, teil, tag){
+  const morgens = teil === "morgens";
+  const frei = tag === "schulfrei";
+  const wie = frei && !a[teil].schulfrei;
+  const v = frei && a[teil].schulfrei ? {...a[teil].schultag, ...a[teil].schulfrei} : a[teil].schultag;
+  const reiter = morgens ? [["schultag", "pg.v_schultag"], ["schulfrei", "pg.v_schulfrei"]] : [["schultag", "pg.v_morgen_schule"], ["schulfrei", "pg.v_morgen_frei"]];
+  const feld = (name) => `${teil}.${tag}.${name}`;
+  const art = (name, werte) => `<select data-v="${feld(name)}" ${wie ? "disabled" : ""}>${werte.map((w) => `<option value="${w}" ${v[name] === w ? "selected" : ""}>${esc(t("pg.a." + w))}</option>`).join("")}</select>`;
+  const zusatz = (artWert, zeitName, versatzName) => {
+    if (artWert === "uhrzeit") return `<input type="time" data-v="${feld(zeitName)}" value="${esc(v[zeitName])}" ${wie ? "disabled" : ""} aria-label="${esc(t("ed.uhrzeit"))}">`;
+    if (["aus", "plan", "mit_licht", "oeffnen"].includes(artWert)) return "";
+    return `<label class="feld" style="flex-direction:row; align-items:center; gap:6px"><input type="number" data-v="${feld(versatzName)}" value="${Number(v[versatzName] || 0)}" ${wie ? "disabled" : ""} style="width:80px">${esc(artWert === "vor_oeffnen" ? t("pg.min_vorher") : t("pg.min_versatz"))}</label>`;
+  };
+  return `<h2 style="margin-top:16px">${esc(t(morgens ? "pg.morgens" : "pg.abends"))}</h2>
+    <div class="zeile" style="align-items:center"><div class="wahl" role="group">${reiter.map(([k, s]) =>
+      `<button type="button" data-v-reiter="${teil}.${k}" class="${tag === k ? "an" : ""}">${esc(t(s))}</button>`).join("")}</div>
+      ${frei ? `<label class="haken"><input type="checkbox" data-wie="${teil}" ${wie ? "checked" : ""}>${esc(t("pg.wie_schultag"))}</label>` : ""}</div>
+    <div class="zeile" style="align-items:center"><span class="leise" style="min-width:110px">${esc(t("pg.licht_an_kurz"))}</span>
+      ${art("licht", morgens ? ["aus","vor_oeffnen","uhrzeit","sonnenaufgang"] : ["aus","sonnenuntergang","daemmerung","uhrzeit"])}${zusatz(v.licht, "licht_zeit", "licht_versatz")}</div>
+    ${v.licht === "aus" ? "" : morgens
+      ? `<div class="zeile" style="align-items:center"><span class="leise" style="min-width:110px">${esc(t("pg.licht_aus_kurz"))}</span>${art("licht_aus", ["oeffnen","uhrzeit","sonnenaufgang"])}${zusatz(v.licht_aus, "licht_aus_zeit", "licht_aus_versatz")}</div>`
+      : ""}
+    ${morgens ? "" : `<div class="zeile" style="align-items:center"><span class="leise" style="min-width:110px">${esc(t("pg.licht_aus"))}</span>
+      <input type="time" data-v="${feld("licht_aus_zeit")}" value="${esc(v.licht_aus_zeit)}" ${wie ? "disabled" : ""}></div>`}
+    <div class="zeile" style="align-items:center"><span class="leise" style="min-width:110px">${esc(t(morgens ? "pg.rollos_morgens" : "pg.rollos_abends"))}</span>
+      ${art("rollos", morgens ? ["plan","mit_licht","uhrzeit","sonnenaufgang"] : ["plan","mit_licht","uhrzeit","sonnenuntergang","daemmerung"])}${zusatz(v.rollos, "rollos_zeit", "rollos_versatz")}</div>`;
 }
 async function ablaufDialog(i){
   if (!LICHTER){ try { LICHTER = await hole("api/lichter"); } catch { LICHTER = []; } }
   const liste = xAblaeufe();
   const a = i >= 0 ? kopie(liste[i]) : {...kopie(STANDARD_ABLAUF), name: t("pg.ablauf_name")};
+  REITER_V = {morgens: "schultag", abends: "schultag"};
   const vergeben = {};
   liste.forEach((b, j) => { if (j === i) return; Object.keys(b.rollos || {}).forEach((eid) => { vergeben[eid] = b.name; }); (b.lichter || []).forEach((eid) => { vergeben[eid] = b.name; }); });
   const lichtName = (eid) => (LICHTER.find((l) => l.entity_id === eid) || {name: eid}).name;
   const zeichne = () => {
     $("#dlg-inhalt").innerHTML = `
       <div class="zeile"><label class="feld" style="flex:1">${esc(t("rd.name"))}<input type="text" data-a="name" value="${esc(a.name)}"></label></div>
-      <h2 style="margin-top:14px">${esc(t("pg.licht"))}</h2>
-      <div class="zeile">
-        <label class="feld">${esc(t("pg.licht_an"))}<select data-a="licht_an">${["sonnenuntergang","daemmerung","uhrzeit"].map((x) =>
-          `<option value="${x}" ${a.licht_an === x ? "selected" : ""}>${esc(t("ed." + x))}</option>`).join("")}</select></label>
-        ${a.licht_an === "uhrzeit" ? `<label class="feld">${esc(t("ed.uhrzeit"))}<input type="time" data-a="licht_an_zeit" value="${esc(a.licht_an_zeit)}"></label>`
-          : `<label class="feld">${esc(t("ed.versatz"))}<input type="number" data-a="licht_an_versatz" value="${Number(a.licht_an_versatz || 0)}"></label>`}
-        <label class="feld">${esc(t("pg.licht_aus"))}<input type="time" data-a="licht_aus" value="${esc(a.licht_aus)}"></label></div>
-      <div class="zeile" style="align-items:center"><label class="haken"><input type="checkbox" data-a-frei ${a.licht_aus_vor_schulfrei ? "checked" : ""}>${esc(t("pg.frei_anders"))}</label>
-        ${a.licht_aus_vor_schulfrei ? `<input type="time" data-a="licht_aus_vor_schulfrei" value="${esc(a.licht_aus_vor_schulfrei)}" aria-label="${esc(t("pg.frei_anders"))}">` : ""}</div>
-      <div class="zeile"><label class="feld">${esc(t("pg.vorlauf"))}<select data-a="morgens_vorlauf">${[0,15,30,45,60].map((n) =>
-          `<option value="${n}" ${Number(a.morgens_vorlauf) === n ? "selected" : ""}>${esc(n ? t("pg.min", {n}) : t("pg.vorlauf_aus"))}</option>`).join("")}</select></label></div>
+      ${blockHTML(a, "morgens", REITER_V.morgens)}
+      ${blockHTML(a, "abends", REITER_V.abends)}
       <label class="haken"><input type="checkbox" data-a="frueher_schliessen" ${a.frueher_schliessen ? "checked" : ""}>${esc(t("pg.frueher"))}</label>
       <p class="leise klein">${esc(t("pg.frueher_hilfe"))}</p>
       <h2 style="margin-top:14px">${esc(t("pg.rollos"))}</h2>
@@ -1287,9 +1392,14 @@ async function ablaufDialog(i){
   const inhalt = $("#dlg-inhalt");
   inhalt.onchange = (ev) => {
     const el = ev.target;
-    if (el.dataset.a){ a[el.dataset.a] = el.type === "checkbox" ? el.checked : ["licht_an_versatz","morgens_vorlauf"].includes(el.dataset.a) ? Number(el.value) : el.value;
-      if (el.dataset.a === "licht_an") zeichne(); }
-    if (el.dataset.aFrei !== undefined){ a.licht_aus_vor_schulfrei = el.checked ? (a.licht_aus_vor_schulfrei || a.licht_aus) : ""; zeichne(); }
+    if (el.dataset.a){ a[el.dataset.a] = el.type === "checkbox" ? el.checked : el.value; }
+    if (el.dataset.v){
+      const [teil, tag, feld] = el.dataset.v.split(".");
+      if (tag === "schulfrei" && !a[teil].schulfrei) a[teil].schulfrei = kopie(a[teil].schultag);
+      a[teil][tag][feld] = el.type === "number" ? Number(el.value) : el.value;
+      if (["licht", "licht_aus", "rollos"].includes(feld)) zeichne();
+    }
+    if (el.dataset.wie){ const teil = el.dataset.wie; a[teil].schulfrei = el.checked ? null : kopie(a[teil].schultag); zeichne(); }
     if (el.dataset.aRollo){ a.rollos = a.rollos || {}; const v = el.value;
       if (v === "plan") delete a.rollos[el.dataset.aRollo]; else a.rollos[el.dataset.aRollo] = v === "offen" ? v : Number(v); }
   };
@@ -1305,6 +1415,7 @@ async function ablaufDialog(i){
   };
   inhalt.onclick = (ev) => {
     const k = ev.target.closest("button"); if (!k) return;
+    if (k.dataset.vReiter){ const [teil, tag] = k.dataset.vReiter.split("."); REITER_V[teil] = tag; zeichne(); return; }
     if (k.dataset.aLichtNeu){ a.lichter = [...(a.lichter || []), k.dataset.aLichtNeu]; zeichne(); }
     if (k.dataset.aLichtWeg){ a.lichter = (a.lichter || []).filter((x) => x !== k.dataset.aLichtWeg); zeichne(); }
     if (k.dataset.aWeg !== undefined && confirm(t("pg.ablauf_weg_frage", {name: a.name}))){

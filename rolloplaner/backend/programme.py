@@ -44,15 +44,40 @@ STANDARD_WEIHNACHTSZEIT = {
     "ablaeufe": [],
 }
 
+# Seit 3.3 hat jeder Ablauf einen Morgen und einen Abend, jeweils für
+# Schultag und schulfrei. Morgens zählt, ob *heute* Schule ist, abends, ob
+# *morgen* Schule ist. ``None`` bei „schulfrei“ heißt: wie am Schultag.
+STANDARD_MORGEN = {
+    "licht": "vor_oeffnen",       # "aus" | "vor_oeffnen" | "uhrzeit" | "sonnenaufgang"
+    "licht_zeit": "06:00",
+    "licht_versatz": 30,          # vor_oeffnen: Minuten davor; Sonne: ± Minuten
+    "licht_aus": "oeffnen",       # "oeffnen" | "uhrzeit" | "sonnenaufgang"
+    "licht_aus_zeit": "07:30",
+    "licht_aus_versatz": 0,
+    "rollos": "mit_licht",        # "plan" | "mit_licht" | "uhrzeit" | "sonnenaufgang"
+    "rollos_zeit": "06:00",
+    "rollos_versatz": 0,
+}
+STANDARD_ABEND = {
+    "licht": "sonnenuntergang",   # "aus" | "sonnenuntergang" | "daemmerung" | "uhrzeit"
+    "licht_zeit": "17:00",
+    "licht_versatz": 0,
+    "licht_aus_zeit": "22:30",    # Licht aus – und die Rollos gehen zurück zum Plan
+    "rollos": "mit_licht",        # "plan" | "mit_licht" | "uhrzeit" | "sonnenuntergang" | "daemmerung"
+    "rollos_zeit": "17:00",
+    "rollos_versatz": 0,
+}
+MORGEN_LICHT = ("aus", "vor_oeffnen", "uhrzeit", "sonnenaufgang")
+MORGEN_LICHT_AUS = ("oeffnen", "uhrzeit", "sonnenaufgang")
+MORGEN_ROLLOS = ("plan", "mit_licht", "uhrzeit", "sonnenaufgang")
+ABEND_LICHT = ("aus", "sonnenuntergang", "daemmerung", "uhrzeit")
+ABEND_ROLLOS = ("plan", "mit_licht", "uhrzeit", "sonnenuntergang", "daemmerung")
+
 STANDARD_ABLAUF = {
     "id": "",
     "name": "",
-    "licht_an": "sonnenuntergang", # "sonnenuntergang" | "daemmerung" | "uhrzeit"
-    "licht_an_zeit": "17:00",      # nur bei "uhrzeit"
-    "licht_an_versatz": 0,         # Minuten, bei Sonne
-    "licht_aus": "22:30",          # Licht aus, Rollos zu
-    "licht_aus_vor_schulfrei": "", # leer = wie licht_aus
-    "morgens_vorlauf": 30,         # Minuten vor dem Öffnen; 0 = morgens nichts
+    "morgens": {"schultag": dict(STANDARD_MORGEN), "schulfrei": None},
+    "abends": {"schultag": dict(STANDARD_ABEND), "schulfrei": None},
     # Standard: nur hinauszögern. Mit Haken schließt der Ablauf bei Licht aus,
     # auch wenn der normale Plan das Rollo dann noch offen hätte.
     "frueher_schliessen": False,
@@ -65,20 +90,58 @@ _ALTE_FELDER = ("licht_an", "licht_an_zeit", "licht_an_versatz", "licht_aus",
                 "morgens_vorlauf", "lichter", "rollos")
 
 
-def ablaeufe(cfg: dict) -> list[dict]:
-    """Die Abläufe der Weihnachtszeit – auch aus einer Einstellung von 3.0/3.1.
+def _aus_alter_form(a: dict) -> dict:
+    """Ein Ablauf aus 3.0–3.2 (Licht an/aus, „vor freien Tagen“, Vorlauf) im
+    Modell von 3.3 – so, dass er genau dasselbe tut."""
+    if "morgens" in a and "abends" in a:
+        return a
+    abend = {**STANDARD_ABEND,
+             "licht": a.get("licht_an") or "sonnenuntergang",
+             "licht_zeit": a.get("licht_an_zeit") or "17:00",
+             "licht_versatz": int(a.get("licht_an_versatz") or 0),
+             "licht_aus_zeit": a.get("licht_aus") or "22:30",
+             "rollos": "mit_licht"}
+    frei = a.get("licht_aus_vor_schulfrei") or ""
+    vorlauf = int(a.get("morgens_vorlauf", 30) or 0)
+    morgen = ({**STANDARD_MORGEN, "licht": "vor_oeffnen", "licht_versatz": vorlauf,
+               "licht_aus": "oeffnen", "rollos": "mit_licht"} if vorlauf
+              else {**STANDARD_MORGEN, "licht": "aus", "rollos": "plan"})
+    neu = {k: v for k, v in a.items()
+           if k not in ("licht_an", "licht_an_zeit", "licht_an_versatz", "licht_aus",
+                        "licht_aus_vor_schulfrei", "morgens_vorlauf")}
+    neu["abends"] = {"schultag": abend,
+                     "schulfrei": {**abend, "licht_aus_zeit": frei} if frei else None}
+    neu["morgens"] = {"schultag": morgen, "schulfrei": None}
+    return neu
 
-    Dort standen Lichter, Zeiten und Rollos direkt an der Weihnachtszeit. Das
-    wird hier als ein Ablauf „Erdgeschoss“ gelesen, damit sich nichts ändert,
-    bis die Einstellung einmal neu gespeichert ist.
+
+def ablaeufe(cfg: dict) -> list[dict]:
+    """Die Abläufe der Weihnachtszeit – auch aus Einstellungen früherer Fassungen.
+
+    3.0/3.1: Lichter, Zeiten und Rollos standen direkt an der Weihnachtszeit
+    (→ Ablauf „Erdgeschoss“). 3.2: ein Ablauf mit Licht an/aus und Vorlauf
+    (→ Morgen und Abend). Gerechnet wird mit beiden Formen gleich, bis die
+    Einstellung einmal neu gespeichert ist.
     """
     liste = cfg.get("ablaeufe")
-    if liste:
-        return [{**STANDARD_ABLAUF, **a} for a in liste]
-    if cfg.get("lichter") or cfg.get("rollos"):
-        alt = {k: cfg[k] for k in _ALTE_FELDER if k in cfg}
-        return [{**STANDARD_ABLAUF, **alt, "id": "eg", "name": "Erdgeschoss"}]
-    return []
+    if not liste and (cfg.get("lichter") or cfg.get("rollos")):
+        liste = [{**{k: cfg[k] for k in _ALTE_FELDER if k in cfg},
+                  "id": "eg", "name": "Erdgeschoss"}]
+    out = []
+    for a in liste or []:
+        a = _aus_alter_form(a)
+        out.append({**STANDARD_ABLAUF, **a})
+    return out
+
+
+def variante(ablauf: dict, teil: str, frei: bool | None) -> dict:
+    """Morgen oder Abend für Schultag bzw. schulfrei (leer = wie Schultag)."""
+    block = ablauf.get(teil) or {}
+    vorgabe = STANDARD_MORGEN if teil == "morgens" else STANDARD_ABEND
+    schultag = {**vorgabe, **(block.get("schultag") or {})}
+    if frei and block.get("schulfrei"):
+        return {**schultag, **block["schulfrei"]}
+    return schultag
 
 
 def ablauf_von(cfg: dict, entity_id: str) -> dict | None:
@@ -164,31 +227,96 @@ def stellung(cfg: dict, entity_id: str):
         return PLAN
 
 
+def zeit_von(art: str, zeit: str, versatz, tag: date, sonnenstand) -> datetime | None:
+    """Eine Uhrzeit oder ein Sonnenereignis (± Minuten) an diesem Tag."""
+    if art == "uhrzeit":
+        return datetime.combine(tag, _uhrzeit(zeit or "00:00"))
+    roh = sonnenstand.zeitpunkt(art, tag) if sonnenstand else None
+    if roh is None:
+        return None
+    return roh + timedelta(minutes=int(versatz or 0))
+
+
 def abend(cfg: dict, tag: date, sonnenstand,
           morgen_frei: bool | None = None) -> tuple[datetime, datetime] | None:
-    """Wann das Licht an diesem Abend angeht und wieder ausgeht.
+    """Wann das Licht an diesem Abend angeht und wieder ausgeht – oder None.
 
-    ``cfg`` ist ein Ablauf. Ist morgen schulfrei und hat der Ablauf dafür eine
-    eigene Zeit, gilt die – die Kinderzimmer dürfen am Freitag länger.
+    ``cfg`` ist ein Ablauf; ob morgen schulfrei ist, wählt die Variante.
     """
-    art = cfg.get("licht_an") or "sonnenuntergang"
-    if art == "uhrzeit":
-        an = datetime.combine(tag, _uhrzeit(cfg.get("licht_an_zeit") or "17:00"))
-    else:
-        roh = sonnenstand.zeitpunkt(art, tag) if sonnenstand else None
-        if roh is None:
-            return None
-        an = roh + timedelta(minutes=int(cfg.get("licht_an_versatz") or 0))
-    aus_text = cfg.get("licht_aus") or "22:30"
-    if morgen_frei and cfg.get("licht_aus_vor_schulfrei"):
-        aus_text = cfg["licht_aus_vor_schulfrei"]
-    aus = datetime.combine(tag, _uhrzeit(aus_text))
+    v = variante(cfg, "abends", morgen_frei)
+    if v.get("licht") == "aus":
+        return None
+    an = zeit_von(v["licht"], v.get("licht_zeit"), v.get("licht_versatz"), tag, sonnenstand)
+    return _bis_aus(an, v, tag)
+
+
+def _bis_aus(an, v: dict, tag: date):
+    if an is None:
+        return None
+    aus = datetime.combine(tag, _uhrzeit(v.get("licht_aus_zeit") or "22:30"))
     # „aus um 00:30“ meint die Nacht danach.
     if aus <= an and aus.time() < time(12, 0):
         aus += timedelta(days=1)
     if aus <= an:
         return None
     return an, aus
+
+
+def abend_rollos(cfg: dict, tag: date, sonnenstand,
+                 morgen_frei: bool | None = None) -> tuple[datetime, datetime] | None:
+    """Wann die Rollos abends auf ihre Weihnachtsstellung gehen und wann
+    zurück zum Plan – unabhängig vom Licht, wenn so eingestellt."""
+    v = variante(cfg, "abends", morgen_frei)
+    art = v.get("rollos") or "mit_licht"
+    if art == "plan":
+        return None
+    if art == "mit_licht":
+        fenster = abend(cfg, tag, sonnenstand, morgen_frei)
+        return fenster
+    start = zeit_von(art, v.get("rollos_zeit"), v.get("rollos_versatz"), tag, sonnenstand)
+    return _bis_aus(start, v, tag)
+
+
+def morgen(cfg: dict, tag: date, sonnenstand, oeffnen: datetime | None,
+           heute_frei: bool | None = None) -> tuple[datetime, datetime] | None:
+    """Wann das Licht am Morgen brennt – oder None.
+
+    ``oeffnen`` ist das erste normale Öffnen der Rollos dieses Ablaufs; daran
+    hängen „x Minuten vor dem Öffnen“ und „aus beim Öffnen“.
+    """
+    v = variante(cfg, "morgens", heute_frei)
+    if v.get("licht") == "aus":
+        return None
+    if v["licht"] == "vor_oeffnen":
+        an = oeffnen - timedelta(minutes=int(v.get("licht_versatz") or 0)) if oeffnen else None
+    else:
+        an = zeit_von(v["licht"], v.get("licht_zeit"), v.get("licht_versatz"), tag, sonnenstand)
+    if v.get("licht_aus") == "oeffnen":
+        aus = oeffnen
+    else:
+        aus = zeit_von(v.get("licht_aus"), v.get("licht_aus_zeit"), v.get("licht_aus_versatz"),
+                       tag, sonnenstand)
+    if an is None or aus is None or aus <= an:
+        return None
+    return an, aus
+
+
+def morgen_rollo(cfg: dict, tag: date, sonnenstand, eigenes_oeffnen: datetime | None,
+                 heute_frei: bool | None = None) -> datetime | None:
+    """Wann dieses Rollo morgens auf seine Weihnachtsstellung geht – oder None."""
+    v = variante(cfg, "morgens", heute_frei)
+    art = v.get("rollos") or "mit_licht"
+    if art == "plan":
+        return None
+    if art == "mit_licht":
+        if v.get("licht") == "aus":
+            return None
+        if v["licht"] == "vor_oeffnen":
+            # wie bis 3.2: je Rollo vor *seinem* Öffnen
+            return (eigenes_oeffnen - timedelta(minutes=int(v.get("licht_versatz") or 0))
+                    if eigenes_oeffnen else None)
+        return zeit_von(v["licht"], v.get("licht_zeit"), v.get("licht_versatz"), tag, sonnenstand)
+    return zeit_von(art, v.get("rollos_zeit"), v.get("rollos_versatz"), tag, sonnenstand)
 
 
 def _ist_oeffnen(eintrag: dict) -> bool:
@@ -221,7 +349,8 @@ def _stand(punkte: list[tuple[datetime, dict]], zeit: datetime, start) -> int | 
 def umbauen(cfg: dict, wert, tag: date, punkte: list[tuple[datetime, dict]],
             sonnenstand, position_zu: int = 0, texte=None,
             start: int | None = None,
-            morgen_frei: bool | None = None) -> list[tuple[datetime, dict]]:
+            morgen_frei: bool | None = None,
+            heute_frei: bool | None = None) -> list[tuple[datetime, dict]]:
     """Die Schaltpunkte eines Tages unter dem Programm.
 
     ``punkte`` sind die nach Zeit sortierten Punkte des Rollos an diesem Tag –
@@ -248,7 +377,7 @@ def umbauen(cfg: dict, wert, tag: date, punkte: list[tuple[datetime, dict]],
     ziel = 100 if wert == OFFEN else int(wert)
     zu = position_zu if start is None else start
     out = []
-    fenster = abend(cfg, tag, sonnenstand, morgen_frei)
+    fenster = abend_rollos(cfg, tag, sonnenstand, morgen_frei)
     veraendert = False
     if fenster:
         an, aus = fenster
@@ -270,27 +399,26 @@ def umbauen(cfg: dict, wert, tag: date, punkte: list[tuple[datetime, dict]],
                                     texte.get("aus", "Weihnachtszeit: Licht aus"))))
     else:
         out = list(punkte)
-    vorlauf = int(cfg.get("morgens_vorlauf") or 0)
-    if vorlauf and wert != OFFEN:
-        oeffnen = erstes_oeffnen(punkte)
-        if oeffnen is not None:
-            frueh = oeffnen - timedelta(minutes=vorlauf)
-            normal = _stand(punkte, frueh, zu)
-            if normal is None or normal < ziel:
-                out.append((frueh, _punkt(ziel, texte.get(
-                    "morgen", "Weihnachtszeit: {n} %").format(n=ziel))))
+    frueh = morgen_rollo(cfg, tag, sonnenstand, erstes_oeffnen(punkte), heute_frei)
+    if frueh is not None and (wert != OFFEN or (variante(cfg, "morgens", heute_frei).get("rollos")
+                                                 not in ("plan", "mit_licht"))):
+        normal = _stand(punkte, frueh, zu)
+        if normal is None or normal < ziel:
+            out.append((frueh, _punkt(ziel, texte.get(
+                "morgen", "Weihnachtszeit: {n} %").format(n=ziel))))
     out.sort(key=lambda p: p[0])
     return out
 
 
 def lichtfenster(cfg: dict, tag: date, sonnenstand,
                  morgens_oeffnen: datetime | None,
-                 morgen_frei: bool | None = None) -> list[tuple[datetime, datetime]]:
+                 morgen_frei: bool | None = None,
+                 heute_frei: bool | None = None) -> list[tuple[datetime, datetime]]:
     """Die Zeiten, in denen an diesem Tag die Lichter brennen."""
     fenster = []
-    vorlauf = int(cfg.get("morgens_vorlauf") or 0)
-    if vorlauf and morgens_oeffnen is not None:
-        fenster.append((morgens_oeffnen - timedelta(minutes=vorlauf), morgens_oeffnen))
+    frueh = morgen(cfg, tag, sonnenstand, morgens_oeffnen, heute_frei)
+    if frueh:
+        fenster.append(frueh)
     abends = abend(cfg, tag, sonnenstand, morgen_frei)
     if abends:
         fenster.append(abends)

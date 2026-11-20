@@ -685,24 +685,42 @@ def validate_rollo(rollo: dict) -> dict:
     }
 
 
+def _variante_pruefen(roh, teil: str, name: str, darf_leer: bool):
+    if roh is None and darf_leer:
+        return None
+    vorgabe = programme.STANDARD_MORGEN if teil == "morgens" else programme.STANDARD_ABEND
+    v = {**vorgabe, **(roh or {})}
+    if teil == "morgens":
+        erlaubt = (("licht", programme.MORGEN_LICHT), ("licht_aus", programme.MORGEN_LICHT_AUS),
+                   ("rollos", programme.MORGEN_ROLLOS))
+        zeiten = ("licht_zeit", "licht_aus_zeit", "rollos_zeit")
+        versatz = ("licht_versatz", "licht_aus_versatz", "rollos_versatz")
+    else:
+        erlaubt = (("licht", programme.ABEND_LICHT), ("rollos", programme.ABEND_ROLLOS))
+        zeiten = ("licht_zeit", "licht_aus_zeit", "rollos_zeit")
+        versatz = ("licht_versatz", "rollos_versatz")
+    for schluessel, werte in erlaubt:
+        if v.get(schluessel) not in werte:
+            v[schluessel] = vorgabe[schluessel]
+    for schluessel in zeiten:
+        wert = str(v.get(schluessel) or "").strip()
+        if not _TIME_RE.match(wert):
+            raise ValidationError(f"{name}: ungültige Uhrzeit {wert!r}")
+        v[schluessel] = wert
+    for schluessel in versatz:
+        v[schluessel] = int(_zahl(v.get(schluessel) or 0, f"{name} – Minuten", -240, 240))
+    return {k: v[k] for k in vorgabe}
+
+
 def _ablauf_pruefen(roh: dict, nummer: int) -> dict:
-    """Ein Ablauf der Weihnachtszeit."""
-    a = {**programme.STANDARD_ABLAUF, **(roh or {})}
+    """Ein Ablauf der Weihnachtszeit (Modell 3.3, ältere Formen werden übertragen)."""
+    a = {**programme.STANDARD_ABLAUF, **programme._aus_alter_form(roh or {})}
     a["id"] = str(a.get("id") or "").strip() or uuid.uuid4().hex[:8]
     a["name"] = str(a.get("name") or "").strip()[:40] or f"Ablauf {nummer + 1}"
-    if a.get("licht_an") not in ("sonnenuntergang", "daemmerung", "uhrzeit"):
-        a["licht_an"] = "sonnenuntergang"
-    for schluessel, name in (("licht_an_zeit", "Licht an"), ("licht_aus", "Licht aus")):
-        wert = str(a.get(schluessel) or "").strip()
-        if not _TIME_RE.match(wert):
-            raise ValidationError(f"{a['name']} – {name}: ungültige Uhrzeit {wert!r}")
-        a[schluessel] = wert
-    wert = str(a.get("licht_aus_vor_schulfrei") or "").strip()
-    if wert and not _TIME_RE.match(wert):
-        raise ValidationError(f"{a['name']} – Licht aus vor freien Tagen: ungültige Uhrzeit {wert!r}")
-    a["licht_aus_vor_schulfrei"] = wert
-    a["licht_an_versatz"] = int(_zahl(a.get("licht_an_versatz") or 0, "Versatz Licht an", -180, 180))
-    a["morgens_vorlauf"] = int(_zahl(a.get("morgens_vorlauf") or 0, "Vorlauf am Morgen", 0, 180))
+    for teil in ("morgens", "abends"):
+        block = a.get(teil) or {}
+        a[teil] = {"schultag": _variante_pruefen(block.get("schultag"), teil, a["name"], False),
+                   "schulfrei": _variante_pruefen(block.get("schulfrei"), teil, a["name"], True)}
     a["frueher_schliessen"] = bool(a.get("frueher_schliessen"))
     a["lichter"] = list(dict.fromkeys(
         str(l).strip() for l in (a.get("lichter") or [])
