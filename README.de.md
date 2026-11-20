@@ -15,9 +15,9 @@ dazu, warum.
 
 ![Heute: alle Rollos mit Stellung, Begründung und nächstem Wechsel](rolloplaner/doku/bilder/uebersicht.png)
 
-Seit 3.0 hat die Oberfläche vier Bereiche: **Heute**, **Tagesablauf**,
-**Programme** und **Einstellungen**. Alles Feinere – eigene Schalter,
-Bedingungen, Gruppen, Kontakte, Rauchmelder – steht in der erweiterten Ansicht.
+Die Oberfläche hat vier Bereiche: **Heute**, **Tagesablauf**, **Programme**
+und **Einstellungen**. Jedes Rollo hat eine eigene Seite; Schalter und
+Bedingungen stehen dort, wo sie wirken.
 
 ## Installation
 
@@ -50,7 +50,9 @@ liegen **Obergruppen** (etwa Etagen) für alles, was zusammengehört: Sie könne
 einen gemeinsamen Zeitplan tragen, der zu den einzelnen dazukommt, und einen
 Freigabeschalter für den ganzen Schnitt.
 
-![Obergruppen in der erweiterten Ansicht: Rollos zuordnen, sortieren und freigeben](rolloplaner/doku/bilder/gruppen.png)
+![Etagen: Rollos zuordnen, sortieren und je Etage ein- und ausschalten](rolloplaner/doku/bilder/gruppen.png)
+
+![Schalter: wofür jeder gilt, mit Umbenennen](rolloplaner/doku/bilder/schalter.png)
 
 Dazu:
 

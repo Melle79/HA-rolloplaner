@@ -1,5 +1,32 @@
 # Änderungen
 
+## 3.1.0 – 20.11.2026
+
+**Die erweiterte Ansicht ist aufgelöst** – jede ihrer Funktionen steht jetzt
+dort, wo man sie sucht, und nichts mehr ganz unten.
+
+* **Einstellungen als Kacheln:** Rollos und Zimmer, Zeitpläne, Schalter,
+  Etagen, Schultage/Urlaub/Fühler, Betrieb, Meldungen und Wächter, Anzeige,
+  Protokoll, Selbstauskunft – jeder Abschnitt öffnet sich für sich.
+* **Eine Seite je Rollo** (Tipp auf den Namen unter *Heute*): Name, Zimmer,
+  Etage, Betriebsart, Zeitplan, Fensterkontakte als Häkchenliste, Hitzeschutz
+  mit Himmelsrichtung, Rauchalarm, Urlaub, Endstellungen; Rollo hinzufügen
+  und herausnehmen.
+* **Schalter im Plan-Editor:** Die Schalter, an denen ein Plan hängt, stehen
+  als Bedienelement darüber – „Terrassentür abends schließen: normal / um 24
+  Uhr / gar nicht“. Schaltpunkte sind Sätze mit *Ändern*-Dialog;
+  Bedingungen („nur wenn …“) lassen sich dort setzen.
+* **Schalter-Liste** mit „gilt für …“, Umbenennen und dem technischen Namen
+  klein darunter (Entitäten bleiben gleich).
+* **Etagen:** Rollos per Auswahl verschieben, sortieren, je Etage ein/aus;
+  ein Etagenzeitplan erscheint nur, wenn einer benutzt wird.
+* **Rauchalarm unter Programme:** Melder und „diese Rollos öffnen“ als
+  Häkchen, Meldewege als kurze Auswahl, Probealarm (nur Meldung).
+* Neu: `POST api/schalter/<id>/stand` – einen eigenen Schalter aus der
+  Oberfläche umlegen.
+* Das Verhalten der Rollos ändert sich nicht; alle Vergleichstests gegen 2.26
+  laufen unverändert grün.
+
 ## 3.0.1 – 20.11.2026
 
 * **Die Weihnachtszeit zögert das Schließen nur hinaus, sie erzwingt es nie.**

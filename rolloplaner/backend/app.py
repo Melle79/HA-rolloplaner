@@ -818,6 +818,21 @@ def api_schalter():
     return jsonify(liste)
 
 
+@app.route("/api/schalter/<kennung>/stand", methods=["POST"])
+def api_schalter_stand(kennung: str):
+    """Einen eigenen Schalter aus der Oberfläche umlegen – derselbe Weg wie
+    über die Entität in Home Assistant."""
+    wert = str((request.get_json(force=True) or {}).get("wert") or "")
+    eintrag = next((e for e in store.load_config()["einstellungen"].get("eigene_schalter") or []
+                    if e["id"] == kennung), None)
+    if eintrag is None:
+        return jsonify({"fehler": "Schalter nicht gefunden"}), 404
+    if eintrag["art"] == "auswahl" and wert not in eintrag["optionen"]:
+        return jsonify({"fehler": f"„{eintrag['name']}“ kennt {wert!r} nicht"}), 400
+    _eigenen_schalter_setzen(kennung, wert.upper() if eintrag["art"] != "auswahl" else wert)
+    return jsonify({"id": kennung, "wert": wert})
+
+
 @app.route("/api/schalter/uebernehmen", methods=["POST"])
 def api_schalter_uebernehmen():
     """Die fremden Helfer der eingerichteten Räume durch eigene ersetzen."""

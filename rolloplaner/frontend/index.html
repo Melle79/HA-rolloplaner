@@ -8,8 +8,8 @@
   /* Rolloplaner 3 – vier Bereiche statt neun Reiter.
      Heute: was die Rollos tun und warum. Tagesablauf: der Tag als Balken,
      zum Ändern antippen. Programme: Weihnachtszeit, Urlaub, Hitzeschutz,
-     Rauchalarm. Einstellungen: der Rest; Bedingungen, Schalter und Gruppen
-     stehen in der erweiterten Ansicht (erweitert.html). */
+     Rauchalarm. Einstellungen: Kacheln je Abschnitt. Seit 3.1 gibt es keine
+     erweiterte Ansicht mehr – jede Funktion steht dort, wo man sie sucht. */
   :root{
     --bg:#10141a; --flaeche:#181d25; --flaeche2:#1e2530; --flaeche3:#242c38;
     --linie:#2b323d; --text:#e9edf2; --leise:#9aa4b2; --grau:#6c7684;
@@ -161,6 +161,22 @@
   .protokoll div{display:grid; grid-template-columns:110px 1fr; gap:10px; padding:6px 0;
     border-top:1px solid var(--linie)}
 
+  .kacheln{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px}
+  .kachel{display:flex; flex-direction:column; gap:4px; text-align:left; padding:16px 18px; min-height:88px;
+    border:1px solid var(--linie); border-radius:var(--rund-gross); background:var(--flaeche); cursor:pointer}
+  .kachel:hover{background:var(--flaeche2)}
+  .kachel b{font-size:1rem}
+  .grau{color:var(--grau)}
+  .satz{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 0; border-top:1px solid var(--linie)}
+  .satz:first-of-type{border-top:0}
+  .satz .text{flex:1; min-width:200px}
+  .schalterzeile{display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:6px 0}
+  .schalterzeile .n{flex:1; min-width:160px}
+  .hakenliste{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:0 12px}
+  .etage{padding:12px 0; border-top:1px solid var(--linie)}
+  .etage:first-child{border-top:0; padding-top:0}
+  .rollo button.name{border:0; background:none; padding:0; font-weight:600; cursor:pointer; text-align:left;
+    text-decoration:underline; text-decoration-color:var(--linie); text-underline-offset:3px}
   dialog{margin:auto; background:var(--flaeche); color:var(--text); border:1px solid var(--linie);
     border-radius:var(--rund-gross); padding:0; width:min(620px,94vw); max-height:92vh}
   dialog::backdrop{background:rgba(6,9,13,.72)}
@@ -242,7 +258,7 @@ const UI = {
     "knopf.verwerfen":"Verwerfen","knopf.einstellen":"Einstellen","knopf.entfernen":"Entfernen",
     "knopf.bearbeiten":"Bearbeiten",
     "allg.gespeichert":"Gespeichert","allg.fehler":"Fehler: {t}","allg.offen":"offen","allg.zu":"zu",
-    "allg.prozent_offen":"{n} % offen","allg.an":"an","allg.keine":"keine",
+    "allg.prozent_offen":"{n} % offen","allg.an":"an","allg.aus":"aus","allg.keine":"keine",
     "lage.heute":"Heute","lage.morgen":"morgen {art}","lage.schultag":"Schultag","lage.schulfrei":"schulfrei",
     "lage.unbekannt":"unbekannt","lage.sonne":"Sonne","lage.aussen":"außen {t} °C","lage.naechstes":"Als Nächstes",
     "lage.nichts":"nichts geplant","lage.programme":"Programme","lage.kein_programm":"keins aktiv",
@@ -259,15 +275,13 @@ const UI = {
     "ab.schultag":"Schultag","ab.schulfrei":"Schulfrei / Ferien","ab.mit_weihnacht":"mit Weihnachtszeit",
     "ab.ohne_weihnacht":"ohne","ab.licht":"Weihnachtslicht","ab.nur_hand":"nur von Hand",
     "ab.l_offen":"offen","ab.l_teil":"teilweise","ab.l_zu":"zu","ab.l_licht":"Weihnachtslicht an",
-    "ed.gemeinsam":"Gemeinsamer Plan „{name}“ – gilt auch für {andere}.","ed.gemeinsam_allein":"Gemeinsamer Plan „{name}“.",
-    "ed.eigen":"Eigener Plan dieses Rollos.","ed.folgt":"Folgt","ed.eigener":"einem eigenen Plan",
-    "ed.oeffnen":"Öffnen","ed.schliessen":"Schließen und Zwischenstellungen","ed.neu_auf":"+ Öffnen","ed.neu_zu":"+ Schließen",
+    "ed.folgt":"Folgt","ed.eigener":"einem eigenen Plan",
+    "ed.neu_auf":"+ Öffnen","ed.neu_zu":"+ Schließen",
     "ed.um":"um","ed.bei":"bei","ed.uhrzeit":"Uhrzeit","ed.sonnenaufgang":"Sonnenaufgang","ed.sonnenuntergang":"Sonnenuntergang",
     "ed.daemmerung":"Dämmerung","ed.fruehestens":"frühestens","ed.spaetestens":"spätestens","ed.versatz":"Versatz (min)",
     "ed.immer":"jeden Tag","ed.schultag":"an Schultagen","ed.schulfrei":"an schulfreien Tagen",
     "ed.morgen_schultag":"wenn morgen Schule ist","ed.morgen_schulfrei":"wenn morgen schulfrei ist",
-    "ed.mehr":"Erweitert: Wochentage, Versatz, Bedingungen","ed.bedingung":"nur wenn {name} = {wert}",
-    "ed.keine_bedingung":"keine Bedingung","ed.bedingung_hinweis":"Bedingungen ändern: erweiterte Ansicht.",
+    "ed.bedingung":"– nur wenn „{name}“ {wert} ist",
     "ed.sonst":"Was sonst noch gilt","ed.hitze_an":"Hitzeschutz: fährt im Sommer auf {n} % offen, wenn die Sonne reinscheint.",
     "ed.hitze_aus":"Kein Hitzeschutz.","ed.kontakt":"Fenster offen: fährt nicht zu ({n} Kontakt).",
     "ed.kein_kontakt":"Kein Fensterkontakt.","ed.weihnacht":"Weihnachtszeit: {was}.","ed.leer":"Noch keine Schaltpunkte.",
@@ -294,25 +308,105 @@ const UI = {
     "pg.hitze_niemand":"nur wenn niemand im Raum ist","pg.hitze_rollos":"Welche Rollos: unter Einstellungen › Rollos.",
     "pg.rauch":"Rauchalarm","pg.rauch_text":"Schlägt ein Melder an, öffnen alle freigegebenen Rollos als Fluchtweg.",
     "pg.fluchtweg":"Rollos bei Rauch öffnen (Fluchtweg)","pg.nachlauf":"Zeitplan danach noch ruhen lassen (Minuten)",
-    "pg.melder":"{n} Rauchmelder überwacht. Auswahl und Probe: erweiterte Ansicht.",
     "es.betrieb":"Betrieb","es.automatik":"Automatik – ohne Haken fährt der Planer gar nichts",
     "es.trockenlauf":"Trockenlauf – rechnen und protokollieren, aber nichts fahren und nichts schalten",
     "es.hand":"Von Hand gefahrene Rollos in Ruhe lassen","es.hand_stunden":"so lange (Stunden)",
     "es.sprache":"Sprache","es.wie_ha":"wie Home Assistant",
     "es.rollos":"Rollos und Zimmer","es.tage":"Schultage, Urlaub, Fühler","es.schulfrei":"Heute schulfrei",
     "es.schulfrei_morgen":"Morgen schulfrei","es.aussen":"Außentemperatur","es.keiner":"– keiner –",
-    "es.waechter":"Wächter","es.waechter_an":"Ausfälle und Blockaden melden","es.stumm":"Meldung nach Stunden ohne Lebenszeichen",
+    "es.waechter_an":"Ausfälle und Blockaden melden","es.stumm":"Meldung nach Stunden ohne Lebenszeichen",
     "es.anzeige":"Anzeige in Home Assistant","es.invertiert":"In der Karte und den Sensoren 0 % = offen zählen (wie Amazon Echo)",
     "es.invertiert_hilfe":"Diese Seite zeigt immer „% offen“.",
     "es.protokoll":"Protokoll","es.protokoll_leer":"Noch nichts gefahren.",
-    "es.erweitert":"Für Fortgeschrittene","es.erweitert_text":"Eigene Schalter, Bedingungen an Schaltpunkten, Gruppen, Fensterkontakte, Rauchmelder, Selbstauskunft.",
-    "es.erweitert_knopf":"Erweiterte Ansicht öffnen",
     "rd.name":"Name","rd.raum":"Zimmer","rd.art":"Was steckt dahinter","rd.automatik":"Automatik für dieses Rollo",
     "rd.betrieb":"Betriebsart","rd.b.plan":"Zeitplan – auf und zu","rd.b.nur_schliessen":"nur schließen",
     "rd.b.beobachten":"nur beobachten (fährt nicht)","rd.b.von_hand":"nur von Hand",
     "rd.plan":"Zeitplan","rd.hitze":"Hitzeschutz","rd.richtung":"Fenster zeigt nach (°, 180 = Süd)",
     "rd.fluchtweg":"Bei Rauch öffnen","art.fenster":"Fenster","art.balkontuer":"Balkontür",
-    "art.terrassentuer":"Terrassentür","art.dachfenster":"Dachfenster","art.haustuer":"Haustür",
+    "art.terrassentuer":"Terrassentür","art.dachfenster":"Dachfenster","art.haustuer":"Haustür",    "sw.gar_nicht":"gar nicht",
+    "sw.um":"um {zeit}",
+    "ed.rollo_seite":"Rollo bearbeiten",
+    "ed.auch_fuer":"gilt auch für {andere}",
+    "ed.schalter":"Schalter für diesen Plan",
+    "ed.ablauf":"So läuft der Tag",
+    "knopf.aendern":"Ändern",
+    "ed.rauch_an":"Rauchalarm: öffnet.",
+    "ed.rauch_aus":"Rauchalarm: bleibt, wie es ist.",
+    "pd.titel":"Schaltpunkt",
+    "pd.stellung":"Stellung",
+    "pd.wann":"Wann",
+    "pd.gilt":"An welchen Tagen",
+    "pd.tage":"Wochentage",
+    "pd.nur_wenn":"Nur wenn …",
+    "pd.immer":"Gilt immer – keine Bedingung.",
+    "pd.bedingung_neu":"+ Bedingung",
+    "es.rollos_kurz":"Name, Zimmer, Etage, Kontakte, Hitzeschutz",
+    "es.plaene":"Zeitpläne",
+    "es.plaene_kurz":"Gemeinsame Pläne anlegen, umbenennen, stilllegen",
+    "es.schalter":"Schalter",
+    "es.schalter_kurz":"Eigene Schalter und wofür sie gelten",
+    "es.etagen":"Etagen",
+    "es.etagen_kurz":"Welche Rollos zusammengehören, je Etage ein/aus",
+    "es.tage_kurz":"Schulfrei, Urlaub, Außentemperatur, Sonne",
+    "es.betrieb_kurz":"Automatik, Trockenlauf, Handbetrieb, Sprache",
+    "es.meldungen":"Meldungen und Wächter",
+    "es.meldungen_kurz":"Ausfälle melden, wohin, Probemeldung",
+    "es.anzeige_kurz":"Zählweise in Karte und Sensoren",
+    "es.protokoll_kurz":"Was wann warum gefahren ist",
+    "es.auskunft":"Selbstauskunft",
+    "es.auskunft_kurz":"Was fehlt oder auffällt",
+    "es.plan_name":"Plan „{name}“",
+    "es.etage_name":"Etage „{name}“",
+    "es.folgen":"folgen: {n}",
+    "es.gruppenplan":"Etagenplan",
+    "es.niemand":"niemand folgt",
+    "es.n_punkte":"{n} Schaltpunkte",
+    "es.plan_aktiv":"in Betrieb",
+    "es.plan_neu_name":"Neuer Zeitplan",
+    "es.plan_neu":"Zeitplan anlegen",
+    "es.gilt_fuer":"gilt für {n}",
+    "es.unbenutzt":"wird nirgends benutzt",
+    "es.neu_schalter":"Neuer Ein/Aus-Schalter",
+    "es.neu_auswahl":"Neue Auswahl",
+    "es.ohne_etage":"ohne Etage",
+    "es.etage_an":"eingeschaltet",
+    "es.freigabe":"Freigabe durch",
+    "es.etage_neu":"Neue Etage",
+    "es.sonne":"Sonne",
+    "es.takt":"Rechnen alle … Sekunden",
+    "es.hindernis":"Hindernis- und Blockademeldungen der Antriebe auswerten",
+    "es.meldeweg":"Melden an",
+    "es.probe":"Probemeldung senden",
+    "es.probe_gesendet":"Probemeldung gesendet",
+    "es.schwere.fehler":"Fehler",
+    "es.schwere.warnung":"Warnung",
+    "es.schwere.hinweis":"Hinweis",
+    "es.alles_gut":"Nichts aufgefallen.",
+    "es.rollo_neu":"+ Rollo hinzufügen …","es.uebernahme":"Aus vorhandenen Automationen übernehmen","es.uebernahme_frage":"Die Rollos und Zeitpläne aus den vorhandenen Automationen übernehmen?","rd.entfernen":"Rollo aus dem Planer nehmen","rd.entfernen_frage":"Das Rollo aus dem Planer nehmen? In Home Assistant bleibt es, wie es ist.",
+    "es.hinzufuegen":"+ hinzufügen …",
+    "rd.etage":"Etage",
+    "rd.wie":"So fährt es",
+    "rd.kontakt":"Fensterkontakt",
+    "rd.kontakt_hilfe":"Fährt nicht zu, solange einer davon offen ist.",
+    "rd.grad":"genau (°)",
+    "rd.r.N":"Nord",
+    "rd.r.NO":"Nordost",
+    "rd.r.O":"Ost",
+    "rd.r.SO":"Südost",
+    "rd.r.S":"Süd",
+    "rd.r.SW":"Südwest",
+    "rd.r.W":"West",
+    "rd.r.NW":"Nordwest",
+    "rd.sonst":"Außerdem",
+    "rd.urlaub":"Im Urlaub mit Anwesenheitssimulation (sonst zu)",
+    "rd.pos_offen":"„offen“ heißt (% offen)",
+    "rd.pos_zu":"„zu“ heißt (% offen)",
+    "pg.melder_titel":"Melder",
+    "pg.melder_hilfe":"Kein Haken = alle {n} Rauchmelder zählen.",
+    "pg.rauch_rollos":"Diese Rollos öffnen bei Alarm",
+    "pg.rauch_melden":"Meldung an",
+    "pg.rauch_melden_hilfe":"Kein Haken = dieselben Wege wie der Wächter.",
+    "pg.probealarm":"Probealarm (nur Meldung, fährt nichts)",
   },
   en: {
     "nav.heute":"Today","nav.ablauf":"Daily schedule","nav.programme":"Programs","nav.einstellungen":"Settings",
@@ -324,7 +418,7 @@ const UI = {
     "knopf.verwerfen":"Discard","knopf.einstellen":"Configure","knopf.entfernen":"Remove",
     "knopf.bearbeiten":"Edit",
     "allg.gespeichert":"Saved","allg.fehler":"Error: {t}","allg.offen":"open","allg.zu":"closed",
-    "allg.prozent_offen":"{n} % open","allg.an":"on","allg.keine":"none",
+    "allg.prozent_offen":"{n} % open","allg.an":"on","allg.aus":"off","allg.keine":"none",
     "lage.heute":"Today","lage.morgen":"tomorrow {art}","lage.schultag":"school day","lage.schulfrei":"day off",
     "lage.unbekannt":"unknown","lage.sonne":"Sun","lage.aussen":"outside {t} °C","lage.naechstes":"Up next",
     "lage.nichts":"nothing planned","lage.programme":"Programs","lage.kein_programm":"none active",
@@ -341,15 +435,13 @@ const UI = {
     "ab.schultag":"School day","ab.schulfrei":"Day off / holidays","ab.mit_weihnacht":"with Christmas time",
     "ab.ohne_weihnacht":"without","ab.licht":"Christmas lights","ab.nur_hand":"manual only",
     "ab.l_offen":"open","ab.l_teil":"partly","ab.l_zu":"closed","ab.l_licht":"Christmas lights on",
-    "ed.gemeinsam":"Shared schedule “{name}” – also used by {andere}.","ed.gemeinsam_allein":"Shared schedule “{name}”.",
-    "ed.eigen":"This shutter's own schedule.","ed.folgt":"Follows","ed.eigener":"its own schedule",
-    "ed.oeffnen":"Opening","ed.schliessen":"Closing and intermediate positions","ed.neu_auf":"+ Open","ed.neu_zu":"+ Close",
+    "ed.folgt":"Follows","ed.eigener":"its own schedule",
+    "ed.neu_auf":"+ Open","ed.neu_zu":"+ Close",
     "ed.um":"at","ed.bei":"at","ed.uhrzeit":"time","ed.sonnenaufgang":"sunrise","ed.sonnenuntergang":"sunset",
     "ed.daemmerung":"dusk","ed.fruehestens":"not before","ed.spaetestens":"no later than","ed.versatz":"Offset (min)",
     "ed.immer":"every day","ed.schultag":"on school days","ed.schulfrei":"on days off",
     "ed.morgen_schultag":"if tomorrow is a school day","ed.morgen_schulfrei":"if tomorrow is a day off",
-    "ed.mehr":"Advanced: weekdays, offset, conditions","ed.bedingung":"only if {name} = {wert}",
-    "ed.keine_bedingung":"no condition","ed.bedingung_hinweis":"Change conditions in the advanced view.",
+    "ed.bedingung":"– only if “{name}” is {wert}",
     "ed.sonst":"What else applies","ed.hitze_an":"Heat protection: in summer it moves to {n} % open when the sun shines in.",
     "ed.hitze_aus":"No heat protection.","ed.kontakt":"Window open: does not close ({n} contact).",
     "ed.kein_kontakt":"No window contact.","ed.weihnacht":"Christmas time: {was}.","ed.leer":"No switching points yet.",
@@ -376,25 +468,105 @@ const UI = {
     "pg.hitze_niemand":"only when nobody is in the room","pg.hitze_rollos":"Which shutters: Settings › Shutters.",
     "pg.rauch":"Smoke alarm","pg.rauch_text":"When a detector triggers, all released shutters open as an escape route.",
     "pg.fluchtweg":"Open shutters on smoke (escape route)","pg.nachlauf":"Keep the schedule paused afterwards (minutes)",
-    "pg.melder":"{n} smoke detectors watched. Selection and test: advanced view.",
     "es.betrieb":"Operation","es.automatik":"Automation – unchecked, the planner moves nothing",
     "es.trockenlauf":"Dry run – calculate and log, but move and switch nothing",
     "es.hand":"Leave shutters moved by hand alone","es.hand_stunden":"for (hours)",
     "es.sprache":"Language","es.wie_ha":"like Home Assistant",
     "es.rollos":"Shutters and rooms","es.tage":"School days, vacation, sensors","es.schulfrei":"Day off today",
     "es.schulfrei_morgen":"Day off tomorrow","es.aussen":"Outside temperature","es.keiner":"– none –",
-    "es.waechter":"Watchdog","es.waechter_an":"Report failures and blockages","es.stumm":"Report after hours without a sign of life",
+    "es.waechter_an":"Report failures and blockages","es.stumm":"Report after hours without a sign of life",
     "es.anzeige":"Display in Home Assistant","es.invertiert":"Count 0 % = open in the card and sensors (like Amazon Echo)",
     "es.invertiert_hilfe":"This page always shows “% open”.",
     "es.protokoll":"Log","es.protokoll_leer":"Nothing moved yet.",
-    "es.erweitert":"Advanced","es.erweitert_text":"Own switches, conditions on switching points, groups, window contacts, smoke detectors, self-check.",
-    "es.erweitert_knopf":"Open advanced view",
     "rd.name":"Name","rd.raum":"Room","rd.art":"What is behind it","rd.automatik":"Automation for this shutter",
     "rd.betrieb":"Mode","rd.b.plan":"Schedule – open and close","rd.b.nur_schliessen":"close only",
     "rd.b.beobachten":"observe only (does not move)","rd.b.von_hand":"manual only",
     "rd.plan":"Schedule","rd.hitze":"Heat protection","rd.richtung":"Window faces (°, 180 = south)",
     "rd.fluchtweg":"Open on smoke","art.fenster":"Window","art.balkontuer":"Balcony door",
-    "art.terrassentuer":"Patio door","art.dachfenster":"Roof window","art.haustuer":"Front door",
+    "art.terrassentuer":"Patio door","art.dachfenster":"Roof window","art.haustuer":"Front door",    "sw.gar_nicht":"not at all",
+    "sw.um":"at {zeit}",
+    "ed.rollo_seite":"Edit shutter",
+    "ed.auch_fuer":"also used by {andere}",
+    "ed.schalter":"Switches for this schedule",
+    "ed.ablauf":"How the day runs",
+    "knopf.aendern":"Change",
+    "ed.rauch_an":"Smoke alarm: opens.",
+    "ed.rauch_aus":"Smoke alarm: stays as it is.",
+    "pd.titel":"Switching point",
+    "pd.stellung":"Position",
+    "pd.wann":"When",
+    "pd.gilt":"On which days",
+    "pd.tage":"Weekdays",
+    "pd.nur_wenn":"Only if …",
+    "pd.immer":"Always applies – no condition.",
+    "pd.bedingung_neu":"+ Condition",
+    "es.rollos_kurz":"Name, room, floor, contacts, heat protection",
+    "es.plaene":"Schedules",
+    "es.plaene_kurz":"Create, rename, pause shared schedules",
+    "es.schalter":"Switches",
+    "es.schalter_kurz":"Own switches and what they apply to",
+    "es.etagen":"Floors",
+    "es.etagen_kurz":"Which shutters belong together, on/off per floor",
+    "es.tage_kurz":"Day off, vacation, outside temperature, sun",
+    "es.betrieb_kurz":"Automation, dry run, manual mode, language",
+    "es.meldungen":"Notifications and watchdog",
+    "es.meldungen_kurz":"Report failures, where to, test message",
+    "es.anzeige_kurz":"Counting in card and sensors",
+    "es.protokoll_kurz":"What moved when and why",
+    "es.auskunft":"Self-check",
+    "es.auskunft_kurz":"What is missing or stands out",
+    "es.plan_name":"Schedule “{name}”",
+    "es.etage_name":"Floor “{name}”",
+    "es.folgen":"used by: {n}",
+    "es.gruppenplan":"floor schedule",
+    "es.niemand":"nobody uses it",
+    "es.n_punkte":"{n} switching points",
+    "es.plan_aktiv":"in use",
+    "es.plan_neu_name":"New schedule",
+    "es.plan_neu":"Create schedule",
+    "es.gilt_fuer":"applies to {n}",
+    "es.unbenutzt":"not used anywhere",
+    "es.neu_schalter":"New on/off switch",
+    "es.neu_auswahl":"New selection",
+    "es.ohne_etage":"no floor",
+    "es.etage_an":"switched on",
+    "es.freigabe":"Released by",
+    "es.etage_neu":"New floor",
+    "es.sonne":"Sun",
+    "es.takt":"Calculate every … seconds",
+    "es.hindernis":"Evaluate obstacle and blockage reports of the motors",
+    "es.meldeweg":"Notify",
+    "es.probe":"Send test message",
+    "es.probe_gesendet":"Test message sent",
+    "es.schwere.fehler":"Error",
+    "es.schwere.warnung":"Warning",
+    "es.schwere.hinweis":"Note",
+    "es.alles_gut":"Nothing stands out.",
+    "es.rollo_neu":"+ Add shutter …","es.uebernahme":"Take over from existing automations","es.uebernahme_frage":"Take over the shutters and schedules from the existing automations?","rd.entfernen":"Remove shutter from the planner","rd.entfernen_frage":"Remove this shutter from the planner? It stays in Home Assistant as it is.",
+    "es.hinzufuegen":"+ add …",
+    "rd.etage":"Floor",
+    "rd.wie":"How it moves",
+    "rd.kontakt":"Window contact",
+    "rd.kontakt_hilfe":"Does not close while one of them is open.",
+    "rd.grad":"exact (°)",
+    "rd.r.N":"North",
+    "rd.r.NO":"North-east",
+    "rd.r.O":"East",
+    "rd.r.SO":"South-east",
+    "rd.r.S":"South",
+    "rd.r.SW":"South-west",
+    "rd.r.W":"West",
+    "rd.r.NW":"North-west",
+    "rd.sonst":"Also",
+    "rd.urlaub":"On vacation with presence simulation (otherwise closed)",
+    "rd.pos_offen":"“open” means (% open)",
+    "rd.pos_zu":"“closed” means (% open)",
+    "pg.melder_titel":"Detectors",
+    "pg.melder_hilfe":"Nothing ticked = all {n} smoke detectors count.",
+    "pg.rauch_rollos":"These shutters open on an alarm",
+    "pg.rauch_melden":"Notify",
+    "pg.rauch_melden_hilfe":"Nothing ticked = the same paths as the watchdog.",
+    "pg.probealarm":"Test alarm (message only, moves nothing)",
   },
 };
 let SPRACHE = "de";
@@ -566,7 +738,7 @@ function zeichneHeute(){
         const ist = r.ist;
         return `<div class="rollo" data-eid="${esc(r.entity_id)}">
           ${fensterBild(r)}
-          <div><div class="name">${esc(kurzname(r.name, raum.name))}</div>
+          <div><button class="name" data-seite>${esc(kurzname(r.name, raum.name))}</button>
             <div style="margin:4px 0">${zustandsSchild(r)}</div>
             <div class="info">${esc(info)}</div></div>
           <div class="prozent">${ist === null || ist === undefined ? "–" : ist}<span style="font-size:.9rem">%</span><small>${esc(t("allg.offen"))}</small></div>
@@ -583,6 +755,7 @@ function zeichneHeute(){
 $("#raeume").addEventListener("click", async (ev) => {
   const k = ev.target.closest("button"); if (!k) return;
   const eid = k.closest("[data-eid]")?.dataset.eid; if (!eid) return;
+  if (k.dataset.seite !== undefined) return rolloDialog(eid);
   k.disabled = true;
   try {
     if (k.dataset.fahre !== undefined) await versuch(() => sende("api/fahren", "POST", {rollo: eid, position: Number(k.dataset.fahre)}));
@@ -663,119 +836,149 @@ $("#ab-balken").addEventListener("click", (ev) => {
   $("#editor").scrollIntoView({behavior: "smooth", block: "start"});
 });
 
-/* Der Editor: die Schaltpunkte eines Plans als Sätze. */
+/* Der Editor: die Schaltpunkte eines Plans als Sätze. Die Schalter, an
+   denen sie hängen, stehen als Bedienelement darüber – „Abends schließen:
+   normal / um 24 Uhr / gar nicht“ statt eines Schaltpunkt-Konstrukts. */
 const AUSLOESER = ["uhrzeit","sonnenaufgang","sonnenuntergang","daemmerung"];
 const GELTUNG = ["immer","schultag","schulfrei","morgen_schultag","morgen_schulfrei"];
 const TAGE = ["mon","tue","wed","thu","fri","sat","sun"];
 const TAGNAMEN = {de:["Mo","Di","Mi","Do","Fr","Sa","So"], en:["Mo","Tu","We","Th","Fr","Sa","Su"]};
 const STELLUNGEN = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 0];
+let SCHALTER = null;
+async function ladeSchalter(){ try { SCHALTER = await hole("api/schalter"); } catch { SCHALTER = SCHALTER || []; } }
 function planVon(eid){
   const r = rolloCfg(eid); if (!r) return null;
   if (r.plan){ const p = (CONFIG.plaene || []).find((x) => x.id === r.plan); return p ? {art: "plan", plan: p} : null; }
   return {art: "rollo", rollo: r};
 }
-function schalterName(entity){
-  if (entity.startsWith("rolloplaner:")){
-    const s = (CONFIG.einstellungen.eigene_schalter || []).find((x) => "rolloplaner:" + x.id === entity);
-    return s ? s.name : entity;
-  }
-  return entity;
+const eigenId = (entity) => String(entity || "").startsWith("rolloplaner:") ? entity.slice(12) : null;
+function schalterVon(entity){
+  const id = eigenId(entity);
+  return id ? (SCHALTER || CONFIG.einstellungen.eigene_schalter || []).find((x) => x.id === id) : null;
 }
-function zeichneEditor(){
+function schalterName(entity){ const s = schalterVon(entity); return s ? s.name : entity; }
+/* „24 Uhr“ liest sich als Wahl besser als „um 24 Uhr“, „aus“ als „gar nicht“. */
+function optionText(o){
+  if (/^aus$/i.test(o)) return t("sw.gar_nicht");
+  if (/^\d{1,2}(:\d\d)? Uhr$/i.test(o)) return t("sw.um", {zeit: o});
+  return o;
+}
+const wertText = (s, w) => s && s.art === "auswahl" ? optionText(w) : (String(w).toLowerCase() === "on" ? t("allg.an") : t("allg.aus"));
+function punktSatz(p){
+  const sonne = p.ausloeser !== "uhrzeit";
+  let s = stellungText(Number(p.position)) + " ";
+  if (!sonne) s += t("ed.um") + " " + (p.start || "–");
+  else {
+    s += t("ed.bei") + " " + t("ed." + p.ausloeser);
+    if (Number(p.versatz_min)) s += ` ${Number(p.versatz_min) > 0 ? "+" : ""}${p.versatz_min} min`;
+    if (p.frueh) s += ", " + t("ed.fruehestens") + " " + p.frueh;
+    if (p.spaet) s += ", " + t("ed.spaetestens") + " " + p.spaet;
+  }
+  if (p.gilt && p.gilt !== "immer") s += " " + t("ed." + p.gilt);
+  const tage = p.tage || TAGE;
+  if (tage.length && tage.length < 7) s += " (" + TAGE.map((d, k) => tage.includes(d) ? (TAGNAMEN[SPRACHE] || TAGNAMEN.de)[k] : null).filter(Boolean).join(", ") + ")";
+  for (const w of p.wenn || []) s += " " + t("ed.bedingung", {name: schalterName(w.entity), wert: wertText(schalterVon(w.entity), w.wert)});
+  return s;
+}
+function andereRollos(planId, ohne){
+  return (CONFIG.rollos || []).filter((x) => x.plan === planId && x.entity_id !== ohne)
+    .map((x) => { const bb = (BERICHT?.rollos || []).find((y) => y.entity_id === x.entity_id); return bb ? bb.name : x.entity_id; });
+}
+async function zeichneEditor(){
   const box = $("#editor");
   if (!AUSWAHL){ box.hidden = true; return; }
   const r = rolloCfg(AUSWAHL); const b = (BERICHT?.rollos || []).find((x) => x.entity_id === AUSWAHL);
   if (!r){ box.hidden = true; return; }
+  if (!SCHALTER) await ladeSchalter();
   box.hidden = false;
   const quelle = planVon(AUSWAHL);
   if (!ENTWURF) ENTWURF = kopie(quelle?.art === "plan" ? quelle.plan.zeitplan : r.zeitplan || []);
-  const titel = b ? b.name : r.entity_id;
-  let kopf = `<div class="zeile" style="align-items:center; justify-content:space-between"><h3>${esc(titel)}</h3>
-    <label class="feld" style="flex-direction:row; align-items:center; gap:8px">${esc(t("ed.folgt"))}
+  let html = `<div class="zeile" style="align-items:center; justify-content:space-between">
+      <h3>${esc(b ? b.name : r.entity_id)}</h3>
+      <button class="knopf klein" data-rollo-seite>${esc(t("ed.rollo_seite"))}</button></div>
+    <div class="zeile" style="align-items:center; margin-top:8px">
+      <label class="feld" style="flex-direction:row; align-items:center; gap:8px">${esc(t("ed.folgt"))}
       <select id="ed-plan"><option value="">${esc(t("ed.eigener"))}</option>${(CONFIG.plaene || []).map((p) =>
-        `<option value="${esc(p.id)}" ${r.plan === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label></div>`;
+        `<option value="${esc(p.id)}" ${r.plan === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label>`;
   if (quelle?.art === "plan"){
-    const andere = (CONFIG.rollos || []).filter((x) => x.plan === r.plan && x.entity_id !== r.entity_id)
-      .map((x) => { const bb = (BERICHT?.rollos || []).find((y) => y.entity_id === x.entity_id); return bb ? bb.name : x.entity_id; });
-    kopf += `<p class="leise klein" style="margin-top:6px">${esc(andere.length ? t("ed.gemeinsam", {name: quelle.plan.name, andere: andere.join(", ")}) : t("ed.gemeinsam_allein", {name: quelle.plan.name}))}</p>`;
-  } else kopf += `<p class="leise klein" style="margin-top:6px">${esc(t("ed.eigen"))}</p>`;
-  if (r.betriebsart === "von_hand") kopf += `<p style="margin-top:10px">${esc(t("ed.hand"))}</p>`;
-  if (r.aktiv === false) kopf += `<p style="margin-top:10px">${esc(t("ed.aus"))}</p>`;
+    const andere = andereRollos(r.plan, r.entity_id);
+    html += `<span class="leise klein">${esc(andere.length ? t("ed.auch_fuer", {andere: andere.join(", ")}) : "")}</span>`;
+  }
+  html += `</div>`;
+  if (r.betriebsart === "von_hand") html += `<p style="margin-top:10px">${esc(t("ed.hand"))}</p>`;
+  if (r.aktiv === false) html += `<p style="margin-top:10px">${esc(t("ed.aus"))}</p>`;
 
-  const zeilen = ENTWURF.map((p, i) => ({p, i}));
-  const auf = zeilen.filter(({p}) => Number(p.position) >= 100);
-  const zu = zeilen.filter(({p}) => Number(p.position) < 100);
-  const karte = ({p, i}) => {
-    const sonne = p.ausloeser !== "uhrzeit";
-    return `<div class="punktkarte" data-i="${i}">
-      <div class="zeile">
-        <select data-f="position" aria-label="Stellung">${STELLUNGEN.map((s) => `<option value="${s}" ${Number(p.position) === s ? "selected" : ""}>${esc(stellungText(s))}</option>`).join("")}
-          ${STELLUNGEN.includes(Number(p.position)) ? "" : `<option value="${p.position}" selected>${esc(stellungText(Number(p.position)))}</option>`}</select>
-        <span class="leise">${esc(sonne ? t("ed.bei") : t("ed.um"))}</span>
-        <select data-f="ausloeser">${AUSLOESER.map((a) => `<option value="${a}" ${p.ausloeser === a ? "selected" : ""}>${esc(t("ed." + a))}</option>`).join("")}</select>
-        ${sonne ? `<span class="leise">${esc(t("ed.spaetestens"))}</span><input type="time" data-f="spaet" value="${esc(p.spaet || "")}">`
-                : `<input type="time" data-f="start" value="${esc(p.start || "")}" required>`}
-        <select data-f="gilt">${GELTUNG.map((g) => `<option value="${g}" ${p.gilt === g ? "selected" : ""}>${esc(t("ed." + g))}</option>`).join("")}</select>
-        <button class="knopf klein" data-weg style="margin-left:auto" aria-label="${esc(t("knopf.entfernen"))}">✕</button>
-      </div>
-      <details class="mehr"><summary>${esc(t("ed.mehr"))}</summary>
-        <div class="zeile" style="margin-top:10px">
-          <div class="tage">${TAGE.map((d, k) => `<label><input type="checkbox" data-tag="${d}" ${(p.tage || []).includes(d) ? "checked" : ""}><span>${TAGNAMEN[SPRACHE]?.[k] || TAGNAMEN.de[k]}</span></label>`).join("")}</div>
-          ${sonne ? `<label class="feld">${esc(t("ed.versatz"))}<input type="number" data-f="versatz_min" value="${Number(p.versatz_min || 0)}"></label>
-            <label class="feld">${esc(t("ed.fruehestens"))}<input type="time" data-f="frueh" value="${esc(p.frueh || "")}"></label>` : ""}
-        </div>
-        <p class="leise klein" style="margin-top:8px">${esc((p.wenn || []).length ? p.wenn.map((w) => t("ed.bedingung", {name: schalterName(w.entity), wert: w.wert})).join(" · ") : t("ed.keine_bedingung"))}
-          ${(p.wenn || []).length ? " – " + esc(t("ed.bedingung_hinweis")) : ""}</p>
-      </details></div>`;
-  };
-  const xcfg = CONFIG.einstellungen.weihnachtszeit || {};
-  const xw = (xcfg.rollos || {})[AUSWAHL];
-  const sonst = [
-    r.beschattung ? t("ed.hitze_an", {n: r.beschattung_position ?? CONFIG.einstellungen.beschattung?.position ?? 35}) : t("ed.hitze_aus"),
-    (r.fenster || []).length ? t("ed.kontakt", {n: r.fenster.length}) : t("ed.kein_kontakt"),
-  ];
-  if (xw !== undefined) sonst.push(t("ed.weihnacht", {was: xw === "offen" ? t("pg.bleibt_offen") : t("pg.zwischen", {n: xw})}));
-  box.innerHTML = kopf + `<div class="trenn"></div>
-    <h2>${esc(t("ed.oeffnen"))}</h2>${auf.map(karte).join("") || `<p class="leer">${esc(t("ed.leer"))}</p>`}
-    <h2 style="margin-top:16px">${esc(t("ed.schliessen"))}</h2>${zu.map(karte).join("") || `<p class="leer">${esc(t("ed.leer"))}</p>`}
-    <div class="zeile" style="margin-top:14px">
+  // Die Schalter, an denen dieser Plan hängt – als Bedienelement.
+  const benutzte = [...new Set(ENTWURF.flatMap((p) => (p.wenn || []).map((w) => w.entity)).filter(eigenId))];
+  if (benutzte.length){
+    html += `<div class="trenn"></div><h2>${esc(t("ed.schalter"))}</h2>`;
+    for (const e of benutzte){
+      const s = schalterVon(e); if (!s) continue;
+      const stand = s.zustand ?? s.vorgabe;
+      const optionen = s.art === "auswahl" ? s.optionen : ["on", "off"];
+      html += `<div class="schalterzeile"><span class="n">${esc(s.name)}</span>
+        <div class="wahl" role="group" aria-label="${esc(s.name)}">${optionen.map((o) =>
+          `<button data-sw="${esc(s.id)}" data-wert="${esc(o)}" class="${String(stand) === o ? "an" : ""}" aria-pressed="${String(stand) === o}">${esc(s.art === "auswahl" ? optionText(o) : (o === "on" ? t("allg.an") : t("allg.aus")))}</button>`).join("")}</div></div>`;
+    }
+  }
+
+  html += `<div class="trenn"></div><h2>${esc(t("ed.ablauf"))}</h2>`;
+  const sortiert = ENTWURF.map((p, i) => ({p, i})).sort((a, c) =>
+    (Number(c.p.position) >= 100) - (Number(a.p.position) >= 100) || String(a.p.start || a.p.spaet || "").localeCompare(String(c.p.start || c.p.spaet || "")));
+  html += sortiert.map(({p, i}) => `<div class="satz" data-i="${i}">
+      <span class="text">${esc(punktSatz(p))}</span>
+      ${p.ausloeser === "uhrzeit" ? `<input type="time" data-f="start" value="${esc(p.start || "")}" aria-label="${esc(t("ed.uhrzeit"))}">`
+        : `<input type="time" data-f="spaet" value="${esc(p.spaet || "")}" aria-label="${esc(t("ed.spaetestens"))}" title="${esc(t("ed.spaetestens"))}">`}
+      <button class="knopf klein" data-aendern>${esc(t("knopf.aendern"))}</button>
+      <button class="knopf klein" data-weg aria-label="${esc(t("knopf.entfernen"))}">✕</button></div>`).join("")
+    || `<p class="leer">${esc(t("ed.leer"))}</p>`;
+  html += `<div class="zeile" style="margin-top:14px">
       <button class="knopf" data-neu="auf">${esc(t("ed.neu_auf"))}</button>
       <button class="knopf" data-neu="zu">${esc(t("ed.neu_zu"))}</button>
       <span style="flex:1"></span>
       <button class="knopf" data-verwerfen>${esc(t("knopf.verwerfen"))}</button>
-      <button class="knopf haupt" data-speichern>${esc(t("knopf.speichern"))}</button>
-    </div>
-    <div class="trenn"></div><h2>${esc(t("ed.sonst"))}</h2>
+      <button class="knopf haupt" data-speichern>${esc(t("knopf.speichern"))}</button></div>`;
+
+  const xw = (CONFIG.einstellungen.weihnachtszeit?.rollos || {})[AUSWAHL];
+  const sonst = [
+    r.beschattung ? t("ed.hitze_an", {n: r.beschattung_position ?? CONFIG.einstellungen.beschattung?.position ?? 35}) : t("ed.hitze_aus"),
+    (r.fenster || []).length ? t("ed.kontakt", {n: r.fenster.length}) : t("ed.kein_kontakt"),
+    r.fluchtweg !== false ? t("ed.rauch_an") : t("ed.rauch_aus"),
+  ];
+  if (xw !== undefined) sonst.push(t("ed.weihnacht", {was: xw === "offen" ? t("pg.bleibt_offen") : t("pg.zwischen", {n: xw})}));
+  html += `<div class="trenn"></div><h2>${esc(t("ed.sonst"))}</h2>
     <ul class="leise klein" style="padding-left:18px">${sonst.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>`;
+  box.innerHTML = html;
 }
 $("#editor").addEventListener("change", async (ev) => {
   const el = ev.target;
   if (el.id === "ed-plan"){
     const r = kopie(rolloCfg(AUSWAHL)); r.plan = el.value;
-    if (!el.value && !(r.zeitplan || []).length){
-      const q = planVon(AUSWAHL); if (q?.art === "plan") r.zeitplan = kopie(q.plan.zeitplan);
-    }
+    if (!el.value && !(r.zeitplan || []).length){ const q = planVon(AUSWAHL); if (q?.art === "plan") r.zeitplan = kopie(q.plan.zeitplan); }
     try { await versuch(() => sende(`api/rollos/${encodeURIComponent(AUSWAHL)}`, "PUT", r), t("allg.gespeichert")); } catch { return; }
     ENTWURF = null; await laden(); await ladeAblauf(); zeichneEditor(); return;
   }
-  const karte = el.closest("[data-i]"); if (!karte) return;
-  const p = ENTWURF[Number(karte.dataset.i)];
-  if (el.dataset.tag){ const s = new Set(p.tage || []); el.checked ? s.add(el.dataset.tag) : s.delete(el.dataset.tag); p.tage = TAGE.filter((d) => s.has(d)); return; }
-  const f = el.dataset.f; if (!f) return;
-  p[f] = ["position","versatz_min"].includes(f) ? Number(el.value) : el.value;
-  if (f === "ausloeser") zeichneEditor();
+  const zeile = el.closest("[data-i]"); if (!zeile || !el.dataset.f) return;
+  ENTWURF[Number(zeile.dataset.i)][el.dataset.f] = el.value;
+  zeile.querySelector(".text").textContent = punktSatz(ENTWURF[Number(zeile.dataset.i)]);
 });
 $("#editor").addEventListener("click", async (ev) => {
   const k = ev.target.closest("button"); if (!k) return;
-  if (k.dataset.weg !== undefined){ ENTWURF.splice(Number(k.closest("[data-i]").dataset.i), 1); zeichneEditor(); }
-  else if (k.dataset.neu){
-    ENTWURF.push(k.dataset.neu === "auf"
-      ? {ausloeser:"uhrzeit", start:"07:00", position:100, gilt:"immer", tage:[...TAGE], versatz_min:0, frueh:"", spaet:"", wenn:[], name:""}
-      : {ausloeser:"sonnenuntergang", start:"", position:0, gilt:"immer", tage:[...TAGE], versatz_min:0, frueh:"", spaet:"22:00", wenn:[], name:""});
-    zeichneEditor();
+  if (k.dataset.rolloSeite !== undefined) return rolloDialog(AUSWAHL);
+  if (k.dataset.sw){
+    try { await versuch(() => sende(`api/schalter/${encodeURIComponent(k.dataset.sw)}/stand`, "POST", {wert: k.dataset.wert})); } catch { return; }
+    await ladeSchalter(); await nachrechnen(); zeichneEditor(); return;
   }
-  else if (k.dataset.verwerfen !== undefined){ ENTWURF = null; zeichneEditor(); }
-  else if (k.dataset.speichern !== undefined){
+  if (k.dataset.weg !== undefined){ ENTWURF.splice(Number(k.closest("[data-i]").dataset.i), 1); zeichneEditor(); return; }
+  if (k.dataset.aendern !== undefined){ const i = Number(k.closest("[data-i]").dataset.i); punktDialog(ENTWURF[i], (neu) => { ENTWURF[i] = neu; zeichneEditor(); }); return; }
+  if (k.dataset.neu){
+    const neu = k.dataset.neu === "auf"
+      ? {ausloeser:"uhrzeit", start:"07:00", position:100, gilt:"immer", tage:[...TAGE], versatz_min:0, frueh:"", spaet:"", wenn:[], name:""}
+      : {ausloeser:"sonnenuntergang", start:"", position:0, gilt:"immer", tage:[...TAGE], versatz_min:0, frueh:"", spaet:"22:00", wenn:[], name:""};
+    punktDialog(neu, (p) => { ENTWURF.push(p); zeichneEditor(); }); return;
+  }
+  if (k.dataset.verwerfen !== undefined){ ENTWURF = null; zeichneEditor(); return; }
+  if (k.dataset.speichern !== undefined){
     const q = planVon(AUSWAHL);
     try {
       if (q.art === "plan") await versuch(() => sende(`api/plaene/${encodeURIComponent(q.plan.id)}`, "PUT", {...q.plan, zeitplan: ENTWURF}), t("allg.gespeichert"));
@@ -784,6 +987,62 @@ $("#editor").addEventListener("click", async (ev) => {
     ENTWURF = null; await laden(); await ladeAblauf(); zeichneEditor();
   }
 });
+
+/* Ein Schaltpunkt im Dialog – alles, was früher eine Tabellenzeile war. */
+function punktDialog(punkt, fertig){
+  const p = kopie(punkt); p.wenn = p.wenn || []; p.tage = p.tage || [...TAGE];
+  const eigene = (SCHALTER || CONFIG.einstellungen.eigene_schalter || []);
+  const zeichne = () => {
+    const sonne = p.ausloeser !== "uhrzeit";
+    $("#dlg-inhalt").innerHTML = `
+      <div class="zeile">
+        <label class="feld">${esc(t("pd.stellung"))}<select data-p="position">${STELLUNGEN.map((s) => `<option value="${s}" ${Number(p.position) === s ? "selected" : ""}>${esc(stellungText(s))}</option>`).join("")}
+          ${STELLUNGEN.includes(Number(p.position)) ? "" : `<option value="${p.position}" selected>${esc(stellungText(Number(p.position)))}</option>`}</select></label>
+        <label class="feld">${esc(t("pd.wann"))}<select data-p="ausloeser">${AUSLOESER.map((a) => `<option value="${a}" ${p.ausloeser === a ? "selected" : ""}>${esc(t("ed." + a))}</option>`).join("")}</select></label>
+        ${sonne ? `<label class="feld">${esc(t("ed.versatz"))}<input type="number" data-p="versatz_min" value="${Number(p.versatz_min || 0)}"></label>`
+                : `<label class="feld">${esc(t("ed.uhrzeit"))}<input type="time" data-p="start" value="${esc(p.start || "")}"></label>`}
+      </div>
+      ${sonne ? `<div class="zeile"><label class="feld">${esc(t("ed.fruehestens"))}<input type="time" data-p="frueh" value="${esc(p.frueh || "")}"></label>
+        <label class="feld">${esc(t("ed.spaetestens"))}<input type="time" data-p="spaet" value="${esc(p.spaet || "")}"></label></div>` : ""}
+      <div class="zeile"><label class="feld">${esc(t("pd.gilt"))}<select data-p="gilt">${GELTUNG.map((g) => `<option value="${g}" ${p.gilt === g ? "selected" : ""}>${esc(t("ed." + g))}</option>`).join("")}</select></label></div>
+      <div class="zeile"><div class="tage" role="group" aria-label="${esc(t("pd.tage"))}">${TAGE.map((d, k) => `<label><input type="checkbox" data-tag="${d}" ${p.tage.includes(d) ? "checked" : ""}><span>${(TAGNAMEN[SPRACHE] || TAGNAMEN.de)[k]}</span></label>`).join("")}</div></div>
+      <h2 style="margin-top:16px">${esc(t("pd.nur_wenn"))}</h2>
+      ${p.wenn.map((w, i) => { const s = schalterVon(w.entity);
+        const werte = s ? (s.art === "auswahl" ? s.optionen : ["on","off"]) : [w.wert];
+        return `<div class="zeile" data-w="${i}" style="align-items:center">
+          <select data-wf="entity">${eigene.map((x) => `<option value="rolloplaner:${esc(x.id)}" ${w.entity === "rolloplaner:" + x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}
+            ${s ? "" : `<option value="${esc(w.entity)}" selected>${esc(w.entity)}</option>`}</select>
+          <span class="leise">=</span>
+          <select data-wf="wert">${werte.map((o) => `<option value="${esc(o)}" ${String(w.wert) === o ? "selected" : ""}>${esc(wertText(s, o))}</option>`).join("")}</select>
+          <button type="button" class="knopf klein" data-w-weg aria-label="${esc(t("knopf.entfernen"))}">✕</button></div>`; }).join("")
+        || `<p class="leise klein">${esc(t("pd.immer"))}</p>`}
+      ${eigene.length ? `<button type="button" class="knopf klein" data-w-neu style="margin-top:8px">${esc(t("pd.bedingung_neu"))}</button>` : ""}`;
+  };
+  oeffneDialog(t("pd.titel"), zeichne, () => fertig(p));
+  const inhalt = $("#dlg-inhalt");
+  inhalt.onchange = (ev) => {
+    const el = ev.target;
+    if (el.dataset.p){ p[el.dataset.p] = ["position","versatz_min"].includes(el.dataset.p) ? Number(el.value) : el.value; if (el.dataset.p === "ausloeser") zeichne(); }
+    if (el.dataset.tag){ const s = new Set(p.tage); el.checked ? s.add(el.dataset.tag) : s.delete(el.dataset.tag); p.tage = TAGE.filter((d) => s.has(d)); }
+    if (el.dataset.wf){ const w = p.wenn[Number(el.closest("[data-w]").dataset.w)]; w[el.dataset.wf] = el.value;
+      if (el.dataset.wf === "entity"){ const s = schalterVon(el.value); w.wert = s ? (s.art === "auswahl" ? s.optionen[0] : "on") : w.wert; zeichne(); } }
+  };
+  inhalt.onclick = (ev) => {
+    const k = ev.target.closest("button"); if (!k) return;
+    if (k.dataset.wWeg !== undefined){ p.wenn.splice(Number(k.closest("[data-w]").dataset.w), 1); zeichne(); }
+    if (k.dataset.wNeu !== undefined){ const s = eigene[0]; p.wenn.push({entity: "rolloplaner:" + s.id, wert: s.art === "auswahl" ? s.optionen[0] : "on"}); zeichne(); }
+  };
+}
+
+/* Ein Dialog für alles: zeichnen, beim Speichern `ok` aufrufen. */
+function oeffneDialog(titel, zeichne, ok){
+  const dlg = $("#dialog");
+  $("#dlg-titel").textContent = titel;
+  $("#dlg-inhalt").onchange = null; $("#dlg-inhalt").onclick = null;
+  zeichne();
+  dlg.onclose = () => { if (dlg.returnValue === "ok") ok(); };
+  dlg.returnValue = ""; dlg.showModal();
+}
 
 /* ═══ Programme ═══ */
 const offenProgramm = new Set(["weihnacht"]);
@@ -865,10 +1124,17 @@ function zeichneProgramme(){
     <p class="leise klein">${esc(t("pg.hitze_rollos"))}</p>
     <div class="zeile" style="justify-content:flex-end"><button class="knopf haupt" data-e-speichern>${esc(t("knopf.speichern"))}</button></div>`;
   const rs = e.rauchsperre || {};
-  const rauch = `<div class="zeile"><label class="haken"><input type="checkbox" data-e="rauchsperre.fluchtweg" ${rs.fluchtweg ? "checked" : ""}>${esc(t("pg.fluchtweg"))}</label></div>
+  const melder = (ENT?.rauch || []).map((m) => ({id: m.entity_id, name: m.name, zusatz: m.bereich || ""}));
+  const rauch = `<label class="haken"><input type="checkbox" data-e="rauchsperre.fluchtweg" ${rs.fluchtweg ? "checked" : ""}>${esc(t("pg.fluchtweg"))}</label>
     <div class="zeile"><label class="feld">${esc(t("pg.nachlauf"))}<input type="number" data-e="rauchsperre.nachlauf_min" value="${Number(rs.nachlauf_min || 0)}"></label></div>
-    <p class="leise klein">${esc(t("pg.melder", {n: (rs.melder || []).length || (ENT?.rauch || []).length || "–"}))} <a href="erweitert.html">→</a></p>
-    <div class="zeile" style="justify-content:flex-end"><button class="knopf haupt" data-e-speichern>${esc(t("knopf.speichern"))}</button></div>`;
+    <h2 style="margin-top:14px">${esc(t("pg.melder_titel"))}</h2><p class="leise klein" style="margin-bottom:6px">${esc(t("pg.melder_hilfe", {n: melder.length}))}</p>
+    ${hakenliste("rauchsperre.melder", rs.melder || [], melder)}
+    <h2 style="margin-top:14px">${esc(t("pg.rauch_rollos"))}</h2>
+    <div class="hakenliste">${rollosSortiert().map((r) => `<label class="haken"><input type="checkbox" data-fluchtweg-rollo="${esc(r.entity_id)}" ${(rolloCfg(r.entity_id) || {}).fluchtweg !== false ? "checked" : ""}><span>${esc(r.name)}</span></label>`).join("")}</div>
+    <h2 style="margin-top:14px">${esc(t("pg.rauch_melden"))}</h2><p class="leise klein" style="margin-bottom:6px">${esc(t("pg.rauch_melden_hilfe"))}</p>
+    ${auswahlliste("rauchsperre.melden_an", rs.melden_an || [], (ENT?.notify || []).map((n) => ({id: n.entity_id, name: n.name})))}
+    <div class="zeile" style="justify-content:space-between; margin-top:14px"><button class="knopf" data-probe="rauchalarm">${esc(t("pg.probealarm"))}</button>
+      <button class="knopf haupt" data-rauch-speichern>${esc(t("knopf.speichern"))}</button></div>`;
   const beschattet = (BERICHT.rollos || []).some((r) => r.beschattet);
   $("#programme").innerHTML = `<p class="leise" style="margin-bottom:14px">${esc(t("pg.hilfe"))}</p>`
     + programmKarte("weihnacht", t("pg.weihnacht"), t("pg.weihnacht_text"), xSchild, weihnacht)
@@ -916,8 +1182,15 @@ $("#programme").addEventListener("click", async (ev) => {
     try { await versuch(() => sende("api/einstellungen", "PUT", {weihnachtszeit: XENTWURF}), t("allg.gespeichert")); } catch { return; }
     XENTWURF = null; await nachrechnen(); zeichneProgramme(); return;
   }
-  if (k.dataset.eSpeichern !== undefined){
-    try { await versuch(() => sende("api/einstellungen", "PUT", sammle(k.closest(".tafel"))), t("allg.gespeichert")); } catch { return; }
+  if (k.dataset.probe){ try { await versuch(() => sende(`api/${k.dataset.probe}/probe`, "POST"), t("es.probe_gesendet")); } catch {} return; }
+  if (k.dataset.eSpeichern !== undefined || k.dataset.rauchSpeichern !== undefined){
+    const tafel = k.closest(".tafel");
+    try { await versuch(() => sende("api/einstellungen", "PUT", sammleListen(tafel, sammle(tafel))), t("allg.gespeichert")); } catch { return; }
+    for (const el of $$("[data-fluchtweg-rollo]", tafel)){
+      const r = rolloCfg(el.dataset.fluchtwegRollo);
+      if (!r || (r.fluchtweg !== false) === el.checked) continue;
+      try { await versuch(() => sende(`api/rollos/${encodeURIComponent(r.entity_id)}`, "PUT", {...r, fluchtweg: el.checked})); } catch { return; }
+    }
     await nachrechnen(); zeichneProgramme();
   }
 });
@@ -945,92 +1218,303 @@ $("#programme").addEventListener("input", async (ev) => {
   box.innerHTML = treffer.map((l) => `<button data-licht-neu="${esc(l.entity_id)}"><span style="flex:1">${esc(l.name)}<br><span class="leise klein">${esc(l.entity_id)}${l.bereich ? " · " + esc(l.bereich) : ""}</span></span><span class="leise klein">${esc(l.zustand)}</span></button>`).join("");
 });
 
-/* ═══ Einstellungen ═══ */
+/* ═══ Einstellungen ═══
+   Oben eine Kachel je Abschnitt; ein Abschnitt öffnet sich an derselben
+   Stelle. Nichts hängt unten an einer langen Seite. */
+const ABSCHNITTE = ["rollos","plaene","schalter","etagen","tage","betrieb","meldungen","anzeige","protokoll","auskunft"];
+let ABSCHNITT = null;
+async function brauche(){
+  if (!ENT){ try { ENT = await hole("api/entitaeten"); } catch { ENT = {}; } }
+  if (!SCHALTER) await ladeSchalter();
+}
 async function zeichneEinstellungen(){
   if (!CONFIG) return;
-  if (!ENT){ try { ENT = await hole("api/entitaeten"); } catch { ENT = {}; } }
-  let log = [];
-  try { log = await hole("api/logbuch"); } catch {}
-  const e = CONFIG.einstellungen; const w = e.wachhund || {};
-  const rollos = rollosSortiert();
-  $("#einstellungen").innerHTML = `
-    <div class="tafel"><h2>${esc(t("es.betrieb"))}</h2>
-      <label class="haken"><input type="checkbox" data-e="automatik" ${e.automatik ? "checked" : ""}>${esc(t("es.automatik"))}</label>
+  await brauche();
+  const box = $("#einstellungen");
+  if (!ABSCHNITT){
+    box.innerHTML = `<div class="kacheln">${ABSCHNITTE.map((a) => `<button class="kachel" data-abschnitt="${a}">
+      <b>${esc(t("es." + a))}</b><span class="leise klein">${esc(t("es." + a + "_kurz"))}</span></button>`).join("")}</div>`;
+    return;
+  }
+  const kopf = `<div class="zeile" style="align-items:center; margin-bottom:12px"><button class="knopf klein" data-zurueck>← ${esc(t("nav.einstellungen"))}</button>
+    <h3 style="margin-left:6px">${esc(t("es." + ABSCHNITT))}</h3></div>`;
+  box.innerHTML = kopf + `<div class="tafel">${await ABSCHNITT_HTML[ABSCHNITT]()}</div>`;
+}
+const speichernKnopf = () => `<div class="zeile" style="justify-content:flex-end; margin-top:14px"><button class="knopf haupt" data-e-speichern>${esc(t("knopf.speichern"))}</button></div>`;
+const feldWahl = (schluessel, wert, quelle) => entitaetWahl(schluessel, wert, quelle);
+function giltFuer(id){
+  const e = "rolloplaner:" + id, out = [];
+  for (const p of CONFIG.plaene || []) if ((p.zeitplan || []).some((x) => (x.wenn || []).some((w) => w.entity === e))) out.push(t("es.plan_name", {name: p.name}));
+  for (const r of CONFIG.rollos || []) if (!r.plan && (r.zeitplan || []).some((x) => (x.wenn || []).some((w) => w.entity === e))) {
+    const b = (BERICHT?.rollos || []).find((y) => y.entity_id === r.entity_id); out.push(b ? b.name : r.entity_id); }
+  for (const g of CONFIG.gruppen || []) if (g.schalter === id) out.push(t("es.etage_name", {name: g.name}));
+  return out;
+}
+const SCHALTER_ENTITAET = (id) => ((BERICHT?.freigaben || []).find((f) => f.eigen === id) || {}).entity_id || "";
+const ABSCHNITT_HTML = {
+  rollos: () => {
+    const da = new Set((CONFIG.rollos || []).map((r) => r.entity_id));
+    const frei = (ENT?.rollos || []).filter((c) => !da.has(c.entity_id));
+    const kopf = `<div class="zeile" style="margin-bottom:8px">
+        ${frei.length ? `<select id="rollo-neu"><option value="">${esc(t("es.rollo_neu"))}</option>${frei.map((c) =>
+          `<option value="${esc(c.entity_id)}">${esc(c.name)}${c.bereich ? " · " + esc(c.bereich) : ""}</option>`).join("")}</select>` : ""}
+        ${da.size ? "" : `<button class="knopf" data-uebernahme>${esc(t("es.uebernahme"))}</button>`}</div>`;
+    return kopf + rollosSortiert().map((r) => { const c = rolloCfg(r.entity_id) || {};
+      const plan = c.plan ? (CONFIG.plaene.find((p) => p.id === c.plan) || {}).name : t("ed.eigener");
+      const etage = (CONFIG.gruppen || []).find((g) => (g.rollos || []).includes(r.entity_id));
+      return `<div class="eintrag"><div class="text"><b>${esc(r.name)}</b><div class="leise klein">${esc([r.raum, etage?.name, t("art." + (c.art || "fenster")), c.betriebsart === "von_hand" ? t("rd.b.von_hand") : plan, c.aktiv === false ? t("rl.automatik_aus") : ""].filter(Boolean).join(" · "))}</div></div>
+        <button class="knopf klein" data-rollo="${esc(r.entity_id)}">${esc(t("knopf.bearbeiten"))}</button></div>`; }).join("");
+  },
+
+  plaene: () => (CONFIG.plaene || []).map((p) => { const folger = andereRollos(p.id, null);
+      const gruppe = (CONFIG.gruppen || []).some((g) => g.plan === p.id);
+      return `<div class="eintrag" data-plan="${esc(p.id)}"><div class="text">
+          <input type="text" data-pf="name" value="${esc(p.name)}" aria-label="${esc(t("rd.name"))}" style="width:100%; max-width:320px">
+          <div class="leise klein" style="margin-top:4px">${esc(folger.length ? t("es.folgen", {n: folger.join(", ")}) : (gruppe ? t("es.gruppenplan") : t("es.niemand")))} · ${esc(t("es.n_punkte", {n: (p.zeitplan || []).length}))}</div></div>
+        <label class="haken"><input type="checkbox" data-pf="aktiv" ${p.aktiv !== false ? "checked" : ""}>${esc(t("es.plan_aktiv"))}</label>
+        ${folger.length ? `<button class="knopf klein" data-plan-zeigen="${esc(p.id)}">${esc(t("knopf.bearbeiten"))}</button>`
+          : gruppe ? "" : `<button class="knopf klein" data-plan-weg="${esc(p.id)}">${esc(t("knopf.entfernen"))}</button>`}</div>`; }).join("")
+    + `<div class="zeile" style="margin-top:12px"><input type="text" id="plan-neu" placeholder="${esc(t("es.plan_neu_name"))}"><button class="knopf" data-plan-neu>${esc(t("es.plan_neu"))}</button></div>`
+    + speichernKnopf(),
+
+  schalter: () => (SCHALTER || []).map((s, i) => { const fuer = giltFuer(s.id);
+      const stand = s.zustand ?? s.vorgabe; const optionen = s.art === "auswahl" ? s.optionen : ["on","off"];
+      return `<div class="eintrag" data-s="${i}" style="flex-wrap:wrap"><div class="text">
+          <input type="text" data-sf="name" value="${esc(s.name)}" aria-label="${esc(t("rd.name"))}" style="width:100%; max-width:320px">
+          <div class="leise klein" style="margin-top:4px">${esc(fuer.length ? t("es.gilt_fuer", {n: fuer.join(", ")}) : t("es.unbenutzt"))}</div>
+          <div class="grau klein">${esc(SCHALTER_ENTITAET(s.id) || "rolloplaner_schalter_" + s.id)}${s.art === "auswahl" ? " · " + esc(s.optionen.join(" / ")) : ""}</div></div>
+        <div class="wahl" role="group">${optionen.map((o) => `<button data-sw="${esc(s.id)}" data-wert="${esc(o)}" class="${String(stand) === o ? "an" : ""}">${esc(s.art === "auswahl" ? optionText(o) : (o === "on" ? t("allg.an") : t("allg.aus")))}</button>`).join("")}</div>
+        ${fuer.length ? "" : `<button class="knopf klein" data-s-weg="${i}">${esc(t("knopf.entfernen"))}</button>`}</div>`; }).join("")
+    + `<div class="zeile" style="margin-top:12px"><button class="knopf" data-s-neu="schalter">${esc(t("es.neu_schalter"))}</button>
+       <button class="knopf" data-s-neu="auswahl">${esc(t("es.neu_auswahl"))}</button></div>` + speichernKnopf(),
+
+  etagen: () => {
+    const zeigePlan = (CONFIG.gruppen || []).some((g) => g.plan);
+    const ohne = rollosSortiert().filter((r) => !(CONFIG.gruppen || []).some((g) => (g.rollos || []).includes(r.entity_id)));
+    const rolloZeile = (eid, gi, k, n) => { const b = (BERICHT?.rollos || []).find((y) => y.entity_id === eid);
+      return `<div class="eintrag"><span class="text">${esc(b ? b.name : eid)}</span>
+        ${gi >= 0 ? `<button class="knopf klein" data-hoch="${gi}:${k}" ${k === 0 ? "disabled" : ""} aria-label="↑">↑</button>
+          <button class="knopf klein" data-runter="${gi}:${k}" ${k === n - 1 ? "disabled" : ""} aria-label="↓">↓</button>` : ""}
+        <select data-umzug="${esc(eid)}" aria-label="${esc(t("rd.etage"))}"><option value="">${esc(t("es.ohne_etage"))}</option>${(CONFIG.gruppen || []).map((g, j) =>
+          `<option value="${j}" ${j === gi ? "selected" : ""}>${esc(g.name)}</option>`).join("")}</select></div>`; };
+    return (CONFIG.gruppen || []).map((g, gi) => `<div class="etage" data-g="${gi}">
+        <div class="zeile" style="align-items:center"><input type="text" data-gf="name" value="${esc(g.name)}" aria-label="${esc(t("rd.name"))}">
+          <label class="haken"><input type="checkbox" data-gf="aktiv" ${g.aktiv !== false ? "checked" : ""}>${esc(t("es.etage_an"))}</label>
+          <label class="feld" style="flex-direction:row; align-items:center; gap:8px">${esc(t("es.freigabe"))}<select data-gf="schalter"><option value="">${esc(t("es.keiner"))}</option>${(SCHALTER || []).filter((s) => s.art !== "auswahl").map((s) =>
+            `<option value="${esc(s.id)}" ${g.schalter === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select></label>
+          ${zeigePlan ? `<label class="feld" style="flex-direction:row; align-items:center; gap:8px">${esc(t("rd.plan"))}<select data-gf="plan"><option value="">${esc(t("es.keiner"))}</option>${(CONFIG.plaene || []).map((p) =>
+            `<option value="${esc(p.id)}" ${g.plan === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label>` : ""}
+          ${(g.rollos || []).length ? "" : `<button class="knopf klein" data-g-weg="${gi}">${esc(t("knopf.entfernen"))}</button>`}</div>
+        ${(g.rollos || []).map((eid, k) => rolloZeile(eid, gi, k, g.rollos.length)).join("")}</div>`).join("")
+      + (ohne.length ? `<div class="etage"><h3>${esc(t("es.ohne_etage"))}</h3>${ohne.map((r) => rolloZeile(r.entity_id, -1, 0, 1)).join("")}</div>` : "")
+      + `<div class="zeile" style="margin-top:12px"><button class="knopf" data-g-neu>${esc(t("es.etage_neu"))}</button></div>` + speichernKnopf();
+  },
+
+  tage: () => { const e = CONFIG.einstellungen;
+    return `<div class="zeile">
+      <label class="feld">${esc(t("es.schulfrei"))}${feldWahl("schulfrei_entity", e.schulfrei_entity, "schalter")}</label>
+      <label class="feld">${esc(t("es.schulfrei_morgen"))}${feldWahl("schulfrei_morgen_entity", e.schulfrei_morgen_entity, "schalter")}</label></div>
+      <div class="zeile"><label class="feld">${esc(t("pg.urlaub_schalter"))}${feldWahl("urlaub_entity", e.urlaub_entity, "schalter")}</label>
+      <label class="feld">${esc(t("es.aussen"))}${feldWahl("aussen_entity", e.aussen_entity, "aussen")}</label></div>
+      <div class="zeile"><label class="feld">${esc(t("es.sonne"))}<input type="text" data-e="sonne_entity" value="${esc(e.sonne_entity || "")}"></label></div>` + speichernKnopf(); },
+
+  betrieb: () => { const e = CONFIG.einstellungen;
+    return `<label class="haken"><input type="checkbox" data-e="automatik" ${e.automatik ? "checked" : ""}>${esc(t("es.automatik"))}</label>
       <label class="haken"><input type="checkbox" data-e="trockenlauf" ${e.trockenlauf ? "checked" : ""}>${esc(t("es.trockenlauf"))}</label>
       <div class="zeile"><label class="haken"><input type="checkbox" data-e="manuell_respektieren" ${e.manuell_respektieren ? "checked" : ""}>${esc(t("es.hand"))}</label>
         <label class="feld">${esc(t("es.hand_stunden"))}<input type="number" data-e="manuell_stunden" value="${e.manuell_stunden}"></label></div>
-      <div class="zeile"><label class="feld">${esc(t("es.sprache"))}<select data-e="sprache"><option value="">${esc(t("es.wie_ha"))}</option>
-        ${(BERICHT?.sprachen || ["de","en"]).map((s) => `<option value="${esc(s)}" ${e.sprache === s ? "selected" : ""}>${esc(s)}</option>`).join("")}</select></label></div>
-      <div class="zeile" style="justify-content:flex-end"><button class="knopf haupt" data-e-speichern>${esc(t("knopf.speichern"))}</button></div></div>
+      <div class="zeile"><label class="feld">${esc(t("es.takt"))}<input type="number" data-e="takt_sekunden" value="${e.takt_sekunden}"></label>
+        <label class="feld">${esc(t("es.sprache"))}<select data-e="sprache"><option value="">${esc(t("es.wie_ha"))}</option>
+        ${(BERICHT?.sprachen || ["de","en"]).map((s) => `<option value="${esc(s)}" ${e.sprache === s ? "selected" : ""}>${esc(s)}</option>`).join("")}</select></label></div>` + speichernKnopf(); },
 
-    <div class="tafel"><h2>${esc(t("es.rollos"))}</h2>
-      ${rollos.map((r) => { const c = rolloCfg(r.entity_id) || {};
-        const plan = c.plan ? (CONFIG.plaene.find((p) => p.id === c.plan) || {}).name : t("ed.eigener");
-        return `<div class="eintrag"><div class="text"><b>${esc(r.name)}</b><div class="leise klein">${esc([r.raum, t("art." + (c.art || "fenster")), c.betriebsart === "von_hand" ? t("rd.b.von_hand") : plan, c.aktiv === false ? t("rl.automatik_aus") : ""].filter(Boolean).join(" · "))}</div></div>
-          <button class="knopf klein" data-rollo="${esc(r.entity_id)}">${esc(t("knopf.bearbeiten"))}</button></div>`; }).join("")}</div>
-
-    <div class="tafel"><h2>${esc(t("es.tage"))}</h2><div class="zeile">
-      <label class="feld">${esc(t("es.schulfrei"))}${entitaetWahl("schulfrei_entity", e.schulfrei_entity, "schalter")}</label>
-      <label class="feld">${esc(t("es.schulfrei_morgen"))}${entitaetWahl("schulfrei_morgen_entity", e.schulfrei_morgen_entity, "schalter")}</label>
-      <label class="feld">${esc(t("es.aussen"))}${entitaetWahl("aussen_entity", e.aussen_entity, "aussen")}</label></div>
-      <div class="zeile" style="justify-content:flex-end"><button class="knopf haupt" data-e-speichern>${esc(t("knopf.speichern"))}</button></div></div>
-
-    <div class="tafel"><h2>${esc(t("es.waechter"))}</h2>
-      <label class="haken"><input type="checkbox" data-e="wachhund.aktiv" ${w.aktiv ? "checked" : ""}>${esc(t("es.waechter_an"))}</label>
+  meldungen: () => { const w = CONFIG.einstellungen.wachhund || {};
+    return `<label class="haken"><input type="checkbox" data-e="wachhund.aktiv" ${w.aktiv ? "checked" : ""}>${esc(t("es.waechter_an"))}</label>
+      <label class="haken"><input type="checkbox" data-e="wachhund.hindernis_melden" ${w.hindernis_melden ? "checked" : ""}>${esc(t("es.hindernis"))}</label>
       <div class="zeile"><label class="feld">${esc(t("es.stumm"))}<input type="number" data-e="wachhund.stumm_stunden" value="${w.stumm_stunden}"></label></div>
-      <div class="zeile" style="justify-content:flex-end"><button class="knopf haupt" data-e-speichern>${esc(t("knopf.speichern"))}</button></div></div>
+      <h2 style="margin-top:14px">${esc(t("es.meldeweg"))}</h2>${auswahlliste("wachhund.melden_an", w.melden_an || [], (ENT?.notify || []).map((n) => ({id: n.entity_id, name: n.name})))}
+      <div class="zeile" style="justify-content:space-between; margin-top:14px"><button class="knopf" data-probe="wachhund">${esc(t("es.probe"))}</button>
+        <button class="knopf haupt" data-e-speichern>${esc(t("knopf.speichern"))}</button></div>`; },
 
-    <div class="tafel"><h2>${esc(t("es.anzeige"))}</h2>
-      <label class="haken"><input type="checkbox" data-e="prozent_invertiert" ${e.prozent_invertiert ? "checked" : ""}>${esc(t("es.invertiert"))}</label>
-      <p class="leise klein">${esc(t("es.invertiert_hilfe"))}</p>
-      <div class="zeile" style="justify-content:flex-end"><button class="knopf haupt" data-e-speichern>${esc(t("knopf.speichern"))}</button></div></div>
+  anzeige: () => `<label class="haken"><input type="checkbox" data-e="prozent_invertiert" ${CONFIG.einstellungen.prozent_invertiert ? "checked" : ""}>${esc(t("es.invertiert"))}</label>
+      <p class="leise klein">${esc(t("es.invertiert_hilfe"))}</p>` + speichernKnopf(),
 
-    <div class="tafel"><h2>${esc(t("es.protokoll"))}</h2><div class="protokoll">
-      ${(log || []).slice(0, 40).map((l) => `<div><span class="leise">${esc(new Date(l.zeit).toLocaleString(SPRACHE === "en" ? "en-GB" : "de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}))}</span>
-        <span><b>${esc(l.raum)}</b> ${esc(l.was)} <span class="leise">– ${esc(l.warum)}</span></span></div>`).join("") || `<p class="leer">${esc(t("es.protokoll_leer"))}</p>`}</div></div>
+  protokoll: async () => { let log = []; try { log = await hole("api/logbuch"); } catch {}
+    return `<div class="protokoll">${(log || []).slice(0, 80).map((l) => `<div><span class="leise">${esc(new Date(l.zeit).toLocaleString(SPRACHE === "en" ? "en-GB" : "de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}))}</span>
+      <span><b>${esc(l.raum)}</b> ${esc(l.was)} <span class="leise">– ${esc(l.warum)}</span></span></div>`).join("") || `<p class="leer">${esc(t("es.protokoll_leer"))}</p>`}</div>`; },
 
-    <div class="tafel"><h2>${esc(t("es.erweitert"))}</h2><p class="leise klein" style="margin-bottom:10px">${esc(t("es.erweitert_text"))}</p>
-      <a class="knopf" href="erweitert.html" style="display:inline-flex; align-items:center; text-decoration:none; color:var(--text)">${esc(t("es.erweitert_knopf"))}</a></div>`;
+  auskunft: async () => { let g = {befunde: []}; try { g = await hole("api/gesundheit"); } catch {}
+    return (g.befunde || []).map((b) => `<div class="eintrag"><span class="chip ${b.schwere === "fehler" ? "achtung" : b.schwere === "warnung" ? "sonne" : ""}">${esc(t("es.schwere." + (["fehler","warnung"].includes(b.schwere) ? b.schwere : "hinweis")).toUpperCase())}</span>
+      <div class="text">${b.raum ? `<b>${esc(b.raum)}</b> · ` : ""}${esc(b.text)}</div></div>`).join("") || `<p class="leer">${esc(t("es.alles_gut"))}</p>`; },
+};
+function hakenliste(feld, gewaehlt, eintraege){
+  return `<div class="hakenliste" data-liste="${esc(feld)}">${eintraege.map((x) => `<label class="haken"><input type="checkbox" value="${esc(x.id)}" ${gewaehlt.includes(x.id) ? "checked" : ""}>
+    <span>${esc(x.name)}${x.zusatz ? ` <span class="leise klein">${esc(x.zusatz)}</span>` : ""}</span></label>`).join("")}</div>`;
+}
+/* Für lange Listen (Meldewege): nur die gewählten zeigen, dazu eine Auswahl
+   zum Hinzufügen – sonst stünde der Speichern-Knopf unter dreißig Haken. */
+function auswahlliste(feld, gewaehlt, eintraege){
+  const name = (id) => (eintraege.find((x) => x.id === id) || {name: id}).name;
+  return `<div class="hakenliste" data-liste="${esc(feld)}" data-auswahl>${gewaehlt.map((id) =>
+      `<label class="haken"><input type="checkbox" value="${esc(id)}" checked><span>${esc(name(id))}</span></label>`).join("")}</div>
+    <select data-hinzu="${esc(feld)}" style="margin-top:6px"><option value="">${esc(t("es.hinzufuegen"))}</option>${eintraege
+      .filter((x) => !gewaehlt.includes(x.id)).map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</select>`;
+}
+document.addEventListener("change", (ev) => {
+  const el = ev.target; if (!el.dataset || !el.dataset.hinzu || !el.value) return;
+  const liste = el.parentElement.querySelector(`[data-liste="${el.dataset.hinzu}"]`);
+  liste.insertAdjacentHTML("beforeend", `<label class="haken"><input type="checkbox" value="${esc(el.value)}" checked><span>${esc(el.selectedOptions[0].textContent)}</span></label>`);
+  el.selectedOptions[0].remove(); el.value = "";
+});
+
+function sammleListen(wurzel, out){
+  $$("[data-liste]", wurzel).forEach((el) => {
+    const teile = el.dataset.liste.split("."); let o = out;
+    teile.slice(0, -1).forEach((k) => { o = o[k] = o[k] || {}; });
+    o[teile.at(-1)] = $$("input:checked", el).map((x) => x.value);
+  });
+  return out;
 }
 $("#einstellungen").addEventListener("click", async (ev) => {
   const k = ev.target.closest("button"); if (!k) return;
-  if (k.dataset.eSpeichern !== undefined){
-    const neu = sammle(k.closest(".tafel"));
-    try { await versuch(() => sende("api/einstellungen", "PUT", neu), t("allg.gespeichert")); } catch { return; }
-    await nachrechnen(); zeichneEinstellungen();
+  const neu = async () => { await nachrechnen(); await ladeSchalter(); zeichneEinstellungen(); };
+  if (k.dataset.abschnitt){ ABSCHNITT = k.dataset.abschnitt; try { history.replaceState(null, "", "#einstellungen/" + ABSCHNITT); } catch {} return zeichneEinstellungen(); }
+  if (k.dataset.zurueck !== undefined){ ABSCHNITT = null; try { history.replaceState(null, "", "#einstellungen"); } catch {} return zeichneEinstellungen(); }
+  if (k.dataset.rollo) return rolloDialog(k.dataset.rollo);
+  if (k.dataset.uebernahme !== undefined){
+    if (!confirm(t("es.uebernahme_frage"))) return;
+    try { await versuch(() => sende("api/uebernahme", "POST", {}), t("allg.gespeichert")); } catch { return; }
+    return neu();
   }
-  if (k.dataset.rollo) rolloDialog(k.dataset.rollo);
+  if (k.dataset.probe){ try { await versuch(() => sende(`api/${k.dataset.probe}/probe`, "POST"), t("es.probe_gesendet")); } catch {} return; }
+  if (k.dataset.sw){ try { await versuch(() => sende(`api/schalter/${encodeURIComponent(k.dataset.sw)}/stand`, "POST", {wert: k.dataset.wert})); } catch { return; } return neu(); }
+  const tafel = k.closest(".tafel");
+  if (ABSCHNITT === "plaene"){
+    if (k.dataset.planZeigen){ AUSWAHL = (CONFIG.rollos.find((r) => r.plan === k.dataset.planZeigen) || {}).entity_id; ENTWURF = null; return $(`nav [data-reiter="ablauf"]`).click(); }
+    if (k.dataset.planWeg){ try { await versuch(() => hole(`api/plaene/${encodeURIComponent(k.dataset.planWeg)}`, {method: "DELETE"}), t("allg.gespeichert")); } catch { return; } return neu(); }
+    if (k.dataset.planNeu !== undefined){ const name = $("#plan-neu").value.trim() || t("es.plan_neu_name");
+      try { await versuch(() => sende("api/plaene", "POST", {name, aktiv: true, zeitplan: []}), t("allg.gespeichert")); } catch { return; } return neu(); }
+    if (k.dataset.eSpeichern !== undefined){
+      for (const zeile of $$("[data-plan]", tafel)){
+        const p = kopie(CONFIG.plaene.find((x) => x.id === zeile.dataset.plan));
+        const name = $('[data-pf="name"]', zeile).value.trim(), aktiv = $('[data-pf="aktiv"]', zeile).checked;
+        if (name === p.name && aktiv === (p.aktiv !== false)) continue;
+        try { await versuch(() => sende(`api/plaene/${encodeURIComponent(p.id)}`, "PUT", {...p, name, aktiv})); } catch { return; }
+      }
+      melden(t("allg.gespeichert")); return neu();
+    }
+  }
+  if (ABSCHNITT === "schalter"){
+    const liste = (SCHALTER || []).map(({zustand, ...s}, i) => ({...s, name: ($(`[data-s="${i}"] [data-sf="name"]`, tafel)?.value || s.name).trim()}));
+    if (k.dataset.sWeg){ liste.splice(Number(k.dataset.sWeg), 1); }
+    else if (k.dataset.sNeu){ liste.push(k.dataset.sNeu === "auswahl"
+      ? {name: t("es.neu_auswahl"), art: "auswahl", optionen: ["normal", "24 Uhr", "aus"], vorgabe: "normal", icon: "", quelle: ""}
+      : {name: t("es.neu_schalter"), art: "schalter", optionen: [], vorgabe: "on", icon: "", quelle: ""}); }
+    else if (k.dataset.eSpeichern === undefined) return;
+    try { await versuch(() => sende("api/schalter", "PUT", {schalter: liste}), t("allg.gespeichert")); } catch { return; }
+    return neu();
+  }
+  if (ABSCHNITT === "etagen"){
+    const gruppen = kopie(CONFIG.gruppen || []);
+    $$("[data-g]", tafel).forEach((el) => { const g = gruppen[Number(el.dataset.g)]; if (!g) return;
+      $$("[data-gf]", el).forEach((f) => { g[f.dataset.gf] = f.type === "checkbox" ? f.checked : f.value; }); });
+    const tausch = (wert, d) => { const [gi, i] = wert.split(":").map(Number); const l = gruppen[gi].rollos; [l[i], l[i + d]] = [l[i + d], l[i]]; };
+    if (k.dataset.hoch) tausch(k.dataset.hoch, -1);
+    else if (k.dataset.runter) tausch(k.dataset.runter, 1);
+    else if (k.dataset.gWeg) gruppen.splice(Number(k.dataset.gWeg), 1);
+    else if (k.dataset.gNeu !== undefined) gruppen.push({name: t("es.etage_neu"), rollos: [], plan: "", schalter: "", aktiv: true});
+    else if (k.dataset.eSpeichern === undefined) return;
+    try { await versuch(() => sende("api/gruppen", "PUT", {gruppen}), t("allg.gespeichert")); } catch { return; }
+    return neu();
+  }
+  if (k.dataset.eSpeichern !== undefined){
+    const daten = sammleListen(tafel, sammle(tafel));
+    try { await versuch(() => sende("api/einstellungen", "PUT", daten), t("allg.gespeichert")); } catch { return; }
+    return neu();
+  }
+});
+$("#einstellungen").addEventListener("change", async (ev) => {
+  const el = ev.target;
+  if (el.id === "rollo-neu" && el.value){
+    const c = (ENT?.rollos || []).find((x) => x.entity_id === el.value) || {};
+    const liste = [...kopie(CONFIG.rollos || []), {entity_id: el.value, raum: c.bereich || "", art: "fenster", betriebsart: "plan", zeitplan: []}];
+    try { await versuch(() => sende("api/rollos", "PUT", {rollos: liste}), t("allg.gespeichert")); } catch { return; }
+    await nachrechnen(); zeichneEinstellungen(); return rolloDialog(el.value);
+  }
+  if (!el.dataset.umzug) return;
+  const gruppen = kopie(CONFIG.gruppen || []);
+  gruppen.forEach((g) => { g.rollos = (g.rollos || []).filter((x) => x !== el.dataset.umzug); });
+  if (el.value !== "") gruppen[Number(el.value)].rollos.push(el.dataset.umzug);
+  try { await versuch(() => sende("api/gruppen", "PUT", {gruppen}), t("allg.gespeichert")); } catch { return; }
+  await nachrechnen(); zeichneEinstellungen();
 });
 
-function rolloDialog(eid){
+/* ═══ Die Rollo-Seite ═══ */
+const RICHTUNGEN = [["N",0],["NO",45],["O",90],["SO",135],["S",180],["SW",225],["W",270],["NW",315]];
+async function rolloDialog(eid){
+  await brauche();
   const r = kopie(rolloCfg(eid)); const b = (BERICHT?.rollos || []).find((x) => x.entity_id === eid);
-  $("#dlg-titel").textContent = b ? b.name : eid;
-  $("#dlg-inhalt").innerHTML = `
-    <div class="zeile"><label class="feld" style="flex:1">${esc(t("rd.name"))}<input type="text" name="name" value="${esc(r.name)}" placeholder="${esc(b?.name || "")}"></label>
-      <label class="feld" style="flex:1">${esc(t("rd.raum"))}<input type="text" name="raum" value="${esc(r.raum)}"></label></div>
-    <div class="zeile"><label class="feld">${esc(t("rd.art"))}<select name="art">${["fenster","balkontuer","terrassentuer","dachfenster","haustuer"].map((a) =>
-      `<option value="${a}" ${r.art === a ? "selected" : ""}>${esc(t("art." + a))}</option>`).join("")}</select></label>
-      <label class="feld">${esc(t("rd.betrieb"))}<select name="betriebsart">${["plan","nur_schliessen","beobachten","von_hand"].map((a) =>
-      `<option value="${a}" ${r.betriebsart === a ? "selected" : ""}>${esc(t("rd.b." + a))}</option>`).join("")}</select></label>
-      <label class="feld">${esc(t("rd.plan"))}<select name="plan"><option value="">${esc(t("ed.eigener"))}</option>${(CONFIG.plaene || []).map((p) =>
-      `<option value="${esc(p.id)}" ${r.plan === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label></div>
-    <label class="haken"><input type="checkbox" name="aktiv" ${r.aktiv !== false ? "checked" : ""}>${esc(t("rd.automatik"))}</label>
-    <label class="haken"><input type="checkbox" name="fluchtweg" ${r.fluchtweg !== false ? "checked" : ""}>${esc(t("rd.fluchtweg"))}</label>
-    <div class="zeile"><label class="haken"><input type="checkbox" name="beschattung" ${r.beschattung ? "checked" : ""}>${esc(t("rd.hitze"))}</label>
-      <label class="feld">${esc(t("rd.richtung"))}<input type="number" name="ausrichtung" value="${r.ausrichtung ?? ""}" min="0" max="359"></label></div>`;
-  const dlg = $("#dialog");
-  dlg.onclose = async () => {
-    if (dlg.returnValue !== "ok") return;
+  const etageVorher = (CONFIG.gruppen || []).findIndex((g) => (g.rollos || []).includes(eid));
+  const kontakte = (ENT?.fenster || []).map((f) => ({id: f.entity_id, name: f.name, zusatz: f.bereich || ""}))
+    .sort((a, c) => (c.zusatz === r.raum) - (a.zusatz === r.raum) || a.name.localeCompare(c.name));
+  for (const id of r.fenster || []) if (!kontakte.some((x) => x.id === id)) kontakte.unshift({id, name: id});
+  oeffneDialog(b ? b.name : eid, () => {
+    $("#dlg-inhalt").innerHTML = `
+      <div class="zeile"><label class="feld" style="flex:1">${esc(t("rd.name"))}<input type="text" name="name" value="${esc(r.name)}" placeholder="${esc(b?.name || "")}"></label>
+        <label class="feld" style="flex:1">${esc(t("rd.raum"))}<input type="text" name="raum" value="${esc(r.raum)}"></label></div>
+      <div class="zeile"><label class="feld">${esc(t("rd.etage"))}<select name="etage"><option value="">${esc(t("es.ohne_etage"))}</option>${(CONFIG.gruppen || []).map((g, j) =>
+          `<option value="${j}" ${j === etageVorher ? "selected" : ""}>${esc(g.name)}</option>`).join("")}</select></label>
+        <label class="feld">${esc(t("rd.art"))}<select name="art">${["fenster","balkontuer","terrassentuer","dachfenster","haustuer"].map((a) =>
+          `<option value="${a}" ${r.art === a ? "selected" : ""}>${esc(t("art." + a))}</option>`).join("")}</select></label></div>
+      <h2 style="margin-top:14px">${esc(t("rd.wie"))}</h2>
+      <div class="zeile"><label class="feld">${esc(t("rd.betrieb"))}<select name="betriebsart">${["plan","nur_schliessen","von_hand","beobachten"].map((a) =>
+          `<option value="${a}" ${r.betriebsart === a ? "selected" : ""}>${esc(t("rd.b." + a))}</option>`).join("")}</select></label>
+        <label class="feld">${esc(t("rd.plan"))}<select name="plan"><option value="">${esc(t("ed.eigener"))}</option>${(CONFIG.plaene || []).map((p) =>
+          `<option value="${esc(p.id)}" ${r.plan === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select></label></div>
+      <label class="haken"><input type="checkbox" name="aktiv" ${r.aktiv !== false ? "checked" : ""}>${esc(t("rd.automatik"))}</label>
+      <h2 style="margin-top:14px">${esc(t("rd.kontakt"))}</h2>
+      <p class="leise klein" style="margin-bottom:6px">${esc(t("rd.kontakt_hilfe"))}</p>
+      ${hakenliste("fenster", r.fenster || [], kontakte)}
+      <h2 style="margin-top:14px">${esc(t("rd.hitze"))}</h2>
+      <div class="zeile" style="align-items:center"><label class="haken"><input type="checkbox" name="beschattung" ${r.beschattung ? "checked" : ""}>${esc(t("allg.an"))}</label>
+        <label class="feld">${esc(t("rd.richtung"))}<select name="richtung"><option value="">–</option>${RICHTUNGEN.map(([n, g]) =>
+          `<option value="${g}" ${r.ausrichtung !== null && Math.round(((r.ausrichtung % 360) + 360) % 360 / 45) % 8 * 45 === g ? "selected" : ""}>${esc(t("rd.r." + n))} (${g}°)</option>`).join("")}</select></label>
+        <label class="feld">${esc(t("rd.grad"))}<input type="number" name="ausrichtung" value="${r.ausrichtung ?? ""}" min="0" max="359"></label>
+        <label class="feld">${esc(t("pg.hitze_pos"))}<input type="number" name="beschattung_position" value="${r.beschattung_position ?? ""}" placeholder="${CONFIG.einstellungen.beschattung?.position ?? 35}" min="0" max="100"></label></div>
+      <h2 style="margin-top:14px">${esc(t("rd.sonst"))}</h2>
+      <label class="haken"><input type="checkbox" name="fluchtweg" ${r.fluchtweg !== false ? "checked" : ""}>${esc(t("rd.fluchtweg"))}</label>
+      <label class="haken"><input type="checkbox" name="urlaub_simulation" ${r.urlaub_simulation !== false ? "checked" : ""}>${esc(t("rd.urlaub"))}</label>
+      <div class="zeile"><label class="feld">${esc(t("rd.pos_offen"))}<input type="number" name="position_offen" value="${r.position_offen ?? 100}" min="0" max="100"></label>
+        <label class="feld">${esc(t("rd.pos_zu"))}<input type="number" name="position_zu" value="${r.position_zu ?? 0}" min="0" max="100"></label></div>
+      <div class="trenn"></div><button type="button" class="knopf klein" data-rollo-weg>${esc(t("rd.entfernen"))}</button>`;
+    $("#dlg-inhalt").onclick = async (ev) => {
+      if (!ev.target.closest("[data-rollo-weg]") || !confirm(t("rd.entfernen_frage"))) return;
+      $("#dialog").close("ab");
+      try { await versuch(() => hole(`api/rollos/${encodeURIComponent(eid)}`, {method: "DELETE"}), t("allg.gespeichert")); } catch { return; }
+      await nachrechnen(); if (REITER === "einstellungen") zeichneEinstellungen();
+    };
+    $("#dlg-inhalt").onchange = (ev) => { if (ev.target.name === "richtung" && ev.target.value !== "") $('[name="ausrichtung"]').value = ev.target.value; };
+  }, async () => {
     const f = $("#dlg-form");
     r.name = f.name.value.trim(); r.raum = f.raum.value.trim(); r.art = f.art.value;
     r.betriebsart = f.betriebsart.value; r.plan = f.plan.value; r.aktiv = f.aktiv.checked;
-    r.fluchtweg = f.fluchtweg.checked; r.beschattung = f.beschattung.checked;
+    r.fluchtweg = f.fluchtweg.checked; r.beschattung = f.beschattung.checked; r.urlaub_simulation = f.urlaub_simulation.checked;
     r.ausrichtung = f.ausrichtung.value === "" ? null : Number(f.ausrichtung.value);
+    r.beschattung_position = f.beschattung_position.value === "" ? null : Number(f.beschattung_position.value);
+    r.position_offen = Number(f.position_offen.value); r.position_zu = Number(f.position_zu.value);
+    r.fenster = sammleListen($("#dlg-inhalt"), {}).fenster || [];
     if (!r.plan && !(r.zeitplan || []).length){ const q = (CONFIG.plaene || []).find((p) => p.id === rolloCfg(eid).plan); if (q) r.zeitplan = kopie(q.zeitplan); }
     try { await versuch(() => sende(`api/rollos/${encodeURIComponent(eid)}`, "PUT", r), t("allg.gespeichert")); } catch { return; }
-    await nachrechnen(); zeichneEinstellungen();
-  };
-  dlg.returnValue = ""; dlg.showModal();
+    const etage = f.etage.value === "" ? -1 : Number(f.etage.value);
+    if (etage !== etageVorher){
+      const gruppen = kopie(CONFIG.gruppen || []);
+      gruppen.forEach((g) => { g.rollos = (g.rollos || []).filter((x) => x !== eid); });
+      if (etage >= 0) gruppen[etage].rollos.push(eid);
+      try { await versuch(() => sende("api/gruppen", "PUT", {gruppen})); } catch {}
+    }
+    await nachrechnen();
+    if (REITER === "einstellungen") zeichneEinstellungen();
+    if (REITER === "ablauf"){ ENTWURF = null; zeichneEditor(); }
+  });
 }
 
 /* ═══ Reiter ═══ */
@@ -1038,7 +1522,7 @@ $$("nav button").forEach((k) => k.addEventListener("click", async () => {
   REITER = k.dataset.reiter;
   $$("nav button").forEach((x) => x.classList.toggle("an", x === k));
   $$("main section").forEach((s) => s.classList.toggle("an", s.id === "s-" + REITER));
-  try { history.replaceState(null, "", "#" + REITER); } catch {}
+  try { history.replaceState(null, "", "#" + REITER + (REITER === "einstellungen" && ABSCHNITT ? "/" + ABSCHNITT : "")); } catch {}
   if (REITER === "heute") zeichneHeute();
   if (REITER === "ablauf"){ await ladeAblauf(); zeichneEditor(); }
   if (REITER === "programme"){ if (!ENT){ try { ENT = await hole("api/entitaeten"); } catch { ENT = {}; } } zeichneProgramme(); }
@@ -1049,7 +1533,8 @@ $("#alle-zu").addEventListener("click", () => alleFahren(0));
 
 (async () => {
   await laden();
-  const start = (location.hash || "").slice(1);
+  const [start, abschnitt] = (location.hash || "").slice(1).split("/");
+  if (abschnitt && ABSCHNITTE.includes(abschnitt)) ABSCHNITT = abschnitt;
   const k = $(`nav [data-reiter="${start}"]`);
   if (k) k.click();
   setInterval(() => { if (!document.hidden) laden(); }, 30000);

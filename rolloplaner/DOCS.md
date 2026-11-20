@@ -24,17 +24,34 @@ Seit 3.0 hat die Oberfläche **vier Bereiche** statt neun Reiter:
   Versatz und Bedingungen stehen hinter *Erweitert*.
 * **Programme** – Weihnachtszeit, Urlaub, Hitzeschutz und Rauchalarm, jedes
   mit einem Schild, ob es gerade greift, und seinen Einstellungen.
-* **Einstellungen** – Betrieb, die Rollos selbst, woher der Planer Schultage
-  und Außentemperatur kennt, Wächter, Anzeige in Home Assistant, Protokoll.
+* **Einstellungen** – oben eine Kachel je Abschnitt: *Rollos und Zimmer*,
+  *Zeitpläne*, *Schalter*, *Etagen*, *Schultage, Urlaub, Fühler*, *Betrieb*,
+  *Meldungen und Wächter*, *Anzeige*, *Protokoll*, *Selbstauskunft*.
+
+**Die Rollo-Seite** öffnet sich mit einem Tipp auf den Namen (Heute), über
+*Rollo bearbeiten* (Tagesablauf) oder unter *Einstellungen › Rollos*: Name,
+Zimmer, Etage, Betriebsart, Zeitplan, Fensterkontakte („fährt nicht zu,
+solange einer davon offen ist“), Hitzeschutz mit Himmelsrichtung, ob es bei
+Rauch öffnet, Urlaubssimulation und was „offen“ und „zu“ heißen.
+
+**Schalter und Bedingungen** stehen dort, wo sie wirken: Im Tagesablauf zeigt
+der Editor über den Schaltpunkten die Schalter, an denen der Plan hängt, als
+Bedienelement – eine Auswahl wie *Terrassentür abends schließen* als
+„normal / um 24 Uhr / gar nicht“. Jeder Schaltpunkt ist ein Satz („zu bei
+Sonnenuntergang, spätestens 23:00 – nur wenn „EG schließen“ an ist“); *Ändern*
+öffnet ihn mit Wochentagen, Versatz und „Nur wenn …“. Unter *Einstellungen ›
+Schalter* steht je Schalter, wofür er gilt, mit Umbenennen; der technische
+Name steht klein darunter und bleibt beim Umbenennen gleich.
 
 Die Stellung zeigt die Oberfläche **immer als „% offen“**, gleich, wie die
 Zählweise für Karte und Sensoren eingestellt ist.
 
-**Die erweiterte Ansicht** (Einstellungen › Für Fortgeschrittene) ist die
-Oberfläche aus 2.x: eigene Schalter, Bedingungen an Schaltpunkten,
-Obergruppen, Fensterkontakte, Rauchmelder, die Selbstauskunft und die
-Übernahme aus Automationen. Was in den folgenden Abschnitten über Reiter
-steht, findet sich dort.
+Bis 3.0 gab es zusätzlich eine „erweiterte Ansicht“. Seit 3.1 ist sie
+aufgelöst; was in den älteren Abschnitten unten über *Reiter* steht, findet
+sich so: Übersicht → *Heute*; Rollos, Gruppen, Zeitpläne, Schalter,
+Einstellungen, Protokoll → *Einstellungen*; Rauchalarm → *Programme ›
+Rauchalarm*; Einrichtung → *Einstellungen › Rollos* (Übernahme aus
+Automationen, solange noch kein Rollo eingerichtet ist) und *Selbstauskunft*.
 
 ## Weihnachtszeit
 

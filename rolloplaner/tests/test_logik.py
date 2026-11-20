@@ -589,7 +589,7 @@ def test_die_karte_bekommt_jedes_merkmal_das_sie_liest():
     assert not fehlt, f"die Karte liest, was niemand sendet: {sorted(fehlt)}"
 
 
-OBERFLAECHEN = (("index.html", 200), ("erweitert.html", 300))
+OBERFLAECHEN = (("index.html", 250),)
 
 
 def _oberflaechen_tabellen(datei="index.html"):

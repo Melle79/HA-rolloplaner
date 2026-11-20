@@ -14,9 +14,9 @@ every cycle, moves only when a point is **newly due** — and writes down why.
 
 ![Today: every cover with position, reason and next change](rolloplaner/doku/bilder/en/uebersicht.png)
 
-Since 3.0 the interface has four areas: **Today**, **Daily schedule**,
-**Programs** and **Settings**. The finer things – own switches, conditions,
-groups, contacts, smoke detectors – live in the advanced view.
+The interface has four areas: **Today**, **Daily schedule**, **Programs**
+and **Settings**. Every cover has its own page; switches and conditions sit
+where they take effect.
 
 ## Installation
 
@@ -49,7 +49,9 @@ has a window *and* a balcony door there is no other way. Above it sit
 can carry a shared schedule that adds to the individual ones, and a release
 switch for the whole set.
 
-![Groups in the advanced view: assign, order and release covers](rolloplaner/doku/bilder/en/gruppen.png)
+![Floors: assign and order covers, switch each floor on and off](rolloplaner/doku/bilder/en/gruppen.png)
+
+![Switches: what each one applies to, with renaming](rolloplaner/doku/bilder/en/schalter.png)
 
 On top of that:
 
