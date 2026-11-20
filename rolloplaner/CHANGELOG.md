@@ -1,5 +1,36 @@
 # Änderungen
 
+## 3.0.0 – 20.11.2026
+
+**Eine neue Oberfläche, und die Weihnachtszeit.**
+
+* **Vier Bereiche statt neun Reiter:** *Heute* (was die Rollos tun und
+  warum), *Tagesablauf* (je Rollo ein Balken über den Tag, zum Ändern
+  antippen), *Programme* (Weihnachtszeit, Urlaub, Hitzeschutz, Rauchalarm) und
+  *Einstellungen*. Die Stellung steht überall als „% offen“, am Handy läuft
+  nichts mehr seitlich aus dem Bild.
+* **Der Zeitplan in Sätzen:** „offen um 06:30 an Schultagen“, „zu bei
+  Sonnenuntergang, spätestens 23:00“. Wochentage, Versatz und Bedingungen
+  stehen hinter *Erweitert*.
+* **Weihnachtszeit als festes Programm:** ab dem 1. Advent bis einschließlich
+  6. Januar (jedes Jahr von selbst oder feste Daten), Licht an bei
+  Sonnenuntergang, Dämmerung oder Uhrzeit, Licht aus und Rollos zu um 22:30,
+  morgens Licht und Zwischenstellung vor dem Öffnen. Beliebige Lichter und
+  Steckdosen; je Rollo *normaler Plan*, *bleibt offen* oder eine
+  Zwischenstellung. Neuer Schalter `switch.rolloplaner_weihnachtszeit`;
+  von Hand geschaltet gilt bis zur nächsten Grenze des Zeitraums.
+* **Die Lichter schalten auf der Flanke** und nur, was der Planer selbst
+  eingeschaltet hat, wieder aus. Ein nicht erreichbares Licht hält keine
+  Rolle auf und wird nachgeholt. Der Trockenlauf schaltet auch keine Lichter.
+* **Nichts ändert sich von selbst:** Zeitpläne, Schalter und Gruppen bleiben,
+  wie sie sind. Geprüft gegen die eingefrorene Rechnung aus 2.26 mit einer
+  echten Anlage – zehn Rollos, Schultag und schulfrei, alle zehn Minuten über
+  50 Tage: dieselben Fahrten. Vor dem ersten Start legt der Planer die
+  Einrichtung als `config-vor-3.0.json` beiseite.
+* **Die bisherige Oberfläche bleibt als erweiterte Ansicht** für eigene
+  Schalter, Bedingungen, Gruppen, Kontakte, Rauchmelder und Selbstauskunft.
+  Ihr Dialog sitzt jetzt mittig statt oben links.
+
 ## 2.26.0 – 08.09.2026
 
 **README mit Bildern, und in beiden Sprachen.** `README.md` ist jetzt

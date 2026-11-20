@@ -194,6 +194,22 @@ def _dienst(dienst: str, entity_id: str) -> bool:
         return False
 
 
+def schalten(entity_id: str, an: bool) -> bool:
+    """Ein Licht oder eine Steckdose ein- oder ausschalten.
+
+    Über ``homeassistant.turn_on``/``turn_off``, damit ``light.`` und
+    ``switch.`` denselben Weg gehen.
+    """
+    dienst = "turn_on" if an else "turn_off"
+    try:
+        _request("POST", f"/services/homeassistant/{dienst}", {"entity_id": entity_id})
+        _LOGGER.info("%s → %s", entity_id, dienst)
+        return True
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("%s für %s fehlgeschlagen: %s", dienst, entity_id, err)
+        return False
+
+
 def stop(entity_id: str) -> bool:
     return _dienst("stop_cover", entity_id)
 

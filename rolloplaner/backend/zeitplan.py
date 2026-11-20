@@ -167,7 +167,8 @@ def _roher_zeitpunkt(eintrag: dict, tag: date, sonnenstand) -> datetime | None:
 
 def _punkte_am_tag(zeitplan: list[dict], tag: date, kalender: Schulkalender,
                    heute: date, sonnenstand, anpassen=None,
-                   zustaende: dict | None = None) -> list[tuple[datetime, dict]]:
+                   zustaende: dict | None = None,
+                   programm=None) -> list[tuple[datetime, dict]]:
     out = []
     for eintrag in zeitplan:
         if not passt(eintrag, tag, kalender, heute, zustaende):
@@ -176,12 +177,17 @@ def _punkte_am_tag(zeitplan: list[dict], tag: date, kalender: Schulkalender,
         if zeitpunkt is not None:
             out.append((zeitpunkt, eintrag))
     out.sort(key=lambda p: p[0])
+    # Ein Programm (die Weihnachtszeit) legt seine Punkte über den Tag und
+    # blendet aus, was in seinem Fenster läge – siehe ``programme.umbauen``.
+    if programm is not None:
+        out = programm(tag, out)
     return out
 
 
 def letzter_zeitpunkt(zeitplan: list[dict], jetzt: datetime, kalender: Schulkalender,
                       sonnenstand, anpassen=None,
-                      zustaende: dict | None = None) -> tuple[datetime, dict] | None:
+                      zustaende: dict | None = None,
+                      programm=None) -> tuple[datetime, dict] | None:
     """Der zuletzt fällig gewordene Schaltpunkt samt Zeitpunkt.
 
     Sucht rückwärts über Tagesgrenzen hinweg: Der Sonnenuntergang von gestern
@@ -194,7 +200,8 @@ def letzter_zeitpunkt(zeitplan: list[dict], jetzt: datetime, kalender: Schulkale
     for versatz in range(RUECKSCHAU_TAGE):
         tag = heute - timedelta(days=versatz)
         kandidaten = [p for p in _punkte_am_tag(zeitplan, tag, kalender, heute,
-                                                sonnenstand, anpassen, zustaende)
+                                                sonnenstand, anpassen, zustaende,
+                                                programm)
                       if p[0] <= jetzt]
         if kandidaten:
             return kandidaten[-1]
@@ -203,13 +210,15 @@ def letzter_zeitpunkt(zeitplan: list[dict], jetzt: datetime, kalender: Schulkale
 
 def naechster_wechsel(zeitplan: list[dict], jetzt: datetime, kalender: Schulkalender,
                       sonnenstand, anpassen=None,
-                      zustaende: dict | None = None) -> tuple[datetime, dict] | None:
+                      zustaende: dict | None = None,
+                      programm=None) -> tuple[datetime, dict] | None:
     """Der nächste anstehende Schaltpunkt samt Zeitpunkt."""
     heute = jetzt.date()
     for versatz in range(RUECKSCHAU_TAGE):
         tag = heute + timedelta(days=versatz)
         kandidaten = [p for p in _punkte_am_tag(zeitplan, tag, kalender, heute,
-                                                sonnenstand, anpassen, zustaende)
+                                                sonnenstand, anpassen, zustaende,
+                                                programm)
                       if p[0] > jetzt]
         if kandidaten:
             return kandidaten[0]
@@ -302,3 +311,29 @@ def standardplan(art: str = "wohnraum") -> list[dict]:
         punkt(100, start="10:00", gilt="schulfrei"),
         punkt(0, "sonnenuntergang", spaet="23:00"),
     ]
+
+
+def tagesablauf(zeitplan: list[dict], tag: date, kalender: Schulkalender,
+                sonnenstand, zustaende: dict | None = None,
+                programm=None) -> dict:
+    """Der Tag eines Rollos als Folge von Stellungen – für den Tagesablauf.
+
+    ``start`` ist die Stellung um Mitternacht (der zuletzt fällige Punkt der
+    Tage davor), ``punkte`` die Wechsel des Tages. Gerechnet wird mit genau den
+    Funktionen, nach denen der Planer fährt – die Anzeige kann also nichts
+    versprechen, was der Takt anders macht.
+    """
+    mitternacht = datetime.combine(tag, time(0, 0))
+    vorher = letzter_zeitpunkt(zeitplan, mitternacht - timedelta(seconds=1), kalender,
+                               sonnenstand, None, zustaende, programm)
+    # Ein Punkt des Vortags kann nach Mitternacht liegen („Licht aus 00:30“).
+    punkte = sorted([p for t in (tag - timedelta(days=1), tag)
+                     for p in _punkte_am_tag(zeitplan, t, kalender, tag, sonnenstand,
+                                             None, zustaende, programm)
+                     if p[0].date() == tag], key=lambda p: p[0])
+    return {
+        "start": int(vorher[1]["position"]) if vorher else None,
+        "punkte": [{"zeit": z.strftime("%H:%M"), "position": int(e["position"]),
+                    "programm": e.get("programm") or "",
+                    "text": beschreibung(e)} for z, e in punkte],
+    }

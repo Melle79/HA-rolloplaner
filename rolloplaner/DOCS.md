@@ -6,6 +6,83 @@ zusammengehört, Hitzeschutz nach Sonnenrichtung, Urlaubssimulation, eine
 Fenstersperre – und bei Rauchalarm eine Fluchtweg-Freigabe, die jedes Rollo
 auffährt.
 
+## Die Oberfläche
+
+Seit 3.0 hat die Oberfläche **vier Bereiche** statt neun Reiter:
+
+* **Heute** – oben die Lage (Schultag oder nicht, Sonne, außen, was als
+  Nächstes passiert, welches Programm läuft, Störungen), darunter je Zimmer
+  die Rollos: ein Bild mit der Stellung, ein Schild, *warum* es so steht
+  (ZEITPLAN, VON HAND, FENSTER OFFEN, WEIHNACHTSZEIT …), ein Satz zur
+  Begründung samt dem nächsten Wechsel, die Stellung als „% offen“ und die
+  Knöpfe auf, halt, zu und Automatik.
+* **Tagesablauf** – je Rollo ein Balken von 0 bis 24 Uhr, offen, teilweise
+  und zu farbig, umschaltbar zwischen Schultag und schulfrei und – sobald die
+  Weihnachtszeit eingerichtet ist – mit und ohne sie. Ein Strich zeigt jetzt.
+  Antippen öffnet den Zeitplan dieses Rollos in Sätzen: „offen um 06:30 an
+  Schultagen“, „zu bei Sonnenuntergang, spätestens 23:00“. Wochentage,
+  Versatz und Bedingungen stehen hinter *Erweitert*.
+* **Programme** – Weihnachtszeit, Urlaub, Hitzeschutz und Rauchalarm, jedes
+  mit einem Schild, ob es gerade greift, und seinen Einstellungen.
+* **Einstellungen** – Betrieb, die Rollos selbst, woher der Planer Schultage
+  und Außentemperatur kennt, Wächter, Anzeige in Home Assistant, Protokoll.
+
+Die Stellung zeigt die Oberfläche **immer als „% offen“**, gleich, wie die
+Zählweise für Karte und Sensoren eingestellt ist.
+
+**Die erweiterte Ansicht** (Einstellungen › Für Fortgeschrittene) ist die
+Oberfläche aus 2.x: eigene Schalter, Bedingungen an Schaltpunkten,
+Obergruppen, Fensterkontakte, Rauchmelder, die Selbstauskunft und die
+Übernahme aus Automationen. Was in den folgenden Abschnitten über Reiter
+steht, findet sich dort.
+
+## Weihnachtszeit
+
+Vom ersten Advent bis Heilige Drei Könige brennen abends Lichter. Die Rollos
+davor sollen dann nicht bei Sonnenuntergang zufahren, sondern offen bleiben
+oder auf eine Zwischenstellung gehen, und erst zu, wenn das Licht ausgeht.
+Morgens dasselbe in kurz: Licht an, Rollos halb, zur gewohnten Zeit auf.
+
+**Einstellen** unter *Programme › Weihnachtszeit*:
+
+* **Zeitraum** – „ab 1. Advent“ (rechnet jedes Jahr selbst) oder feste Daten;
+  *bis einschließlich* ist voreingestellt 06.01.
+* **Jedes Jahr von selbst** – ohne Haken läuft das Programm nur, wenn man es
+  von Hand einschaltet.
+* **Licht an** abends bei Sonnenuntergang, bei Dämmerung (mit Versatz) oder zu
+  einer festen Uhrzeit; **Licht aus und Rollos zu** um 22:30.
+* **Morgens vor dem Öffnen** – 15 bis 60 Minuten vor dem ersten Öffnen des
+  Tages Licht an und Rollos auf die Zwischenstellung; „morgens nicht“ schaltet
+  das ab.
+* **Lichter und Steckdosen** – beliebige `light.` und `switch.` aus Home
+  Assistant, mit Suche. Die Segmente einer Lichterkette stehen nicht in der
+  Liste; geschaltet wird die Kette.
+* **Rollos, während das Licht brennt** – je Rollo *normaler Plan* (das
+  Programm fasst es nicht an), *bleibt offen bis Licht aus* oder eine
+  Zwischenstellung in Prozent offen.
+
+**Von Hand** schaltet *Jetzt einschalten/ausschalten* oder der Schalter
+`switch.rolloplaner_weihnachtszeit`. Das gilt bis zur nächsten Grenze des
+Zeitraums: am 3. Januar ausgeschaltet heißt „dieses Jahr nicht mehr“, im
+nächsten Advent läuft es wieder von selbst.
+
+**Wie es rechnet.** Das Programm legt seine Punkte über den Tag des Rollos –
+Licht an, Licht aus, Morgenlicht – und blendet aus, was im Lichtfenster
+zufahren würde. Der Zeitplan selbst bleibt unverändert; nach dem Zeitraum gilt
+er wie vorher. Es braucht keine Bedingungen und keine Gegenbedingungen an den
+bestehenden Schaltpunkten.
+
+**Die Lichter** schalten auf der Flanke: einmal an, einmal aus. Wer eine Kette
+abends von Hand ausmacht, bekommt sie nicht zwei Minuten später wieder an.
+Ein Licht, das gerade nicht erreichbar ist, wird übersprungen und nachgeholt,
+sobald es wieder da ist – an den Rollos hängt davon nichts. Ausgeschaltet wird
+nur, was der Planer selbst eingeschaltet hat. Im **Trockenlauf** schaltet er
+auch keine Lichter.
+
+**Wann es zum ersten Mal fährt.** Wie jeder Zeitplan fährt das Programm auf
+der Flanke. Schaltet man die Weihnachtszeit abends ein, gilt rechnerisch sofort
+die Zwischenstellung, gefahren wird aber erst beim nächsten fälligen Punkt.
+
 ## Wie der Planer denkt
 
 **Die Steuereinheit ist das Rollo, nicht der Raum.** Das ist die Entscheidung,
@@ -169,7 +246,13 @@ eines einzelnen Rollos).
 | 5 | **Urlaub** | Urlaubsprogramm statt Zeitplan |
 | 6 | **Hitzeschutz** | Die Sonne steht in *diesem* Fenster und es ist warm |
 | 7 | **Handbetrieb** | Jemand hat von Hand gefahren |
-| 8 | **Zeitplan** | Der Normalfall |
+| 8 | **Zeitplan** | Der Normalfall – in der Weihnachtszeit mit deren Punkten |
+
+Die **Weihnachtszeit** ist kein eigener Rang: Sie baut die Schaltpunkte des
+Tages um und sitzt damit auf der Stufe des Zeitplans. Rauch, „aus“,
+gesperrte Pläne, ein offenes Fenster und der Urlaub („alles zu“) stehen
+darüber; der Hitzeschutz verschiebt das Ergebnis wie jeden Zeitplan, und
+Handbetrieb endet mit dem nächsten Punkt – auch mit einem des Programms.
 
 Geschaltet wird **auf der Flanke, nie auf dem Pegel**: Der Planer merkt sich,
 welchen Schaltpunkt er zuletzt ausgeführt hat, und rührt sich erst wieder, wenn

@@ -13,7 +13,11 @@ Sonnenuntergang zufahren, spätestens 20:30, an Schultagen“. Der Planer rechne
 jeden Takt neu, fährt nur, wenn ein Punkt **neu fällig** ist — und schreibt
 dazu, warum.
 
-![Die Übersicht mit allen Rollos, Stellung und Begründung](rolloplaner/doku/bilder/uebersicht.png)
+![Heute: alle Rollos mit Stellung, Begründung und nächstem Wechsel](rolloplaner/doku/bilder/uebersicht.png)
+
+Seit 3.0 hat die Oberfläche vier Bereiche: **Heute**, **Tagesablauf**,
+**Programme** und **Einstellungen**. Alles Feinere – eigene Schalter,
+Bedingungen, Gruppen, Kontakte, Rauchmelder – steht in der erweiterten Ansicht.
 
 ## Installation
 
@@ -34,7 +38,11 @@ schaltet. Schulfrei, Feiertage und „morgen schulfrei“ kann er berücksichtig
 und ein Schaltpunkt darf an einer Bedingung hängen — an einem Schalter, den
 der Planer selbst anlegt.
 
-![Ein gemeinsamer Zeitplan mit Schaltpunkten für Schultage und schulfreie Tage](rolloplaner/doku/bilder/zeitplan.png)
+![Der Tagesablauf: je Rollo ein Balken von 0 bis 24 Uhr](rolloplaner/doku/bilder/tagesablauf.png)
+
+Antippen öffnet den Zeitplan in Sätzen:
+
+![Ein gemeinsamer Zeitplan: offen um 06:30 an Schultagen, zu bei Sonnenuntergang](rolloplaner/doku/bilder/zeitplan.png)
 
 Die Steuereinheit ist **das Rollo**, nicht der Raum — in jedem Haus, in dem ein
 Zimmer ein Fenster *und* eine Balkontür hat, geht es nicht anders. Darüber
@@ -42,7 +50,7 @@ liegen **Obergruppen** (etwa Etagen) für alles, was zusammengehört: Sie könne
 einen gemeinsamen Zeitplan tragen, der zu den einzelnen dazukommt, und einen
 Freigabeschalter für den ganzen Schnitt.
 
-![Obergruppen: Rollos zuordnen, sortieren und freigeben](rolloplaner/doku/bilder/gruppen.png)
+![Obergruppen in der erweiterten Ansicht: Rollos zuordnen, sortieren und freigeben](rolloplaner/doku/bilder/gruppen.png)
 
 Dazu:
 
@@ -54,6 +62,17 @@ Dazu:
 * **Wächter**, der meldet, wenn ein Antrieb sich nicht mehr rührt oder hängt.
 * **Trockenlauf**: rechnet und protokolliert, fährt aber nichts — zum
   Mitlaufen neben den bestehenden Automationen.
+
+## Weihnachtszeit
+
+Vom 1. Advent bis Heilige Drei Könige brennen abends Lichter. Das Programm
+*Weihnachtszeit* schaltet beliebige Lichter und Steckdosen bei Sonnenuntergang
+(oder Dämmerung, oder zur Uhrzeit) ein und um 22:30 wieder aus. Die Rollos
+davor bleiben so lange offen oder stehen auf einer Zwischenstellung und gehen
+erst mit dem Licht zu; morgens dasselbe vor dem Öffnen. Jedes Jahr von selbst,
+von Hand jederzeit ein- und auszuschalten.
+
+![Das Programm Weihnachtszeit mit Lichtern und Stellung je Rollo](rolloplaner/doku/bilder/weihnachtszeit.png)
 
 Vorhandene Rollladen-Automationen liest das Add-on ein und schlägt vor, was es
 daraus machen würde. **Übernommen wird nichts von selbst.**

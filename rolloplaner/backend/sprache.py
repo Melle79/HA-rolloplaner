@@ -27,6 +27,12 @@ VORGABE = "de"
 TEXTE: dict[str, dict[str, str]] = {
     "de": {
         # ── Schaltpunkte: die Bausteine eines Satzes ──────────────────────
+        "prog.weihnacht_abend": "Weihnachtszeit: {n} % offen, solange das Licht brennt",
+        "prog.weihnacht_morgen": "Weihnachtszeit: {n} % offen vor dem Öffnen",
+        "prog.weihnacht_aus": "Weihnachtszeit: Licht aus, Rollo zu",
+        "prog.weihnacht_licht": "Weihnachtszeit",
+        "prog.licht_an": "an",
+        "prog.licht_aus": "aus",
         "punkt.satz": "{was} um {wann}{geltung}",
         "punkt.auf": "auf",
         "punkt.zu": "zu",
@@ -118,6 +124,12 @@ TEXTE: dict[str, dict[str, str]] = {
                            "gleichzeitig und läuft nie – übersprungen",
     },
     "en": {
+        "prog.weihnacht_abend": "Christmas time: {n} % open while the lights are on",
+        "prog.weihnacht_morgen": "Christmas time: {n} % open before opening",
+        "prog.weihnacht_aus": "Christmas time: lights off, shutter closed",
+        "prog.weihnacht_licht": "Christmas time",
+        "prog.licht_an": "on",
+        "prog.licht_aus": "off",
         "punkt.satz": "{was} at {wann}{geltung}",
         "punkt.auf": "open",
         "punkt.zu": "closed",

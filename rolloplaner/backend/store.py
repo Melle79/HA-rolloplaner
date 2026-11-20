@@ -26,11 +26,14 @@ mittags.
 """
 from __future__ import annotations
 
+import copy
 import json
 import os
 import re
 import threading
 import uuid
+
+import programme
 
 DATA_DIR = os.environ.get("DATA_DIR", "./data")
 CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
@@ -97,6 +100,7 @@ HIMMELSRICHTUNGEN = {
 }
 
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
+_MMTT_RE = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
 
 class ValidationError(ValueError):
@@ -204,6 +208,10 @@ STANDARD_EINSTELLUNGEN = {
         "melden_an": ["notify.persistent_notification"],
     },
 }
+
+# Die Weihnachtszeit – das erste Programm. Die Vorgaben stehen beim Programm
+# selbst, damit Rechnung und Vorgabe nicht auseinanderlaufen.
+STANDARD_EINSTELLUNGEN["weihnachtszeit"] = copy.deepcopy(programme.STANDARD_WEIHNACHTSZEIT)
 
 STANDARD_PLAN = {
     "name": "Neuer Zeitplan",
@@ -357,6 +365,22 @@ def alte_konfiguration_sichern() -> str | None:
         if not roh:
             return None
         ziel = os.path.join(DATA_DIR, "config-vor-umbau.json")
+        _write(ziel, roh)
+    return ziel
+
+
+def vor_fassung_sichern(fassung: str) -> str | None:
+    """Die Konfiguration einmalig beiseitelegen, bevor eine große Fassung sie
+    zum ersten Mal anfasst. Liegt die Sicherung schon da, bleibt sie, wie sie
+    ist – sie soll den Stand *vor* dem Wechsel zeigen, nicht den von gestern.
+    """
+    ziel = os.path.join(DATA_DIR, f"config-vor-{fassung}.json")
+    with _lock:
+        if os.path.exists(ziel):
+            return None
+        roh = _read(CONFIG_FILE, None)
+        if not roh:
+            return None
         _write(ziel, roh)
     return ziel
 
@@ -705,6 +729,38 @@ def validate_einstellungen(roh: dict) -> dict:
         u[schluessel] = wert
 
     e["eigene_schalter"] = validate_schalter(e.get("eigene_schalter"))
+
+    x = e["weihnachtszeit"]
+    x["aktiv"] = bool(x.get("aktiv"))
+    if x.get("zeitraum") not in ("advent", "fest"):
+        x["zeitraum"] = "advent"
+    for schluessel, name in (("von", "Weihnachtszeit ab"), ("bis", "Weihnachtszeit bis")):
+        wert = str(x.get(schluessel) or "").strip()
+        if not _MMTT_RE.match(wert):
+            raise ValidationError(f"{name}: ungültiges Datum {wert!r} (MM-TT)")
+        x[schluessel] = wert
+    if x.get("licht_an") not in ("sonnenuntergang", "daemmerung", "uhrzeit"):
+        x["licht_an"] = "sonnenuntergang"
+    for schluessel, name in (("licht_an_zeit", "Licht an"), ("licht_aus", "Licht aus")):
+        wert = str(x.get(schluessel) or "").strip()
+        if not _TIME_RE.match(wert):
+            raise ValidationError(f"Weihnachtszeit – {name}: ungültige Uhrzeit {wert!r}")
+        x[schluessel] = wert
+    x["licht_an_versatz"] = int(_zahl(x.get("licht_an_versatz") or 0,
+                                      "Versatz Licht an", -180, 180))
+    x["morgens_vorlauf"] = int(_zahl(x.get("morgens_vorlauf") or 0,
+                                     "Vorlauf am Morgen", 0, 180))
+    x["lichter"] = list(dict.fromkeys(
+        str(l).strip() for l in (x.get("lichter") or [])
+        if str(l).strip().split(".", 1)[0] in ("light", "switch")))
+    rollos = {}
+    for eid, wert in (x.get("rollos") or {}).items():
+        if wert in (programme.PLAN, programme.OFFEN):
+            if wert != programme.PLAN:
+                rollos[str(eid)] = wert
+            continue
+        rollos[str(eid)] = int(_position(wert, "Weihnachtszeit – Stellung"))
+    x["rollos"] = rollos
 
     w = e["wachhund"]
     w["aktiv"] = bool(w["aktiv"])

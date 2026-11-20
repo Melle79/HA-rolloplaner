@@ -1,0 +1,707 @@
+{
+ "rollos": [
+  {
+   "entity_id": "cover.rollo_1",
+   "name": "Rollo 1",
+   "raum": "Raum 1",
+   "art": "fenster",
+   "aktiv": true,
+   "betriebsart": "plan",
+   "plan": "",
+   "zeitplan": [
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "immer",
+     "name": "",
+     "position": 100,
+     "spaet": "",
+     "start": "08:30",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s8",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "immer",
+     "name": "",
+     "position": 100,
+     "spaet": "",
+     "start": "10:00",
+     "tage": [
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s8",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "sonnenuntergang",
+     "frueh": "",
+     "gilt": "immer",
+     "name": "",
+     "position": 0,
+     "spaet": "",
+     "start": "",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s8",
+       "wert": "on"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "entity_id": "cover.rollo_2",
+   "name": "Rollo 2",
+   "raum": "Raum 1",
+   "art": "fenster",
+   "aktiv": true,
+   "betriebsart": "plan",
+   "plan": "plan1",
+   "zeitplan": []
+  },
+  {
+   "entity_id": "cover.rollo_3",
+   "name": "Rollo 3",
+   "raum": "Raum 2",
+   "art": "balkontuer",
+   "aktiv": true,
+   "betriebsart": "plan",
+   "plan": "plan2",
+   "zeitplan": []
+  },
+  {
+   "entity_id": "cover.rollo_4",
+   "name": "Rollo 4",
+   "raum": "Raum 2",
+   "art": "fenster",
+   "aktiv": true,
+   "betriebsart": "plan",
+   "plan": "plan2",
+   "zeitplan": []
+  },
+  {
+   "entity_id": "cover.rollo_5",
+   "name": "Rollo 5",
+   "raum": "Raum 3",
+   "art": "fenster",
+   "aktiv": true,
+   "betriebsart": "plan",
+   "plan": "",
+   "zeitplan": [
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "schultag",
+     "name": "",
+     "position": 100,
+     "spaet": "",
+     "start": "06:30",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s7",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "schulfrei",
+     "name": "",
+     "position": 100,
+     "spaet": "",
+     "start": "10:00",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s7",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "sonnenuntergang",
+     "frueh": "",
+     "gilt": "morgen_schulfrei",
+     "name": "",
+     "position": 0,
+     "spaet": "22:00",
+     "start": "",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s6",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "sonnenuntergang",
+     "frueh": "",
+     "gilt": "morgen_schultag",
+     "name": "",
+     "position": 0,
+     "spaet": "20:30",
+     "start": "",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s6",
+       "wert": "on"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "entity_id": "cover.rollo_6",
+   "name": "Rollo 6",
+   "raum": "Raum 3",
+   "art": "balkontuer",
+   "aktiv": false,
+   "betriebsart": "von_hand",
+   "plan": "",
+   "zeitplan": []
+  },
+  {
+   "entity_id": "cover.rollo_7",
+   "name": "Rollo 7",
+   "raum": "Raum 4",
+   "art": "fenster",
+   "aktiv": false,
+   "betriebsart": "von_hand",
+   "plan": "",
+   "zeitplan": []
+  },
+  {
+   "entity_id": "cover.rollo_8",
+   "name": "Rollo 8",
+   "raum": "Raum 4",
+   "art": "terrassentuer",
+   "aktiv": true,
+   "betriebsart": "plan",
+   "plan": "",
+   "zeitplan": [
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "immer",
+     "name": "",
+     "position": 0,
+     "spaet": "",
+     "start": "00:00",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s1",
+       "wert": "on"
+      },
+      {
+       "entity": "rolloplaner:s3",
+       "wert": "24 Uhr"
+      }
+     ]
+    },
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "schultag",
+     "name": "",
+     "position": 100,
+     "spaet": "",
+     "start": "06:30",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s1",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "schulfrei",
+     "name": "",
+     "position": 100,
+     "spaet": "",
+     "start": "10:00",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s1",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "sonnenuntergang",
+     "frueh": "",
+     "gilt": "immer",
+     "name": "",
+     "position": 0,
+     "spaet": "23:00",
+     "start": "",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s4",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "sonnenuntergang",
+     "frueh": "",
+     "gilt": "immer",
+     "name": "",
+     "position": 0,
+     "spaet": "23:00",
+     "start": "",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s1",
+       "wert": "on"
+      },
+      {
+       "entity": "rolloplaner:s3",
+       "wert": "normal"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "entity_id": "cover.rollo_9",
+   "name": "Rollo 9",
+   "raum": "Raum 5",
+   "art": "fenster",
+   "aktiv": true,
+   "betriebsart": "plan",
+   "plan": "plan1",
+   "zeitplan": []
+  },
+  {
+   "entity_id": "cover.rollo_10",
+   "name": "Rollo 10",
+   "raum": "Raum 5",
+   "art": "fenster",
+   "aktiv": true,
+   "betriebsart": "plan",
+   "plan": "plan1",
+   "zeitplan": []
+  }
+ ],
+ "plaene": [
+  {
+   "id": "plan1",
+   "name": "Plan 1",
+   "aktiv": true,
+   "zeitplan": [
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "schultag",
+     "name": "",
+     "position": 100,
+     "spaet": "",
+     "start": "06:30",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s1",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "schulfrei",
+     "name": "",
+     "position": 100,
+     "spaet": "",
+     "start": "10:00",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s1",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "sonnenuntergang",
+     "frueh": "",
+     "gilt": "immer",
+     "name": "",
+     "position": 0,
+     "spaet": "23:00",
+     "start": "",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s2",
+       "wert": "on"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "plan2",
+   "name": "Plan 2",
+   "aktiv": true,
+   "zeitplan": [
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "schultag",
+     "name": "",
+     "position": 100,
+     "spaet": "",
+     "start": "06:00",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s5",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "uhrzeit",
+     "frueh": "",
+     "gilt": "schulfrei",
+     "name": "",
+     "position": 100,
+     "spaet": "",
+     "start": "10:00",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s5",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "sonnenuntergang",
+     "frueh": "",
+     "gilt": "morgen_schulfrei",
+     "name": "",
+     "position": 0,
+     "spaet": "22:00",
+     "start": "",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s6",
+       "wert": "on"
+      }
+     ]
+    },
+    {
+     "ausloeser": "sonnenuntergang",
+     "frueh": "",
+     "gilt": "morgen_schultag",
+     "name": "",
+     "position": 0,
+     "spaet": "20:30",
+     "start": "",
+     "tage": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+     ],
+     "versatz_min": 0,
+     "wenn": [
+      {
+       "entity": "rolloplaner:s6",
+       "wert": "on"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "schalter": [
+  {
+   "id": "s1",
+   "name": "Schalter 1",
+   "art": "schalter",
+   "optionen": [],
+   "vorgabe": "on",
+   "icon": "",
+   "quelle": ""
+  },
+  {
+   "id": "s2",
+   "name": "Schalter 2",
+   "art": "schalter",
+   "optionen": [],
+   "vorgabe": "on",
+   "icon": "",
+   "quelle": ""
+  },
+  {
+   "id": "s3",
+   "name": "Schalter 3",
+   "art": "auswahl",
+   "optionen": [
+    "normal",
+    "24 Uhr",
+    "aus"
+   ],
+   "vorgabe": "24 Uhr",
+   "icon": "",
+   "quelle": ""
+  },
+  {
+   "id": "s4",
+   "name": "Schalter 4",
+   "art": "schalter",
+   "optionen": [],
+   "vorgabe": "off",
+   "icon": "",
+   "quelle": ""
+  },
+  {
+   "id": "s5",
+   "name": "Schalter 5",
+   "art": "schalter",
+   "optionen": [],
+   "vorgabe": "on",
+   "icon": "",
+   "quelle": ""
+  },
+  {
+   "id": "s6",
+   "name": "Schalter 6",
+   "art": "schalter",
+   "optionen": [],
+   "vorgabe": "on",
+   "icon": "",
+   "quelle": ""
+  },
+  {
+   "id": "s7",
+   "name": "Schalter 7",
+   "art": "schalter",
+   "optionen": [],
+   "vorgabe": "on",
+   "icon": "",
+   "quelle": ""
+  },
+  {
+   "id": "s8",
+   "name": "Schalter 8",
+   "art": "schalter",
+   "optionen": [],
+   "vorgabe": "on",
+   "icon": "",
+   "quelle": ""
+  }
+ ],
+ "gruppen": [
+  {
+   "id": "g1",
+   "name": "Gruppe 1",
+   "plan": "",
+   "schalter": "",
+   "aktiv": true,
+   "rollos": [
+    "cover.rollo_2",
+    "cover.rollo_9",
+    "cover.rollo_10",
+    "cover.rollo_8"
+   ]
+  },
+  {
+   "id": "g2",
+   "name": "Gruppe 2",
+   "plan": "",
+   "schalter": "",
+   "aktiv": true,
+   "rollos": [
+    "cover.rollo_1",
+    "cover.rollo_3",
+    "cover.rollo_4",
+    "cover.rollo_5",
+    "cover.rollo_6",
+    "cover.rollo_7"
+   ]
+  }
+ ]
+}

@@ -60,6 +60,7 @@ SCHALTER = [
     ("urlaubssimulation", "Rollos Urlaubssimulation", "mdi:shield-home"),
     ("fluchtweg", "Rollos Fluchtweg-Freigabe", "mdi:fire-alert"),
     ("trockenlauf_schalter", "Rollos Trockenlauf schalten", "mdi:test-tube"),
+    ("weihnachtszeit", "Rollos Weihnachtszeit", "mdi:pine-tree"),
 ]
 
 
@@ -524,6 +525,12 @@ class Publisher:
                       "ON" if (einstellungen.get("urlaub") or {}).get("modus") == "simulation"
                       else "OFF",
                       {"modus": (einstellungen.get("urlaub") or {}).get("modus")})
+        weihnacht = bericht.get("weihnachtszeit") or {}
+        self._zustand("weihnachtszeit", "ON" if weihnacht.get("aktiv") else "OFF",
+                      {"eingerichtet": weihnacht.get("eingerichtet"),
+                       "von": weihnacht.get("von"), "bis": weihnacht.get("bis"),
+                       "von_hand": bool(weihnacht.get("hand")),
+                       "licht": weihnacht.get("licht_soll")})
         self._zustand("trockenlauf_schalter",
                       "ON" if einstellungen.get("trockenlauf") else "OFF", {})
         self._zustand("fluchtweg",

@@ -12,7 +12,11 @@ Instead of three automations per cover there is one switching point: “close at
 sunset, no later than 20:30, on school days”. The planner recalculates on
 every cycle, moves only when a point is **newly due** — and writes down why.
 
-![The overview with every cover, its position and the reason](rolloplaner/doku/bilder/en/uebersicht.png)
+![Today: every cover with position, reason and next change](rolloplaner/doku/bilder/en/uebersicht.png)
+
+Since 3.0 the interface has four areas: **Today**, **Daily schedule**,
+**Programs** and **Settings**. The finer things – own switches, conditions,
+groups, contacts, smoke detectors – live in the advanced view.
 
 ## Installation
 
@@ -33,7 +37,11 @@ the sun. It can take days off, public holidays and “tomorrow is a day off”
 into account, and a switching point may depend on a condition — on a switch
 the planner creates itself.
 
-![A shared schedule with switching points for school days and days off](rolloplaner/doku/bilder/en/zeitplan.png)
+![The daily schedule: one bar per cover, midnight to midnight](rolloplaner/doku/bilder/en/tagesablauf.png)
+
+Tapping a bar opens its schedule as sentences:
+
+![A shared schedule: open at 06:30 on school days, closed at sunset](rolloplaner/doku/bilder/en/zeitplan.png)
 
 The unit of control is **the cover**, not the room — in any house where a room
 has a window *and* a balcony door there is no other way. Above it sit
@@ -41,7 +49,7 @@ has a window *and* a balcony door there is no other way. Above it sit
 can carry a shared schedule that adds to the individual ones, and a release
 switch for the whole set.
 
-![Groups: assign, order and release covers](rolloplaner/doku/bilder/en/gruppen.png)
+![Groups in the advanced view: assign, order and release covers](rolloplaner/doku/bilder/en/gruppen.png)
 
 On top of that:
 
@@ -53,6 +61,17 @@ On top of that:
 * **Watchdog** that reports a motor that stopped responding or is stuck.
 * **Dry run**: calculates and logs but moves nothing — to run alongside the
   automations you already have.
+
+## Christmas time
+
+From the first Sunday of Advent to Epiphany the lights are on in the evening.
+The *Christmas time* program switches any lights and sockets on at sunset (or
+dusk, or a set time) and off at 22:30. The covers in front stay open or at an
+intermediate position until then and close with the lights; the same in the
+morning before opening. Every year by itself, and switchable by hand at any
+time.
+
+![The Christmas time program with lights and a position per cover](rolloplaner/doku/bilder/en/weihnachtszeit.png)
 
 The add-on reads existing shutter automations and proposes what it would make
 of them. **Nothing is taken over on its own.**

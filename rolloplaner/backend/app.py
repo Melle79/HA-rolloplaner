@@ -21,6 +21,7 @@ from flask import Flask, jsonify, request, send_from_directory
 import cardsync
 import ha_api
 import logbuch
+import programme
 import regelung
 import sprache
 import store
@@ -296,6 +297,28 @@ def _discovery_auffrischen() -> None:
         _LOGGER.warning("Discovery fehlgeschlagen: %s", err)
 
 
+def _weihnachtszeit_setzen(an: bool) -> None:
+    """Die Weihnachtszeit von Hand ein- oder ausschalten.
+
+    Das gilt bis zur nächsten Grenze des Zeitraums: Am 3. Januar abgeschaltet
+    heißt „dieses Jahr nicht mehr“, und im nächsten Advent läuft sie wieder
+    von selbst. Wer sie auf den Stand schaltet, den sie ohnehin hätte, hebt
+    die Handschaltung auf.
+    """
+    cfg = store.load_config()["einstellungen"].get("weihnachtszeit") or {}
+    heute = regelung._jetzt().date()
+    von_selbst = bool(cfg.get("aktiv")) and programme.im_zeitraum(cfg, heute)
+    with _takt_lock:
+        state = store.load_state()
+        if an == von_selbst:
+            state["weihnachtszeit_hand"] = None
+        else:
+            state["weihnachtszeit_hand"] = {
+                "wert": "on" if an else "off",
+                "bis": programme.naechste_grenze(cfg, heute).isoformat()}
+        store.save_state(state)
+
+
 def _eigenen_schalter_setzen(kennung: str, wert: str) -> None:
     """Einen eigenen Schalter aus Home Assistant heraus stellen."""
     config = store.load_config()
@@ -333,6 +356,8 @@ def _schalter_setzen(key: str, an: bool) -> None:
         store.update_einstellungen({"urlaub": {"modus": "simulation" if an else "zu"}})
     elif key == "fluchtweg":
         store.update_einstellungen({"rauchsperre": {"fluchtweg": an}})
+    elif key == "weihnachtszeit":
+        _weihnachtszeit_setzen(an)
     elif key == "trockenlauf_schalter":
         vorher = store.load_config()["einstellungen"].get("trockenlauf")
         store.update_einstellungen({"trockenlauf": an})
@@ -950,6 +975,51 @@ def api_handbetrieb():
     return jsonify({"aufgehoben": _handbetrieb_aufheben(request.args.get("rollo"))})
 
 
+@app.route("/api/weihnachtszeit", methods=["POST"])
+def api_weihnachtszeit():
+    """Die Weihnachtszeit von Hand schalten – derselbe Weg wie der Schalter."""
+    an = bool((request.get_json(force=True) or {}).get("an"))
+    _weihnachtszeit_setzen(an)
+    _sofort_rechnen()
+    return jsonify({"an": an})
+
+
+@app.route("/api/tagesablauf")
+def api_tagesablauf():
+    """Der Tag aller Rollos als Folge von Stellungen – für die Balken."""
+    try:
+        tag = (datetime.strptime(request.args["datum"], "%Y-%m-%d").date()
+               if request.args.get("datum") else regelung._jetzt().date())
+    except ValueError:
+        return jsonify({"fehler": "Datum als JJJJ-MM-TT"}), 400
+    art = request.args.get("art") or "schultag"
+    if art not in ("schultag", "schulfrei"):
+        return jsonify({"fehler": "art: schultag oder schulfrei"}), 400
+    weihnacht = request.args.get("weihnachtszeit") or "auto"
+    index = {s["entity_id"]: s for s in ha_api.get_states()}
+    return jsonify(regelung.tagesablauf(store.load_config(), store.load_state(),
+                                        index, tag, art, weihnacht))
+
+
+@app.route("/api/lichter")
+def api_lichter():
+    """Lichter und Steckdosen, die die Weihnachtszeit schalten kann."""
+    bereiche = ha_api.bereiche_je_entitaet(("light", "switch"))
+    out = []
+    for s in ha_api.get_states():
+        eid = s["entity_id"]
+        if eid.split(".", 1)[0] not in ("light", "switch") or ha_api.ist_eigene_entitaet(eid):
+            continue
+        attrs = s.get("attributes") or {}
+        # Segmente einer Lichterkette sind keine eigenen Lichter.
+        if eid.startswith("light.") and "_segment_" in eid:
+            continue
+        out.append({"entity_id": eid, "name": attrs.get("friendly_name") or eid,
+                    "zustand": s.get("state"), "bereich": bereiche.get(eid) or ""})
+    out.sort(key=lambda e: (e["name"].lower(), e["entity_id"]))
+    return jsonify(out)
+
+
 @app.route("/api/durchsetzen", methods=["POST"])
 def api_durchsetzen():
     _durchsetzen()
@@ -1214,6 +1284,12 @@ def main() -> None:
             "Die Einrichtung stammt aus einer älteren Fassung und wurde nach %s "
             "gesichert. Der Planer steuert vorerst nichts – bitte im Reiter "
             "„Einrichtung“ neu übernehmen.", ziel)
+    # Vor dem ersten Start von 3.0 die Einrichtung beiseitelegen. 3.0 baut sie
+    # nicht um – Zeitpläne und Schalter gelten unverändert –, aber die
+    # Oberfläche ist neu, und wer etwas vermisst, soll nachsehen können.
+    gesichert = store.vor_fassung_sichern("3.0")
+    if gesichert:
+        _LOGGER.info("Einrichtung vor 3.0 gesichert: %s", gesichert)
     if not ha_api.available():
         _LOGGER.error("Kein SUPERVISOR_TOKEN – der Planer kann nichts fahren")
     cardsync.sync()

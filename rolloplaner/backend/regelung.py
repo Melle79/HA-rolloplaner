@@ -31,6 +31,7 @@ import logging
 from datetime import datetime, timedelta
 
 import ha_api
+import programme
 import sonne as sonnenmodul
 import sprache
 import store
@@ -475,6 +476,149 @@ def _plan_von(rollo: dict, plaene: dict,
     return eigene, plan
 
 
+def _programm_texte() -> dict:
+    return {"abend": sprache.t("prog.weihnacht_abend"),
+            "aus": sprache.t("prog.weihnacht_aus"),
+            "morgen": sprache.t("prog.weihnacht_morgen")}
+
+
+def _programm_fuer(rollo: dict, einstellungen: dict, lage: dict, sonnenstand):
+    """Die Weihnachtszeit als Umbau der Schaltpunkte – oder None.
+
+    None heißt: Das Programm fasst dieses Rollo nicht an. Dann rechnet der
+    Zeitplan genau wie ohne Programm; das ist die Gewähr dafür, dass sich am
+    Verhalten der übrigen Rollos nichts ändert.
+    """
+    cfg = einstellungen.get("weihnachtszeit") or {}
+    wert = programme.stellung(cfg, rollo["entity_id"])
+    if wert == programme.PLAN:
+        return None
+    aktiv_am = lage["weihnachtszeit"]["aktiv_am"]
+    zu = int(rollo.get("position_zu", 0))
+    texte = _programm_texte()
+
+    def umbau(tag, punkte):
+        if not aktiv_am(tag):
+            return punkte
+        return programme.umbauen(cfg, wert, tag, punkte, sonnenstand, zu, texte)
+    return umbau
+
+
+def _weihnachtslage(einstellungen: dict, state: dict, jetzt: datetime) -> dict:
+    cfg = einstellungen.get("weihnachtszeit") or {}
+    hand = state.get("weihnachtszeit_hand") or None
+    if hand and hand.get("bis") and jetzt.date().isoformat() >= hand["bis"]:
+        state["weihnachtszeit_hand"] = hand = None
+
+    def aktiv_am(tag):
+        return programme.aktiv_am(cfg, tag, hand)
+    return {"aktiv_am": aktiv_am, "heute": aktiv_am(jetzt.date()), "hand": hand}
+
+
+def _weihnachtslichter(config: dict, einstellungen: dict, index: dict, state: dict,
+                       kalender, sonnenstand, jetzt: datetime, lage: dict,
+                       plaene: dict, gruppe_von: dict, protokoll) -> dict:
+    """Die Lichter der Weihnachtszeit schalten – auf der Flanke.
+
+    Geschaltet wird nur, wenn sich das Soll ändert, und je Licht für sich:
+    Wer abends eine Kette von Hand ausschaltet, bekommt sie nicht zwei
+    Minuten später wieder an. Ein Licht, das gerade nicht erreichbar ist,
+    wird übersprungen und nachgeholt, sobald es wieder da ist – an den
+    Rollos hängt davon nichts. Ausgeschaltet wird nur, was der Planer selbst
+    eingeschaltet hat.
+    """
+    cfg = einstellungen.get("weihnachtszeit") or {}
+    aktiv_am = lage["weihnachtszeit"]["aktiv_am"]
+    gemerkt = state.setdefault("weihnachtszeit_licht", {})
+    heute = jetzt.date()
+
+    fenster = []
+    for tag in (heute - timedelta(days=1), heute):
+        if not aktiv_am(tag):
+            continue
+        fenster += programme.lichtfenster(
+            cfg, tag, sonnenstand,
+            _fruehestes_oeffnen(config, einstellungen, kalender, sonnenstand, tag,
+                                heute, lage, plaene, gruppe_von))
+    soll = programme.licht_soll(fenster, jetzt)
+    trockenlauf = bool(einstellungen.get("trockenlauf"))
+
+    lichter = []
+    for eid in cfg.get("lichter") or []:
+        zustand = index.get(eid)
+        erreichbar = zustand is not None and zustand.get("state") not in (
+            "unavailable", "unknown")
+        lichter.append({"entity_id": eid,
+                        "name": ((zustand or {}).get("attributes") or {}).get(
+                            "friendly_name") or eid,
+                        "zustand": (zustand or {}).get("state") or "fehlt"})
+        vorher = gemerkt.get(eid)
+        ziel = "on" if soll else "off"
+        if vorher is None and not soll:
+            gemerkt[eid] = "off"
+            continue
+        if vorher == ziel:
+            continue
+        if not erreichbar:
+            continue
+        if not trockenlauf:
+            ha_api.schalten(eid, soll)
+        protokoll(lichter[-1]["name"], sprache.t("prog.licht_an" if soll else "prog.licht_aus"),
+                  sprache.t("prog.weihnacht_licht") + (" (Trockenlauf)" if trockenlauf else ""),
+                  eid, art="warnung" if trockenlauf else None)
+        gemerkt[eid] = ziel
+    for eid in [e for e in gemerkt if e not in (cfg.get("lichter") or [])]:
+        del gemerkt[eid]
+
+    return {"fenster": [{"von": _iso(v), "bis": _iso(b)} for v, b in fenster],
+            "licht_soll": soll, "lichter": lichter}
+
+
+def _fruehestes_oeffnen(config: dict, einstellungen: dict, kalender, sonnenstand,
+                        tag, heute, lage: dict, plaene: dict, gruppe_von: dict):
+    """Das früheste Öffnen am Morgen – die Grenze für das Morgenlicht.
+
+    Gezählt werden die Rollos, die das Programm anfasst; fasst es keines an,
+    alle mit Zeitplan. So brennt das Licht, bis das erste Rollo aufgeht.
+    """
+    cfg = einstellungen.get("weihnachtszeit") or {}
+    rollos = [r for r in config.get("rollos") or []
+              if r.get("aktiv", True) and r.get("betriebsart") != "von_hand"]
+    beteiligt = [r for r in rollos
+                 if programme.stellung(cfg, r["entity_id"]) != programme.PLAN]
+    beste = None
+    for rollo in beteiligt or rollos:
+        punkte, _plan = _plan_von(rollo, plaene, gruppe_von.get(rollo["entity_id"]))
+        tagespunkte = zeitplanmodul._punkte_am_tag(
+            punkte, tag, kalender, heute, sonnenstand, None, lage["zustaende"])
+        oeffnen = programme.erstes_oeffnen(tagespunkte)
+        if oeffnen is not None and (beste is None or oeffnen < beste):
+            beste = oeffnen
+    return beste
+
+
+def _weihnachtsbericht(einstellungen: dict, lage: dict, licht: dict,
+                       jetzt: datetime) -> dict:
+    cfg = einstellungen.get("weihnachtszeit") or {}
+    heute = jetzt.date()
+    if programme.im_zeitraum(cfg, heute):
+        von = None
+        bis = programme.naechste_grenze(cfg, heute) - timedelta(days=1)
+    else:
+        von = programme.naechste_grenze(cfg, heute)
+        bis = programme.naechste_grenze(cfg, von) - timedelta(days=1)
+    hand = lage["weihnachtszeit"]["hand"]
+    return {
+        "eingerichtet": bool(cfg.get("aktiv")),
+        "aktiv": lage["weihnachtszeit"]["heute"],
+        "im_zeitraum": programme.im_zeitraum(cfg, heute),
+        "von": von.isoformat() if von else None,
+        "bis": bis.isoformat(),
+        "hand": hand,
+        **licht,
+    }
+
+
 def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
                    kalender, sonnenstand, jetzt: datetime, lage: dict,
                    plaene: dict, gruppe: dict | None = None) -> dict:
@@ -573,10 +717,14 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
     # Der Zeitplan ist die Grundlage; Urlaub und Hitzeschutz verschieben ihn.
     anpassen = _urlaubsversatz(rollo, einstellungen, lage)
     zustaende = lage["zustaende"]
+    programm = _programm_fuer(rollo, einstellungen, lage, sonnenstand)
     treffer = zeitplanmodul.letzter_zeitpunkt(punkte, jetzt, kalender, sonnenstand,
-                                              anpassen, zustaende)
+                                              anpassen, zustaende, programm)
     naechster = zeitplanmodul.naechster_wechsel(punkte, jetzt, kalender, sonnenstand,
-                                                anpassen, zustaende)
+                                                anpassen, zustaende, programm)
+    if programm is not None and lage["weihnachtszeit"]["heute"]:
+        ergebnis["weihnachtszeit"] = programme.stellung(
+            einstellungen.get("weihnachtszeit") or {}, rollo["entity_id"])
 
     ziel = None
     punkt_zeit = None
@@ -609,7 +757,7 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
             grund_punkt = None
             ergebnis["grund_schluessel"] = "zustand.urlaub_zu"
             ergebnis["grund_werte"] = {}
-        elif anpassen is not None and treffer:
+        elif anpassen is not None and treffer and not treffer[1].get("programm"):
             versatz = int((punkt_zeit - _roh_zeitpunkt(
                 treffer[1], punkt_zeit, kalender, sonnenstand)).total_seconds() // 60)
             if versatz:
@@ -1062,6 +1210,7 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
         # eigene und fremde durch dieselbe Prüfung laufen.
         "zustaende": {**{eid: z.get("state") for eid, z in index.items()},
                       **eigene_zustaende(einstellungen, state)},
+        "weihnachtszeit": _weihnachtslage(einstellungen, state, jetzt),
     }
 
     plaene = {p["id"]: p for p in config.get("plaene") or []}
@@ -1081,6 +1230,15 @@ def takt(config: dict, state: dict, protokoll, wachhund_haken=None) -> dict:
             _LOGGER.exception("Rollo %s fehlgeschlagen", rollo.get("entity_id"))
             ergebnis["begruendung"] = f"Fehler: {err}"
         bericht["rollos"].append(ergebnis)
+
+    try:
+        licht = _weihnachtslichter(config, einstellungen, index, state, kalender,
+                                   sonnenstand, jetzt, lage, plaene, gruppe_von,
+                                   protokoll)
+    except Exception:  # noqa: BLE001 – ein Licht darf die Rollos nicht aufhalten
+        _LOGGER.exception("Weihnachtslichter fehlgeschlagen")
+        licht = {"fenster": [], "licht_soll": None, "lichter": []}
+    bericht["weihnachtszeit"] = _weihnachtsbericht(einstellungen, lage, licht, jetzt)
 
     if wachhund_haken is not None:
         try:
@@ -1190,3 +1348,66 @@ def _sonnenstand(state: dict, index: dict, einstellungen: dict):
         _sonnenstand_cache["schluessel"] = schluessel
         _sonnenstand_cache["objekt"] = sonnenmodul.Sonnenstand(lat, lon)
     return _sonnenstand_cache["objekt"]
+
+
+def tagesablauf(config: dict, state: dict, index: dict, tag, art: str,
+                weihnacht: str = "auto") -> dict:
+    """Der ganze Tag aller Rollos – für die Balken im Tagesablauf.
+
+    ``art`` legt fest, als was der Tag gerechnet wird („schultag“ oder
+    „schulfrei“, für heute und morgen gleich), ``weihnacht`` ob die
+    Weihnachtszeit gilt („an“, „aus“ oder „auto“ = wie der Planer es sähe).
+    Gerechnet wird mit denselben Funktionen wie im Takt; Bedingungen an
+    Schaltpunkten gelten mit dem Stand von jetzt.
+    """
+    einstellungen = config["einstellungen"]
+    sonnenstand = _sonnenstand(state, index, einstellungen)
+    _sonnenstand_justieren(sonnenstand, index.get(einstellungen.get("sonne_entity")))
+    frei = art == "schulfrei"
+    verlauf = {(tag + timedelta(days=n)).isoformat(): frei for n in range(-8, 2)}
+    kalender = zeitplanmodul.Schulkalender(frei, frei, verlauf)
+
+    cfg = einstellungen.get("weihnachtszeit") or {}
+    hand = state.get("weihnachtszeit_hand") or None
+    if weihnacht == "an":
+        aktiv_am = lambda _tag: True          # noqa: E731
+    elif weihnacht == "aus":
+        aktiv_am = lambda _tag: False         # noqa: E731
+    else:
+        aktiv_am = lambda t: programme.aktiv_am(cfg, t, hand)  # noqa: E731
+    lage = {"weihnachtszeit": {"aktiv_am": aktiv_am, "heute": aktiv_am(tag), "hand": hand},
+            "zustaende": {**{eid: z.get("state") for eid, z in index.items()},
+                          **eigene_zustaende(einstellungen, state)}}
+    plaene = {p["id"]: p for p in config.get("plaene") or []}
+    gruppe_von = {eid: g for g in (config.get("gruppen") or [])
+                  for eid in g.get("rollos") or []}
+
+    rollos = []
+    for rollo in config.get("rollos") or []:
+        punkte, plan = _plan_von(rollo, plaene, gruppe_von.get(rollo["entity_id"]))
+        ohne = (not rollo.get("aktiv", True) or rollo.get("betriebsart") == "von_hand"
+                or not punkte)
+        ablauf = ({"start": None, "punkte": []} if ohne else zeitplanmodul.tagesablauf(
+            punkte, tag, kalender, sonnenstand, lage["zustaende"],
+            _programm_fuer(rollo, einstellungen, lage, sonnenstand)))
+        rollos.append({"entity_id": rollo["entity_id"],
+                       "name": anzeigename(rollo, index),
+                       "raum": rollo.get("raum") or "",
+                       "von_hand": ohne,
+                       "plan_id": rollo.get("plan") or "",
+                       "plan": plan["name"] if plan else "",
+                       "weihnachtszeit": programme.stellung(cfg, rollo["entity_id"]),
+                       **ablauf})
+
+    licht = []
+    if aktiv_am(tag):
+        for von, bis in programme.lichtfenster(
+                cfg, tag, sonnenstand,
+                _fruehestes_oeffnen(config, einstellungen, kalender, sonnenstand, tag,
+                                    tag, lage, plaene, gruppe_von)):
+            licht.append({"von": von.strftime("%H:%M"),
+                          "bis": "24:00" if bis.date() > tag else bis.strftime("%H:%M")})
+    return {"datum": tag.isoformat(), "art": art, "weihnachtszeit": aktiv_am(tag),
+            "sonne": {"aufgang": _iso(sonnenstand.aufgang(tag)),
+                      "untergang": _iso(sonnenstand.untergang(tag))},
+            "rollos": rollos, "licht": licht}

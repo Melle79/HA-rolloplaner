@@ -589,8 +589,14 @@ def test_die_karte_bekommt_jedes_merkmal_das_sie_liest():
     assert not fehlt, f"die Karte liest, was niemand sendet: {sorted(fehlt)}"
 
 
-def _oberflaechen_tabellen():
-    """Die beiden Sprachtabellen aus `index.html` als Wörterbücher.
+OBERFLAECHEN = (("index.html", 200), ("erweitert.html", 300))
+
+
+def _oberflaechen_tabellen(datei="index.html"):
+    """Die beiden Sprachtabellen einer Seite als Wörterbücher.
+
+    Seit 3.0 sind es zwei Seiten: die neue Oberfläche (`index.html`) und die
+    erweiterte Ansicht (`erweitert.html`, die Oberfläche aus 2.x).
 
     Die Texte stehen dort teils über mehrere Zeilen aneinandergehängt
     (``"..." + "..."``) – deshalb wird jeder Eintrag bis zum nächsten Schlüssel
@@ -598,7 +604,7 @@ def _oberflaechen_tabellen():
     """
     import re
     quelle = (pathlib.Path(__file__).parent.parent / "frontend"
-              / "index.html").read_text(encoding="utf-8")
+              / datei).read_text(encoding="utf-8")
     block = re.search(r"\nconst UI = \{\n(.*?)\n\};\n", quelle, re.S)
     assert block, "Sprachtabelle der Oberfläche nicht gefunden"
     tabellen = {}
@@ -629,9 +635,13 @@ def _oberflaechen_tabellen():
 def test_die_oberflaeche_kennt_in_beiden_sprachen_dieselben_schluessel():
     """Wie bei Karte und Backend: eine halbe Übersetzung ist schlimmer als gar
     keine, weil sie erst dem auffällt, der die andere Sprache nicht kann."""
+    for datei, mindestens in OBERFLAECHEN:
+        _gleiche_schluessel(_oberflaechen_tabellen(datei), mindestens, datei)
+
+
+def _gleiche_schluessel(tabellen, mindestens, datei):
     import re
-    tabellen = _oberflaechen_tabellen()
-    assert len(tabellen["de"]) > 300, "die Tabelle wurde nicht richtig gelesen"
+    assert len(tabellen["de"]) > mindestens, f"{datei}: die Tabelle wurde nicht richtig gelesen"
     deutsch = set(tabellen["de"])
     for code, tabelle in tabellen.items():
         assert not deutsch - set(tabelle), f"{code}: es fehlen {sorted(deutsch - set(tabelle))}"
@@ -649,10 +659,15 @@ def test_jeder_verwendete_textschluessel_steht_in_der_tabelle():
     Das sieht man nur, wenn man genau diesen Reiter öffnet – und meist erst,
     wenn jemand anderes es meldet. Hier fällt es beim Prüflauf auf.
     """
+    for datei, _ in OBERFLAECHEN:
+        _schluessel_vorhanden(datei)
+
+
+def _schluessel_vorhanden(datei):
     import re
     quelle = (pathlib.Path(__file__).parent.parent / "frontend"
-              / "index.html").read_text(encoding="utf-8")
-    tabelle = _oberflaechen_tabellen()["de"]
+              / datei).read_text(encoding="utf-8")
+    tabelle = _oberflaechen_tabellen(datei)["de"]
     ohne_tabelle = re.sub(r"\nconst UI = \{\n.*?\n\};\n", "\n", quelle, flags=re.S)
     # Ein Schlüssel steht nicht immer gleich hinter der Klammer – es gibt auch
     # `t(gut ? "a" : "b")`. Deshalb wird der ganze Aufruf gelesen, Klammer für
