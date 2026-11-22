@@ -486,6 +486,17 @@ def test_lang_aus_trifft_alle_ablaeufe():
     assert set(state["weihnachtszeit_fb"]) == {"eg", "kinder"}
 
 
+def test_freie_stellung_wird_genau_gefahren():
+    """3.5: Stellungen außerhalb der Zehnerschritte (z. B. 61 % offen)."""
+    eg = {**{k: v for k, v in STARTWERTE.items() if k != "aktiv"}, "name": "Erdgeschoss",
+          "rollos": {EG[0]: 61, EG[1]: 83, TUER: "offen"}}
+    config = _config_ablaeufe([eg])
+    a = config["einstellungen"]["weihnachtszeit"]["ablaeufe"][0]
+    assert a["rollos"][EG[0]] == 61 and a["rollos"][EG[1]] == 83
+    zeiten = _ablauf(config, EG[0], date(2026, 12, 1))
+    assert ("06:00", 61) in zeiten and [z for z in zeiten if z[1] == 61][1][0] != "06:00", zeiten
+
+
 # ------------------------------------------------------- Die Lichter ----
 
 class _Lichter:

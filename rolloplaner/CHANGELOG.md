@@ -1,5 +1,16 @@
 # Änderungen
 
+## 3.5.0 – 22.11.2026
+
+* **Rollostellung in der Weihnachtszeit frei einstellbar:** je Rollo
+  *normaler Plan*, *bleibt offen* oder *eigene Stellung* mit Zahlenfeld
+  1–99 % offen statt fester Zehnerschritte.
+* **„Aktuelle übernehmen“** trägt die Stellung ein, auf der ein Rollo gerade
+  steht – so lässt sich die Wunschstellung von Hand anfahren und dann
+  übernehmen. **„Alle aktuellen Stellungen übernehmen“** macht das für den
+  ganzen Ablauf.
+* Bestehende Stellungen bleiben, wie sie sind.
+
 ## 3.4.0 – 22.11.2026
 
 **Fernbedienung für die Weihnachtszeit.**

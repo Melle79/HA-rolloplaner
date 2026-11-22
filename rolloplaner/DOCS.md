@@ -96,7 +96,10 @@ einen **Abend**, jeweils mit Umschalter:
   *Jedes Jahr von selbst* gelten für alle Abläufe.
 * **Lichter und Steckdosen** – beliebige `light.` und `switch.`, mit Suche.
 * **Rollos, während das Licht brennt** – je Rollo *normaler Plan*, *bleibt
-  offen* oder eine Zwischenstellung in Prozent offen.
+  offen* oder *eigene Stellung* (frei 1–99 % offen). *Aktuelle übernehmen*
+  trägt die Stellung ein, auf der das Rollo gerade steht; *Alle aktuellen
+  Stellungen übernehmen* macht das für alle Rollos des Ablaufs mit eigener
+  Stellung. Erst *Speichern* übernimmt.
 * **Darf früher schließen** – Standard aus.
 
 **Fernbedienung (seit 3.4).** Jedem Ablauf lässt sich eine Fernbedienung

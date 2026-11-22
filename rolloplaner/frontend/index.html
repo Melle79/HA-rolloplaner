@@ -380,6 +380,14 @@ const UI = {
     "es.schwere.warnung":"Warnung",
     "es.schwere.hinweis":"Hinweis",
     "es.alles_gut":"Nichts aufgefallen.",
+    "pg.alle_jetzt":"Alle aktuellen Stellungen übernehmen",
+    "pg.jetzt_stellung":"jetzt {was}",
+    "pg.eigene_stellung":"eigene Stellung",
+    "pg.prozent_offen":"% offen",
+    "pg.jetzt_uebernehmen":"aktuelle übernehmen",
+    "pg.stellung_bereich":"Bitte 1 bis 99 % offen eingeben.",
+    "pg.jetzt_unbekannt":"Die aktuelle Stellung ist nicht bekannt.",
+    "pg.alle_jetzt_ok":"{n} Stellungen übernommen – noch speichern.",
     "pg.fb":"Fernbedienung",
     "pg.fb_an":"Taste „an“",
     "pg.fb_aus":"Taste „aus“",
@@ -586,6 +594,14 @@ const UI = {
     "es.schwere.warnung":"Warning",
     "es.schwere.hinweis":"Note",
     "es.alles_gut":"Nothing stands out.",
+    "pg.alle_jetzt":"Take all current positions",
+    "pg.jetzt_stellung":"now {was}",
+    "pg.eigene_stellung":"own position",
+    "pg.prozent_offen":"% open",
+    "pg.jetzt_uebernehmen":"take current",
+    "pg.stellung_bereich":"Please enter 1 to 99 % open.",
+    "pg.jetzt_unbekannt":"The current position is unknown.",
+    "pg.alle_jetzt_ok":"{n} positions taken – remember to save.",
     "pg.fb":"Remote",
     "pg.fb_an":"“On” button",
     "pg.fb_aus":"“Off” button",
@@ -1368,6 +1384,13 @@ function blockHTML(a, teil, tag){
       ${art("rollos", morgens ? ["plan","mit_licht","uhrzeit","sonnenaufgang"] : ["plan","mit_licht","uhrzeit","sonnenuntergang","daemmerung"])}${zusatz(v.rollos, "rollos_zeit", "rollos_versatz")}</div>`;
 }
 let EREIGNISSE = null;
+/* Die Stellung, die ein Rollo gerade hat – als Zwischenstellung 1–99 % offen.
+   Ganz offen oder ganz zu ist keine Zwischenstellung; dann 99 bzw. 1. */
+function jetztStellung(eid){
+  const r = (BERICHT?.rollos || []).find((x) => x.entity_id === eid);
+  if (!r || r.ist === null || r.ist === undefined) return null;
+  return Math.min(99, Math.max(1, Math.round(Number(r.ist))));
+}
 async function ablaufDialog(i){
   if (!LICHTER){ try { LICHTER = await hole("api/lichter"); } catch { LICHTER = []; } }
   if (!EREIGNISSE){ try { EREIGNISSE = await hole("api/ereignisse"); } catch { EREIGNISSE = []; } }
@@ -1390,13 +1413,20 @@ async function ablaufDialog(i){
       <p class="leise klein">${esc(t("pg.fb_hilfe"))}</p>
       <label class="haken"><input type="checkbox" data-a="frueher_schliessen" ${a.frueher_schliessen ? "checked" : ""}>${esc(t("pg.frueher"))}</label>
       <p class="leise klein">${esc(t("pg.frueher_hilfe"))}</p>
-      <h2 style="margin-top:14px">${esc(t("pg.rollos"))}</h2>
+      <div class="zeile" style="align-items:center; justify-content:space-between; margin-top:14px">
+        <h2 style="margin:0">${esc(t("pg.rollos"))}</h2>
+        <button type="button" class="knopf klein" data-a-alle-jetzt>${esc(t("pg.alle_jetzt"))}</button></div>
       <div class="liste">${rollosSortiert().filter((r) => (rolloCfg(r.entity_id) || {}).betriebsart !== "von_hand").map((r) => {
         const w = (a.rollos || {})[r.entity_id] ?? "plan"; const anderswo = vergeben[r.entity_id];
-        return `<div><span class="n">${esc(zeilenname(r))}${anderswo ? ` <span class="leise klein">${esc(t("pg.in_ablauf", {name: anderswo}))}</span>` : ""}</span>
-          <select data-a-rollo="${esc(r.entity_id)}" ${anderswo ? "disabled" : ""}><option value="plan" ${w === "plan" ? "selected" : ""}>${esc(t("pg.normal"))}</option>
+        const eigen = w !== "plan" && w !== "offen";
+        return `<div style="flex-wrap:wrap"><span class="n">${esc(zeilenname(r))}${anderswo ? ` <span class="leise klein">${esc(t("pg.in_ablauf", {name: anderswo}))}</span>` : ""}
+            <span class="leise klein"> · ${esc(t("pg.jetzt_stellung", {was: stellungText(r.ist)}))}</span></span>
+          <select data-a-rollo="${esc(r.entity_id)}" ${anderswo ? "disabled" : ""}>
+            <option value="plan" ${w === "plan" ? "selected" : ""}>${esc(t("pg.normal"))}</option>
             <option value="offen" ${w === "offen" ? "selected" : ""}>${esc(t("pg.bleibt_offen"))}</option>
-            ${[10,20,30,40,50,60,70,80,90].map((n) => `<option value="${n}" ${Number(w) === n ? "selected" : ""}>${esc(t("pg.zwischen", {n}))}</option>`).join("")}</select></div>`; }).join("")}</div>
+            <option value="eigen" ${eigen ? "selected" : ""}>${esc(t("pg.eigene_stellung"))}</option></select>
+          ${eigen ? `<label class="feld" style="flex-direction:row; align-items:center; gap:6px"><input type="number" min="1" max="99" data-a-stellung="${esc(r.entity_id)}" value="${Number(w)}" style="width:80px" aria-label="${esc(t("pg.prozent_offen"))}">${esc(t("pg.prozent_offen"))}</label>
+            <button type="button" class="knopf klein" data-a-jetzt="${esc(r.entity_id)}">${esc(t("pg.jetzt_uebernehmen"))}</button>` : ""}</div>`; }).join("")}</div>
       <h2 style="margin-top:14px">${esc(t("pg.lichter"))}</h2>
       <div class="liste">${(a.lichter || []).map((eid) => `<div><span class="n">${esc(lichtName(eid))} <span class="leise klein">${esc(eid)}</span></span>
         <button type="button" class="knopf klein" data-a-licht-weg="${esc(eid)}">${esc(t("knopf.entfernen"))}</button></div>`).join("") || `<p class="leise klein">${esc(t("pg.lichter_leer"))}</p>`}</div>
@@ -1424,8 +1454,13 @@ async function ablaufDialog(i){
     }
     if (el.dataset.fb){ a.fernbedienung = {...(a.fernbedienung || {an: "", aus: ""}), [el.dataset.fb]: el.value}; }
     if (el.dataset.wie){ const teil = el.dataset.wie; a[teil].schulfrei = el.checked ? null : kopie(a[teil].schultag); zeichne(); }
-    if (el.dataset.aRollo){ a.rollos = a.rollos || {}; const v = el.value;
-      if (v === "plan") delete a.rollos[el.dataset.aRollo]; else a.rollos[el.dataset.aRollo] = v === "offen" ? v : Number(v); }
+    if (el.dataset.aRollo){ a.rollos = a.rollos || {}; const v = el.value, eid = el.dataset.aRollo;
+      if (v === "plan") delete a.rollos[eid];
+      else if (v === "offen") a.rollos[eid] = "offen";
+      else a.rollos[eid] = jetztStellung(eid) ?? 50;
+      zeichne(); }
+    if (el.dataset.aStellung){ const n = Math.round(Number(el.value));
+      if (n >= 1 && n <= 99) a.rollos[el.dataset.aStellung] = n; else { el.value = a.rollos[el.dataset.aStellung]; melden(t("pg.stellung_bereich"), true); } }
   };
   inhalt.oninput = (ev) => {
     if (ev.target.id !== "dlg-licht-suche") return;
@@ -1440,6 +1475,13 @@ async function ablaufDialog(i){
   inhalt.onclick = (ev) => {
     const k = ev.target.closest("button"); if (!k) return;
     if (k.dataset.vReiter){ const [teil, tag] = k.dataset.vReiter.split("."); REITER_V[teil] = tag; zeichne(); return; }
+    if (k.dataset.aJetzt){ const n = jetztStellung(k.dataset.aJetzt);
+      if (n === null) melden(t("pg.jetzt_unbekannt"), true); else { a.rollos[k.dataset.aJetzt] = n; zeichne(); } return; }
+    if (k.dataset.aAlleJetzt !== undefined){
+      let n = 0;
+      for (const [eid, w] of Object.entries(a.rollos || {})){ if (w === "offen") continue;
+        const s = jetztStellung(eid); if (s !== null){ a.rollos[eid] = s; n++; } }
+      melden(t("pg.alle_jetzt_ok", {n})); zeichne(); return; }
     if (k.dataset.aLichtNeu){ a.lichter = [...(a.lichter || []), k.dataset.aLichtNeu]; zeichne(); }
     if (k.dataset.aLichtWeg){ a.lichter = (a.lichter || []).filter((x) => x !== k.dataset.aLichtWeg); zeichne(); }
     if (k.dataset.aWeg !== undefined && confirm(t("pg.ablauf_weg_frage", {name: a.name}))){
