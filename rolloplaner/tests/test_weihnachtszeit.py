@@ -70,10 +70,10 @@ def _zustaende(config):
     return regelung.eigene_zustaende(config["einstellungen"], {})
 
 
-def _lage(config, hand=None):
+def _lage(config, hand=None, fb=None):
     cfg = config["einstellungen"]["weihnachtszeit"]
     aktiv_am = lambda t: programme.aktiv_am(cfg, t, hand)  # noqa: E731
-    return {"weihnachtszeit": {"aktiv_am": aktiv_am, "heute": None, "hand": hand},
+    return {"weihnachtszeit": {"aktiv_am": aktiv_am, "heute": None, "hand": hand, "fb": fb or {}},
             "zustaende": _zustaende(config)}
 
 
@@ -195,10 +195,10 @@ STARTWERTE = {"aktiv": True, "lichter": ["light.kette", "switch.terrasse"],
         "rollos": {EG[0]: 40, EG[1]: 40, EG[2]: 40, TUER: "offen"}}
 
 
-def _ablauf(config, eid, tag, frei=False, schalter=None):
+def _ablauf(config, eid, tag, frei=False, schalter=None, fb=None):
     s = _sonnenstand()
     rollo = next(r for r in config["rollos"] if r["entity_id"] == eid)
-    lage = _lage(config)
+    lage = _lage(config, fb=fb)
     lage["zustaende"].update(schalter or {})
     punkte, kal = _punkte(config, rollo), _kalender(frei)
     return [(p["zeit"], p["position"]) for p in zeitplan.tagesablauf(
@@ -400,6 +400,90 @@ def test_schulfrei_morgens_kein_licht_und_normaler_plan():
     assert len(fenster) == 1 and fenster[0][1].strftime("%H:%M") == "22:00", fenster
     zeiten = _ablauf(config, KINDER[2], tag, frei=True)
     assert zeiten[0] == ("10:00", 100) and zeiten[-1] == ("22:00", 0), zeiten
+
+
+# --------------------------------------------------- Fernbedienung (3.4) ----
+
+FB = {"an": "event.fb_taste_1", "aus": "event.fb_taste_2"}
+
+
+def _ev(stempel, typ):
+    return {"state": stempel, "attributes": {"event_type": typ}}
+
+
+def test_fernbedienung_tasten_erkennen():
+    config = _config_ablaeufe([{**{k: v for k, v in STARTWERTE.items() if k != "aktiv"},
+                                "name": "Erdgeschoss", "fernbedienung": FB}])
+    zustaende = {FB["an"]: _ev("t0", "multi_press_1"), FB["aus"]: _ev("t0", "multi_press_1")}
+    aktionen, gesehen = [], {}
+    lauf = lambda: regelung.fb_auswerten(config, gesehen, zustaende.get,  # noqa: E731
+                                         lambda a, x: aktionen.append(x))
+    lauf()
+    assert aktionen == [], "der erste Blick merkt nur – kein alter Druck nach dem Neustart"
+    zustaende[FB["an"]] = _ev("t1", "multi_press_1"); lauf()
+    zustaende[FB["aus"]] = _ev("t2", "multi_press_1"); lauf()
+    zustaende[FB["aus"]] = _ev("t3", "long_press"); lauf()
+    zustaende[FB["aus"]] = _ev("t4", "long_release"); lauf()
+    lauf()
+    assert aktionen == ["an", "aus", "alles_aus"], aktionen
+
+
+def _fb(modus, wann):
+    return {"eg": {"modus": modus, "seit": wann.isoformat(timespec="seconds")}}
+
+
+def test_fernbedienung_aus_bringt_rollos_zum_plan():
+    config = _config(STARTWERTE)
+    zeiten = _ablauf(config, EG[0], date(2026, 12, 1), fb=_fb("aus", datetime(2026, 12, 1, 18, 0)))
+    assert ("18:00", 0) in zeiten, zeiten
+
+
+def test_fernbedienung_an_hebt_nur_an():
+    config = _config(STARTWERTE)
+    nacht = _ablauf(config, EG[0], date(2026, 12, 1), fb=_fb("an", datetime(2026, 12, 1, 23, 0)))
+    assert ("23:00", 40) in nacht, nacht
+    mittag = _ablauf(config, EG[0], date(2026, 12, 1), fb=_fb("an", datetime(2026, 12, 1, 12, 0)))
+    assert ("12:00", 40) not in mittag, "ein offenes Rollo zieht die Fernbedienung nie zu"
+
+
+def test_fernbedienung_ausserhalb_der_saison_nur_lichter():
+    config = _config(STARTWERTE)
+    tag = date(2026, 11, 22)
+    assert _ablauf(config, EG[0], tag, fb=_fb("an", datetime(2026, 11, 22, 23, 0))) == _ablauf(config, EG[0], tag)
+    state = {}
+    with _Lichter() as l:
+        regelung.fernbedienung(config, state, "eg", "an", datetime(2026, 11, 22, 18, 0), lambda *a, **k: None)
+        assert sorted(l.befehle) == [("light.kette", True), ("switch.terrasse", True)]
+        index = {"light.kette": _licht("light.kette", "on"), "switch.terrasse": _licht("switch.terrasse", "on")}
+        _licht_takt(config, state, datetime(2026, 11, 22, 18, 5), index)
+        assert len(l.befehle) == 2, "der Takt schaltet das Licht nicht gleich wieder aus"
+
+
+def test_fernbedienung_licht_gilt_bis_zur_naechsten_grenze():
+    config = _config(STARTWERTE)
+    state = {}
+    index = {"light.kette": _licht("light.kette"), "switch.terrasse": _licht("switch.terrasse")}
+    with _Lichter() as l:
+        _licht_takt(config, state, datetime(2026, 12, 1, 17, 0), index)      # Plan: an
+        regelung.fernbedienung(config, state, "eg", "aus", datetime(2026, 12, 1, 18, 0), lambda *a, **k: None)
+        n = len(l.befehle)
+        _licht_takt(config, state, datetime(2026, 12, 1, 18, 5), index)
+        assert len(l.befehle) == n, "bleibt aus, solange der Druck gilt"
+        _licht_takt(config, state, datetime(2026, 12, 2, 6, 5), index)       # nächste Grenze: Morgenlicht
+        assert sorted(l.befehle[n:]) == [("light.kette", True), ("switch.terrasse", True)], l.befehle[n:]
+        assert "eg" not in state.get("weihnachtszeit_fb", {})
+
+
+def test_lang_aus_trifft_alle_ablaeufe():
+    eg = {**{k: v for k, v in STARTWERTE.items() if k != "aktiv"}, "name": "Erdgeschoss", "id": "eg"}
+    config = _config_ablaeufe([eg, {**KINDER_ABLAUF, "id": "kinder"}])
+    state = {}
+    with _Lichter() as l:
+        namen = regelung.fernbedienung(config, state, "eg", "alles_aus", datetime(2026, 12, 1, 19, 0),
+                                       lambda *a, **k: None)
+    assert set(namen) == {"Erdgeschoss", "Kinder"}
+    assert {e for e, an in l.befehle if not an} == {"light.kette", "switch.terrasse", "light.stern"}
+    assert set(state["weihnachtszeit_fb"]) == {"eg", "kinder"}
 
 
 # ------------------------------------------------------- Die Lichter ----

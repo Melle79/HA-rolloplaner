@@ -99,6 +99,24 @@ einen **Abend**, jeweils mit Umschalter:
   offen* oder eine Zwischenstellung in Prozent offen.
 * **Darf früher schließen** – Standard aus.
 
+**Fernbedienung (seit 3.4).** Jedem Ablauf lässt sich eine Fernbedienung
+zuordnen – je eine Taste (`event.`-Entität) für „an“ und „aus“:
+
+* **kurz „an“** – Lichter des Ablaufs an, seine Rollos auf die
+  Weihnachtsstellung; aber nur, wenn der Plan sie gerade weiter zu hätte. Ein
+  offenes Rollo zieht die Fernbedienung nie zu.
+* **kurz „aus“** – Lichter des Ablaufs aus, Rollos auf die Stellung, die der
+  normale Plan jetzt vorsieht.
+* **lang „aus“** – die ganze Weihnachtsbeleuchtung aller Abläufe aus, alle
+  Rollos zurück zum Plan.
+
+Ein Druck gilt bis zum nächsten fälligen Weihnachts-Schaltpunkt; danach läuft
+der Plan normal weiter. Außerhalb der Weihnachtszeit schalten die Tasten nur
+die Lichter. Rauchalarm und offenes Fenster gehen wie immer vor. Unter
+*Heute* steht das Rollo dann als VON FERNBEDIENUNG, im Protokoll mit Grund.
+Die Tasten werden jede Sekunde abgefragt (nur die eingestellten
+`event.`-Entitäten); ein Druck von vor einem Neustart löst nichts aus.
+
 **Von Hand** schaltet *Jetzt einschalten/ausschalten* oder der Schalter
 `switch.rolloplaner_weihnachtszeit`. Das gilt bis zur nächsten Grenze des
 Zeitraums: am 3. Januar ausgeschaltet heißt „dieses Jahr nicht mehr“, im

@@ -81,6 +81,8 @@ STANDARD_ABLAUF = {
     # Standard: nur hinauszögern. Mit Haken schließt der Ablauf bei Licht aus,
     # auch wenn der normale Plan das Rollo dann noch offen hätte.
     "frueher_schliessen": False,
+    # Fernbedienung: je eine event.-Entität für „an“ und „aus“ (leer = keine)
+    "fernbedienung": {"an": "", "aus": ""},
     "lichter": [],                 # light.* / switch.*
     "rollos": {},                  # entity_id → "plan" | "offen" | 0..99
 }
@@ -350,7 +352,8 @@ def umbauen(cfg: dict, wert, tag: date, punkte: list[tuple[datetime, dict]],
             sonnenstand, position_zu: int = 0, texte=None,
             start: int | None = None,
             morgen_frei: bool | None = None,
-            heute_frei: bool | None = None) -> list[tuple[datetime, dict]]:
+            heute_frei: bool | None = None,
+            fb: dict | None = None) -> list[tuple[datetime, dict]]:
     """Die Schaltpunkte eines Tages unter dem Programm.
 
     ``punkte`` sind die nach Zeit sortierten Punkte des Rollos an diesem Tag –
@@ -406,8 +409,57 @@ def umbauen(cfg: dict, wert, tag: date, punkte: list[tuple[datetime, dict]],
         if normal is None or normal < ziel:
             out.append((frueh, _punkt(ziel, texte.get(
                 "morgen", "Weihnachtszeit: {n} %").format(n=ziel))))
+    out += fernbedienung_punkt(fb, tag, punkte, zu, ziel, texte)
     out.sort(key=lambda p: p[0])
     return out
+
+
+def fernbedienung_punkt(fb: dict | None, tag: date, punkte, zu, ziel: int,
+                        texte: dict) -> list[tuple[datetime, dict]]:
+    """Der Tastendruck an der Fernbedienung als Schaltpunkt.
+
+    „an“: auf die Weihnachtsstellung – aber nur, wenn der Plan das Rollo
+    gerade weiter zu hätte; ein offenes Rollo zieht die Fernbedienung nie zu.
+    „aus“: dorthin, wo der normale Plan das Rollo jetzt hätte.
+    Der Punkt gilt wie jeder andere bis zum nächsten fälligen.
+    """
+    if not fb or not fb.get("seit"):
+        return []
+    try:
+        seit = datetime.fromisoformat(fb["seit"])
+    except ValueError:
+        return []
+    if seit.date() != tag:
+        return []
+    normal = _stand(punkte, seit, zu)
+    if fb.get("modus") == "an":
+        if normal is not None and normal >= ziel:
+            return []
+        name = texte.get("fb_an", "Fernbedienung: Weihnachtsstellung")
+        position = ziel
+    else:
+        name = texte.get("fb_aus", "Fernbedienung: zurück zum Plan")
+        position = normal if normal is not None else zu
+    return [(seit, {**_punkt(position, name), "quelle": "fernbedienung"})]
+
+
+# Was an einer Taste „kurz“ und was „lang“ ist – je nach Hersteller heißen die
+# Ereignisse anders (Matter, Hue, Zigbee2MQTT). „long_release“ und
+# „initial_press“ fehlen mit Absicht: sie folgen bzw. gehen einem Druck voraus,
+# den es schon gibt, und sonst zählte ein Druck doppelt.
+FB_KURZ = {"multi_press_1", "short_release", "single", "press", "on", "off", "toggle",
+           "click", "single_press"}
+FB_LANG = {"long_press", "long", "hold", "brightness_move_down", "brightness_move_up",
+           "on_long", "off_long"}
+
+
+def fb_druck(event_type: str | None) -> str | None:
+    """„kurz“, „lang“ oder None für ein Ereignis einer Taste."""
+    if event_type in FB_KURZ:
+        return "kurz"
+    if event_type in FB_LANG:
+        return "lang"
+    return None
 
 
 def lichtfenster(cfg: dict, tag: date, sonnenstand,

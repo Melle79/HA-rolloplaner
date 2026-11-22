@@ -380,6 +380,12 @@ const UI = {
     "es.schwere.warnung":"Warnung",
     "es.schwere.hinweis":"Hinweis",
     "es.alles_gut":"Nichts aufgefallen.",
+    "pg.fb":"Fernbedienung",
+    "pg.fb_an":"Taste „an“",
+    "pg.fb_aus":"Taste „aus“",
+    "pg.fb_hilfe":"Kurz „an“: Lichter an, Rollos auf ihre Weihnachtsstellung (nur wenn sie nach Plan weiter zu wären). Kurz „aus“: Lichter aus, Rollos zurück zum Plan. Lang „aus“: die ganze Weihnachtsbeleuchtung aus, alle Rollos zurück zum Plan. Gilt bis zum nächsten Weihnachts-Schaltpunkt; außerhalb der Weihnachtszeit nur die Lichter.",
+    "pg.fb_kurz":"mit Fernbedienung",
+    "zs.fernbedienung":"Von Fernbedienung",
     "pg.w_vor_oeffnen":"{n} min vor dem Öffnen",
     "pg.w_oeffnen":"beim Öffnen",
     "pg.w_mit_licht":"mit dem Licht",
@@ -580,6 +586,12 @@ const UI = {
     "es.schwere.warnung":"Warning",
     "es.schwere.hinweis":"Note",
     "es.alles_gut":"Nothing stands out.",
+    "pg.fb":"Remote",
+    "pg.fb_an":"“On” button",
+    "pg.fb_aus":"“Off” button",
+    "pg.fb_hilfe":"Short “on”: lights on, shutters to their Christmas position (only if the schedule would have them further closed). Short “off”: lights off, shutters back to the schedule. Long “off”: all Christmas lights off, all shutters back to the schedule. Lasts until the next Christmas switching point; outside Christmas time only the lights.",
+    "pg.fb_kurz":"with remote",
+    "zs.fernbedienung":"From remote",
     "pg.w_vor_oeffnen":"{n} min before opening",
     "pg.w_oeffnen":"at opening",
     "pg.w_mit_licht":"with the lights",
@@ -774,7 +786,8 @@ function fensterBild(r){
 function zustandsSchild(r){
   let z = r.zustand;
   if (z === "plan" && r.grund_punkt?.programm) z = "weihnachtszeit";
-  const farbe = {plan:"marke", weihnachtszeit:"sonne", manuell:"sonne", beschattung:"sonne",
+  if (z === "plan" && r.fernbedienung) z = "fernbedienung";
+  const farbe = {plan:"marke", weihnachtszeit:"sonne", fernbedienung:"sonne", manuell:"sonne", beschattung:"sonne",
     fenster:"achtung", rauch:"achtung", fluchtweg:"achtung", fehlt:"achtung", urlaub:"marke"}[z] || "";
   return `<span class="chip ${farbe}">${esc(t("zs." + z).toUpperCase())}</span>`;
 }
@@ -1153,6 +1166,7 @@ function zeichneProgramme(){
       if (f) zeilen.push(t(schl) + " (" + t(teil === "morgens" ? "pg.v_schulfrei" : "pg.v_morgen_frei") + "): " + varianteText(teil, {...s, ...f}));
     }
     if (a.frueher_schliessen) zeilen.push(t("pg.frueher_kurz"));
+    if (a.fernbedienung?.an || a.fernbedienung?.aus) zeilen.push(t("pg.fb_kurz"));
     return zeilen.join("\n");
   };
   const karten = abl.map((a, i) => `<div class="punktkarte"><div class="zeile" style="align-items:center; justify-content:space-between">
@@ -1282,7 +1296,8 @@ const STANDARD_MORGEN = {licht: "vor_oeffnen", licht_zeit: "06:00", licht_versat
 const STANDARD_ABEND = {licht: "sonnenuntergang", licht_zeit: "17:00", licht_versatz: 0, licht_aus_zeit: "22:30",
   rollos: "mit_licht", rollos_zeit: "17:00", rollos_versatz: 0};
 const STANDARD_ABLAUF = {id: "", name: "", morgens: {schultag: {...STANDARD_MORGEN}, schulfrei: null},
-  abends: {schultag: {...STANDARD_ABEND}, schulfrei: null}, frueher_schliessen: false, lichter: [], rollos: {}};
+  abends: {schultag: {...STANDARD_ABEND}, schulfrei: null}, frueher_schliessen: false,
+  fernbedienung: {an: "", aus: ""}, lichter: [], rollos: {}};
 /* Abläufe aus 3.2 (Licht an/aus, „vor freien Tagen“, Vorlauf) wie im Backend übertragen. */
 function ablaufNeu(a){
   if (a.morgens && a.abends) return a;
@@ -1352,8 +1367,10 @@ function blockHTML(a, teil, tag){
     <div class="zeile" style="align-items:center"><span class="leise" style="min-width:110px">${esc(t(morgens ? "pg.rollos_morgens" : "pg.rollos_abends"))}</span>
       ${art("rollos", morgens ? ["plan","mit_licht","uhrzeit","sonnenaufgang"] : ["plan","mit_licht","uhrzeit","sonnenuntergang","daemmerung"])}${zusatz(v.rollos, "rollos_zeit", "rollos_versatz")}</div>`;
 }
+let EREIGNISSE = null;
 async function ablaufDialog(i){
   if (!LICHTER){ try { LICHTER = await hole("api/lichter"); } catch { LICHTER = []; } }
+  if (!EREIGNISSE){ try { EREIGNISSE = await hole("api/ereignisse"); } catch { EREIGNISSE = []; } }
   const liste = xAblaeufe();
   const a = i >= 0 ? kopie(liste[i]) : {...kopie(STANDARD_ABLAUF), name: t("pg.ablauf_name")};
   REITER_V = {morgens: "schultag", abends: "schultag"};
@@ -1365,6 +1382,12 @@ async function ablaufDialog(i){
       <div class="zeile"><label class="feld" style="flex:1">${esc(t("rd.name"))}<input type="text" data-a="name" value="${esc(a.name)}"></label></div>
       ${blockHTML(a, "morgens", REITER_V.morgens)}
       ${blockHTML(a, "abends", REITER_V.abends)}
+      <h2 style="margin-top:16px">${esc(t("pg.fb"))}</h2>
+      <div class="zeile">${["an","aus"].map((rolle) => { const w = (a.fernbedienung || {})[rolle] || "";
+        return `<label class="feld">${esc(t(rolle === "an" ? "pg.fb_an" : "pg.fb_aus"))}<select data-fb="${rolle}"><option value="">${esc(t("es.keiner"))}</option>
+          ${w && !EREIGNISSE.some((e) => e.entity_id === w) ? `<option value="${esc(w)}" selected>${esc(w)}</option>` : ""}
+          ${EREIGNISSE.map((e) => `<option value="${esc(e.entity_id)}" ${e.entity_id === w ? "selected" : ""}>${esc(e.name)}</option>`).join("")}</select></label>`; }).join("")}</div>
+      <p class="leise klein">${esc(t("pg.fb_hilfe"))}</p>
       <label class="haken"><input type="checkbox" data-a="frueher_schliessen" ${a.frueher_schliessen ? "checked" : ""}>${esc(t("pg.frueher"))}</label>
       <p class="leise klein">${esc(t("pg.frueher_hilfe"))}</p>
       <h2 style="margin-top:14px">${esc(t("pg.rollos"))}</h2>
@@ -1399,6 +1422,7 @@ async function ablaufDialog(i){
       a[teil][tag][feld] = el.type === "number" ? Number(el.value) : el.value;
       if (["licht", "licht_aus", "rollos"].includes(feld)) zeichne();
     }
+    if (el.dataset.fb){ a.fernbedienung = {...(a.fernbedienung || {an: "", aus: ""}), [el.dataset.fb]: el.value}; }
     if (el.dataset.wie){ const teil = el.dataset.wie; a[teil].schulfrei = el.checked ? null : kopie(a[teil].schultag); zeichne(); }
     if (el.dataset.aRollo){ a.rollos = a.rollos || {}; const v = el.value;
       if (v === "plan") delete a.rollos[el.dataset.aRollo]; else a.rollos[el.dataset.aRollo] = v === "offen" ? v : Number(v); }

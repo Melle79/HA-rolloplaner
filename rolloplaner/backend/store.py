@@ -722,6 +722,10 @@ def _ablauf_pruefen(roh: dict, nummer: int) -> dict:
         a[teil] = {"schultag": _variante_pruefen(block.get("schultag"), teil, a["name"], False),
                    "schulfrei": _variante_pruefen(block.get("schulfrei"), teil, a["name"], True)}
     a["frueher_schliessen"] = bool(a.get("frueher_schliessen"))
+    fb = a.get("fernbedienung") or {}
+    a["fernbedienung"] = {rolle: (str(fb.get(rolle) or "").strip()
+                                  if str(fb.get(rolle) or "").strip().startswith("event.") else "")
+                          for rolle in ("an", "aus")}
     a["lichter"] = list(dict.fromkeys(
         str(l).strip() for l in (a.get("lichter") or [])
         if str(l).strip().split(".", 1)[0] in ("light", "switch")))

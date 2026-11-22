@@ -479,7 +479,9 @@ def _plan_von(rollo: dict, plaene: dict,
 def _programm_texte() -> dict:
     return {"abend": sprache.t("prog.weihnacht_abend"),
             "aus": sprache.t("prog.weihnacht_aus"),
-            "morgen": sprache.t("prog.weihnacht_morgen")}
+            "morgen": sprache.t("prog.weihnacht_morgen"),
+            "fb_an": sprache.t("prog.fb_an"),
+            "fb_aus": sprache.t("prog.fb_aus")}
 
 
 def _programm_fuer(rollo: dict, einstellungen: dict, lage: dict, sonnenstand,
@@ -514,8 +516,9 @@ def _programm_fuer(rollo: dict, einstellungen: dict, lage: dict, sonnenstand,
         morgen_frei = (kalender.fuer(tag + timedelta(days=1), tag)
                        if kalender is not None else None)
         heute_frei = kalender.fuer(tag, tag) if kalender is not None else None
+        fb = (lage["weihnachtszeit"].get("fb") or {}).get(ablauf.get("id"))
         return programme.umbauen(ablauf, wert, tag, tagespunkte, sonnenstand, zu, texte,
-                                 start, morgen_frei, heute_frei)
+                                 start, morgen_frei, heute_frei, fb)
     return umbau
 
 
@@ -527,7 +530,8 @@ def _weihnachtslage(einstellungen: dict, state: dict, jetzt: datetime) -> dict:
 
     def aktiv_am(tag):
         return programme.aktiv_am(cfg, tag, hand)
-    return {"aktiv_am": aktiv_am, "heute": aktiv_am(jetzt.date()), "hand": hand}
+    return {"aktiv_am": aktiv_am, "heute": aktiv_am(jetzt.date()), "hand": hand,
+            "fb": state.get("weihnachtszeit_fb") or {}}
 
 
 def _weihnachtslichter(config: dict, einstellungen: dict, index: dict, state: dict,
@@ -563,6 +567,9 @@ def _weihnachtslichter(config: dict, einstellungen: dict, index: dict, state: di
                 kalender.fuer(tag + timedelta(days=1), heute),
                 kalender.fuer(tag, heute))
         soll_ablauf = programme.licht_soll(fenster, jetzt)
+        druck = _fb_gilt(state, ablauf.get("id"), fenster, jetzt)
+        if druck is not None:
+            soll_ablauf = druck
         for eid in ablauf.get("lichter") or []:
             soll_je_licht[eid] = soll_je_licht.get(eid, False) or soll_ablauf
         alle_fenster += fenster
@@ -601,6 +608,89 @@ def _weihnachtslichter(config: dict, einstellungen: dict, index: dict, state: di
 
     return {"fenster": [{"von": _iso(v), "bis": _iso(b)} for v, b in fenster],
             "licht_soll": soll, "lichter": lichter, "ablaeufe": ablaeufe}
+
+
+def _fb_gilt(state: dict, ablauf_id, fenster: list, jetzt: datetime) -> bool | None:
+    """Gilt für die Lichter dieses Ablaufs noch ein Tastendruck?
+
+    Ja, bis zur nächsten Grenze eines Lichtfensters danach – dann übernimmt
+    der Plan wieder. Ein abgelaufener Druck wird hier vergessen.
+    """
+    alle = state.get("weihnachtszeit_fb") or {}
+    druck = alle.get(ablauf_id)
+    if not druck:
+        return None
+    seit = _aus_iso(druck.get("seit"))
+    if seit is None:
+        return None
+    grenzen = [g for von, bis in fenster for g in (von, bis)]
+    if any(seit < g <= jetzt for g in grenzen) or jetzt - seit > timedelta(hours=20):
+        del alle[ablauf_id]
+        return None
+    return druck.get("modus") == "an"
+
+
+def fernbedienung(config: dict, state: dict, ablauf_id: str, aktion: str,
+                  jetzt: datetime, protokoll) -> list[str]:
+    """Ein Tastendruck: „an“, „aus“ oder „alles_aus“.
+
+    Schaltet die Lichter sofort (außer im Trockenlauf) und merkt sich den
+    Druck; die Rollos folgen im nächsten Takt über ``programme.fernbedienung_punkt``.
+    Liefert die betroffenen Abläufe.
+    """
+    einstellungen = config["einstellungen"]
+    cfg = einstellungen.get("weihnachtszeit") or {}
+    abl = programme.ablaeufe(cfg)
+    ziele = abl if aktion == "alles_aus" else [a for a in abl if a.get("id") == ablauf_id]
+    modus = "an" if aktion == "an" else "aus"
+    trockenlauf = bool(einstellungen.get("trockenlauf"))
+    gemerkt = state.setdefault("weihnachtszeit_licht", {})
+    drucke = state.setdefault("weihnachtszeit_fb", {})
+    for ablauf in ziele:
+        drucke[ablauf["id"]] = {"modus": modus, "seit": _iso(jetzt)}
+        for eid in ablauf.get("lichter") or []:
+            if not trockenlauf:
+                ha_api.schalten(eid, modus == "an")
+            gemerkt[eid] = "on" if modus == "an" else "off"
+        protokoll(ablauf.get("name") or "", sprache.t("prog.licht_an" if modus == "an" else "prog.licht_aus"),
+                  sprache.t("prog.fb_" + ("alles_aus" if aktion == "alles_aus" else modus))
+                  + (" (Trockenlauf)" if trockenlauf else ""), "",
+                  art="warnung" if trockenlauf else None)
+    return [a.get("name") for a in ziele]
+
+
+def fb_auswerten(config: dict, gesehen: dict, lesen, ausloesen) -> None:
+    """Einmal alle Fernbedienungen der Weihnachts-Abläufe abfragen.
+
+    ``gesehen`` merkt sich je event.-Entität den letzten Zeitstempel. Beim
+    ersten Blick wird nur gemerkt – ein Druck von gestern soll nach einem
+    Neustart nichts auslösen. ``ausloesen(ablauf_id, aktion)`` bekommt „an“,
+    „aus“ oder „alles_aus“ (lang auf „aus“).
+    """
+    cfg = config["einstellungen"].get("weihnachtszeit") or {}
+    for ablauf in programme.ablaeufe(cfg):
+        fb = ablauf.get("fernbedienung") or {}
+        for rolle in ("an", "aus"):
+            eid = (fb.get(rolle) or "").strip()
+            if not eid:
+                continue
+            zustand = lesen(eid)
+            if not zustand or zustand.get("state") in (None, "unknown", "unavailable"):
+                gesehen.setdefault(eid, (zustand or {}).get("state"))
+                continue
+            vorher = gesehen.get(eid, "neu")
+            gesehen[eid] = zustand["state"]
+            if vorher == "neu" or vorher == zustand["state"]:
+                continue
+            druck = programme.fb_druck((zustand.get("attributes") or {}).get("event_type"))
+            if druck is None:
+                continue
+            if rolle == "an":
+                ausloesen(ablauf.get("id"), "an")
+            elif druck == "lang":
+                ausloesen(ablauf.get("id"), "alles_aus")
+            else:
+                ausloesen(ablauf.get("id"), "aus")
 
 
 def _fruehestes_oeffnen(config: dict, ablauf: dict, kalender, sonnenstand,
@@ -765,6 +855,8 @@ def _rollo_rechnen(rollo: dict, einstellungen: dict, index: dict, state: dict,
     if treffer:
         punkt_zeit, punkt = treffer
         ziel = int(punkt["position"])
+        if punkt.get("quelle") == "fernbedienung":
+            ergebnis["fernbedienung"] = True
         beschreibung = zeitplanmodul.beschreibung(punkt, invertiert=invertiert)
         grund_punkt = punkt
 

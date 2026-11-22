@@ -1,5 +1,18 @@
 # Änderungen
 
+## 3.4.0 – 22.11.2026
+
+**Fernbedienung für die Weihnachtszeit.**
+
+* Je Ablauf eine Taste für „an“ und eine für „aus“ (beliebige
+  `event.`-Entitäten, z. B. ein Matter-Zweifachschalter).
+* Kurz „an“: Lichter an, Rollos auf ihre Weihnachtsstellung – nur wenn der
+  Plan sie gerade weiter zu hätte. Kurz „aus“: Lichter aus, Rollos zurück zum
+  Plan. Lang „aus“: alle Weihnachtslichter aus, alle Rollos zurück zum Plan.
+* Ein Druck gilt bis zum nächsten Weihnachts-Schaltpunkt; außerhalb der
+  Weihnachtszeit nur die Lichter. Unter *Heute* als VON FERNBEDIENUNG.
+* Ohne Tastendruck ändert sich nichts – geprüft gegen 3.3 an Stichtagen.
+
 ## 3.3.0 – 20.11.2026
 
 **Weihnachtszeit: Morgen und Abend je nach Schultag.**

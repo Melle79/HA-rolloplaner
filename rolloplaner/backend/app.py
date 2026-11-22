@@ -216,6 +216,44 @@ def _takt_schleife() -> None:
         _wecker.clear()
 
 
+def _fb_ausloesen(ablauf_id: str, aktion: str) -> None:
+    with _takt_lock:
+        config = store.load_config()
+        state = store.load_state()
+        namen = regelung.fernbedienung(config, state, ablauf_id, aktion,
+                                       regelung._jetzt(), logbuch.eintragen)
+        store.save_state(state)
+    _LOGGER.info("Fernbedienung: %s (%s)", aktion, ", ".join(n or "" for n in namen))
+    _sofort_rechnen()
+
+
+def _fb_schleife() -> None:
+    """Fernbedienungen jede Sekunde abfragen – der Regeltakt (2 Minuten) wäre
+    für einen Tastendruck zu träge. Gefragt wird nur nach den paar
+    eingestellten event.-Entitäten, nicht nach allen Zuständen."""
+    gesehen: dict = {}
+    while True:
+        try:
+            regelung.fb_auswerten(store.load_config(), gesehen, ha_api.get_state, _fb_ausloesen)
+        except Exception:  # noqa: BLE001 – die Schleife darf nicht sterben
+            _LOGGER.exception("Fernbedienung abfragen fehlgeschlagen")
+        time.sleep(1)
+
+
+@app.route("/api/ereignisse")
+def api_ereignisse():
+    """event.-Entitäten (Tasten von Fernbedienungen) für die Auswahl."""
+    out = []
+    for s in ha_api.get_states():
+        if not s["entity_id"].startswith("event."):
+            continue
+        attrs = s.get("attributes") or {}
+        out.append({"entity_id": s["entity_id"], "name": attrs.get("friendly_name") or s["entity_id"],
+                    "typen": attrs.get("event_types") or []})
+    out.sort(key=lambda e: e["name"].lower())
+    return jsonify(out)
+
+
 def _sofort_rechnen() -> None:
     """Den Regeltakt vorziehen, etwa nach einer Änderung in der Oberfläche."""
     _wecker.set()
@@ -1319,6 +1357,7 @@ def main() -> None:
     cardsync.sync()
     _mqtt_starten()
     threading.Thread(target=_takt_schleife, name="regeltakt", daemon=True).start()
+    threading.Thread(target=_fb_schleife, name="fernbedienung", daemon=True).start()
     _LOGGER.info("Rolloplaner %s startet auf Port %d", VERSION, PORT)
     app.run(host="0.0.0.0", port=PORT, threaded=True)
 
