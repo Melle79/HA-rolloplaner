@@ -177,6 +177,13 @@
   .etage:first-child{border-top:0; padding-top:0}
   .rollo button.name{border:0; background:none; padding:0; font-weight:600; cursor:pointer; text-align:left;
     text-decoration:underline; text-decoration-color:var(--linie); text-underline-offset:3px}
+  .zimmer{font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--leise); margin:12px 0 2px}
+  .xrollo{display:flex; align-items:center; gap:10px; padding:6px 0; border-top:1px solid var(--linie)}
+  .xrollo .n{flex:1; min-width:0}
+  .xrollo .bedien{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+  .xrollo .wahl button{min-height:34px; padding:0 10px}
+  .textknopf{border:0; background:none; color:var(--marke); cursor:pointer; font-size:.85rem; padding:4px 0}
+  @media (max-width:640px){ .xrollo{flex-direction:column; align-items:stretch} }
   dialog{margin:auto; background:var(--flaeche); color:var(--text); border:1px solid var(--linie);
     border-radius:var(--rund-gross); padding:0; width:min(620px,94vw); max-height:92vh}
   dialog::backdrop{background:rgba(6,9,13,.72)}
@@ -296,7 +303,7 @@ const UI = {
     "pg.fest":"festes Datum","pg.von":"ab (MM-TT)","pg.bis":"bis einschließlich (MM-TT)",
     "pg.diesmal":"Diesmal: {von} bis {bis}","pg.licht_aus":"aus und Rollos zu um","pg.lichter":"Lichter und Steckdosen","pg.lichter_leer":"Noch keine – unten suchen und hinzufügen.",
     "pg.suche":"Licht oder Steckdose suchen …","pg.rollos":"Rollos, während das Licht brennt",
-    "pg.normal":"normaler Plan","pg.bleibt_offen":"bleibt offen bis Licht aus","pg.zwischen":"{n} % offen",
+    "pg.bleibt_offen":"bleibt offen bis Licht aus","pg.zwischen":"{n} % offen",
     "pg.urlaub":"Urlaub","pg.urlaub_text":"Folgt dem Urlaubsschalter. Dann gilt statt des Zeitplans das Urlaubsprogramm.",
     "pg.urlaub_modus":"Im Urlaub","pg.u.simulation":"Zeitplan mit Streuung (Anwesenheit vortäuschen)",
     "pg.u.zu":"alles geschlossen halten","pg.u.plan":"normaler Zeitplan","pg.streuung":"Streuung ± Minuten",
@@ -380,9 +387,15 @@ const UI = {
     "es.schwere.warnung":"Warnung",
     "es.schwere.hinweis":"Hinweis",
     "es.alles_gut":"Nichts aufgefallen.",
+    "pg.rollos_woanders":"{n} weitere Rollos sind schon in „{name}“.",
+    "pg.lichter_woanders":"{n} passende sind schon in „{name}“.",
+    "pg.jetzt_kurz":"jetzt {n} %",
+    "pg.eigene_kurz":"eigene",
+    "pg.jetzt_knopf":"jetzt",
+    "pg.keine_rollos":"Keine Rollos – die Rollos folgen ihrem normalen Plan.",
+    "pg.alle_drin":"Alle Rollos sind schon aufgenommen.",
+    "pg.rollo_neu":"+ Rollo hinzufügen",
     "pg.alle_jetzt":"Alle aktuellen Stellungen übernehmen",
-    "pg.jetzt_stellung":"jetzt {was}",
-    "pg.eigene_stellung":"eigene Stellung",
     "pg.prozent_offen":"% offen",
     "pg.jetzt_uebernehmen":"aktuelle übernehmen",
     "pg.stellung_bereich":"Bitte 1 bis 99 % offen eingeben.",
@@ -432,7 +445,6 @@ const UI = {
     "pg.ablauf_name":"Neuer Ablauf",
     "pg.frueher":"darf früher schließen als der normale Plan",
     "pg.frueher_hilfe":"Ohne Haken zögert der Ablauf das Schließen nur hinaus. Mit Haken gehen seine Rollos bei Licht aus zu, auch wenn der Plan sie noch offen hätte.",
-    "pg.in_ablauf":"(in „{name}“)",
     "pg.ablauf_weg":"Ablauf löschen",
     "pg.ablauf_weg_frage":"Den Ablauf „{name}“ löschen?",
     "ab.licht_ablauf":"Licht {name}",
@@ -510,7 +522,7 @@ const UI = {
     "pg.fest":"fixed dates","pg.von":"from (MM-DD)","pg.bis":"until and including (MM-DD)",
     "pg.diesmal":"This time: {von} to {bis}","pg.licht_aus":"off and shutters closed at","pg.lichter":"Lights and sockets","pg.lichter_leer":"None yet – search below and add.",
     "pg.suche":"Search light or socket …","pg.rollos":"Shutters while the lights are on",
-    "pg.normal":"normal schedule","pg.bleibt_offen":"stays open until lights off","pg.zwischen":"{n} % open",
+    "pg.bleibt_offen":"stays open until lights off","pg.zwischen":"{n} % open",
     "pg.urlaub":"Vacation","pg.urlaub_text":"Follows the vacation switch. The vacation program then replaces the schedule.",
     "pg.urlaub_modus":"On vacation","pg.u.simulation":"schedule with jitter (simulate presence)",
     "pg.u.zu":"keep everything closed","pg.u.plan":"normal schedule","pg.streuung":"Jitter ± minutes",
@@ -594,9 +606,15 @@ const UI = {
     "es.schwere.warnung":"Warning",
     "es.schwere.hinweis":"Note",
     "es.alles_gut":"Nothing stands out.",
+    "pg.rollos_woanders":"{n} more shutters are already in “{name}”.",
+    "pg.lichter_woanders":"{n} matching ones are already in “{name}”.",
+    "pg.jetzt_kurz":"now {n} %",
+    "pg.eigene_kurz":"own",
+    "pg.jetzt_knopf":"now",
+    "pg.keine_rollos":"No shutters – they follow their normal schedule.",
+    "pg.alle_drin":"All shutters are already included.",
+    "pg.rollo_neu":"+ Add shutter",
     "pg.alle_jetzt":"Take all current positions",
-    "pg.jetzt_stellung":"now {was}",
-    "pg.eigene_stellung":"own position",
     "pg.prozent_offen":"% open",
     "pg.jetzt_uebernehmen":"take current",
     "pg.stellung_bereich":"Please enter 1 to 99 % open.",
@@ -646,7 +664,6 @@ const UI = {
     "pg.ablauf_name":"New routine",
     "pg.frueher":"may close earlier than the normal schedule",
     "pg.frueher_hilfe":"Unticked, the routine only delays closing. Ticked, its shutters close when the lights go off, even if the schedule would still have them open.",
-    "pg.in_ablauf":"(in “{name}”)",
     "pg.ablauf_weg":"Delete routine",
     "pg.ablauf_weg_frage":"Delete the routine “{name}”?",
     "ab.licht_ablauf":"Lights {name}",
@@ -1384,6 +1401,46 @@ function blockHTML(a, teil, tag){
       ${art("rollos", morgens ? ["plan","mit_licht","uhrzeit","sonnenaufgang"] : ["plan","mit_licht","uhrzeit","sonnenuntergang","daemmerung"])}${zusatz(v.rollos, "rollos_zeit", "rollos_versatz")}</div>`;
 }
 let EREIGNISSE = null;
+let ROLLO_WAHL = false;
+/* „3 Rollos sind schon in „Erdgeschoss““ – je anderem Ablauf eine Zeile. */
+function woandersText(ids, vergeben, schluessel){
+  const je = {};
+  ids.forEach((id) => { if (vergeben[id]) je[vergeben[id]] = (je[vergeben[id]] || 0) + 1; });
+  return Object.entries(je).map(([name, n]) => `<p class="grau klein" style="margin-top:4px">${esc(schluessel === "rollos" ? t("pg.rollos_woanders", {n, name}) : t("pg.lichter_woanders", {n, name}))}</p>`).join("");
+}
+/* Die Rollos eines Ablaufs: nur die, die dazugehören, nach Zimmer.
+   „normaler Plan“ ist kein Wert mehr – wer das will, nimmt das Rollo nicht
+   auf. Was zu einem anderen Ablauf gehört, steht nur in der Auswahl,
+   ausgegraut. */
+function rolloAbschnitt(a, vergeben){
+  const drin = rollosSortiert().filter((r) => (a.rollos || {})[r.entity_id] !== undefined);
+  const eigene = drin.some((r) => a.rollos[r.entity_id] !== "offen");
+  let html = `<div class="zeile" style="align-items:center; justify-content:space-between; margin-top:14px">
+      <h2 style="margin:0">${esc(t("pg.rollos"))}</h2>
+      ${eigene ? `<button type="button" class="textknopf" data-a-alle-jetzt>${esc(t("pg.alle_jetzt"))}</button>` : ""}</div>`;
+  let raum = null;
+  for (const r of drin){
+    if (r.raum !== raum){ raum = r.raum; html += `<div class="zimmer">${esc(raum || "–")}</div>`; }
+    const w = a.rollos[r.entity_id]; const eigen = w !== "offen";
+    html += `<div class="xrollo">
+      <span class="n">${esc(kurzname(r.name, r.raum))} <span class="grau klein">${esc(t("pg.jetzt_kurz", {n: r.ist ?? "–"}))}</span></span>
+      <span class="bedien">
+        <span class="wahl" role="group"><button type="button" data-a-art="${esc(r.entity_id)}:offen" class="${eigen ? "" : "an"}">${esc(t("pg.offen_kurz"))}</button><button type="button" data-a-art="${esc(r.entity_id)}:eigen" class="${eigen ? "an" : ""}">${esc(t("pg.eigene_kurz"))}</button></span>
+        ${eigen ? `<input type="number" min="1" max="99" data-a-stellung="${esc(r.entity_id)}" value="${Number(w)}" style="width:72px" aria-label="${esc(t("pg.prozent_offen"))}"><span class="leise klein">${esc(t("pg.prozent_offen"))}</span>
+          <button type="button" class="knopf klein" data-a-jetzt="${esc(r.entity_id)}" title="${esc(t("pg.jetzt_uebernehmen"))}" aria-label="${esc(t("pg.jetzt_uebernehmen"))}">⤓ ${esc(t("pg.jetzt_knopf"))}</button>` : ""}
+        <button type="button" class="knopf klein" data-a-rollo-weg="${esc(r.entity_id)}" aria-label="${esc(t("knopf.entfernen"))}" title="${esc(t("knopf.entfernen"))}">✕</button>
+      </span></div>`;
+  }
+  if (!drin.length) html += `<p class="leise klein">${esc(t("pg.keine_rollos"))}</p>`;
+  const kandidaten = rollosSortiert().filter((r) => (rolloCfg(r.entity_id) || {}).betriebsart !== "von_hand" && (a.rollos || {})[r.entity_id] === undefined);
+  const frei = kandidaten.filter((r) => !vergeben[r.entity_id]);
+  html += ROLLO_WAHL
+    ? `<div class="treffer" style="margin-top:8px">${frei.map((r) => `<button type="button" data-a-rollo-neu="${esc(r.entity_id)}"><span style="flex:1">${esc(zeilenname(r))}</span></button>`).join("")
+        || `<p class="leer">${esc(t("pg.alle_drin"))}</p>`}</div>`
+    : (frei.length ? `<button type="button" class="knopf klein" data-a-rollo-wahl style="margin-top:8px">${esc(t("pg.rollo_neu"))}</button>` : "");
+  html += woandersText(kandidaten.map((r) => r.entity_id), vergeben, "rollos");
+  return html;
+}
 /* Die Stellung, die ein Rollo gerade hat – als Zwischenstellung 1–99 % offen.
    Ganz offen oder ganz zu ist keine Zwischenstellung; dann 99 bzw. 1. */
 function jetztStellung(eid){
@@ -1396,7 +1453,7 @@ async function ablaufDialog(i){
   if (!EREIGNISSE){ try { EREIGNISSE = await hole("api/ereignisse"); } catch { EREIGNISSE = []; } }
   const liste = xAblaeufe();
   const a = i >= 0 ? kopie(liste[i]) : {...kopie(STANDARD_ABLAUF), name: t("pg.ablauf_name")};
-  REITER_V = {morgens: "schultag", abends: "schultag"};
+  REITER_V = {morgens: "schultag", abends: "schultag"}; ROLLO_WAHL = false;
   const vergeben = {};
   liste.forEach((b, j) => { if (j === i) return; Object.keys(b.rollos || {}).forEach((eid) => { vergeben[eid] = b.name; }); (b.lichter || []).forEach((eid) => { vergeben[eid] = b.name; }); });
   const lichtName = (eid) => (LICHTER.find((l) => l.entity_id === eid) || {name: eid}).name;
@@ -1413,22 +1470,9 @@ async function ablaufDialog(i){
       <p class="leise klein">${esc(t("pg.fb_hilfe"))}</p>
       <label class="haken"><input type="checkbox" data-a="frueher_schliessen" ${a.frueher_schliessen ? "checked" : ""}>${esc(t("pg.frueher"))}</label>
       <p class="leise klein">${esc(t("pg.frueher_hilfe"))}</p>
-      <div class="zeile" style="align-items:center; justify-content:space-between; margin-top:14px">
-        <h2 style="margin:0">${esc(t("pg.rollos"))}</h2>
-        <button type="button" class="knopf klein" data-a-alle-jetzt>${esc(t("pg.alle_jetzt"))}</button></div>
-      <div class="liste">${rollosSortiert().filter((r) => (rolloCfg(r.entity_id) || {}).betriebsart !== "von_hand").map((r) => {
-        const w = (a.rollos || {})[r.entity_id] ?? "plan"; const anderswo = vergeben[r.entity_id];
-        const eigen = w !== "plan" && w !== "offen";
-        return `<div style="flex-wrap:wrap"><span class="n">${esc(zeilenname(r))}${anderswo ? ` <span class="leise klein">${esc(t("pg.in_ablauf", {name: anderswo}))}</span>` : ""}
-            <span class="leise klein"> · ${esc(t("pg.jetzt_stellung", {was: stellungText(r.ist)}))}</span></span>
-          <select data-a-rollo="${esc(r.entity_id)}" ${anderswo ? "disabled" : ""}>
-            <option value="plan" ${w === "plan" ? "selected" : ""}>${esc(t("pg.normal"))}</option>
-            <option value="offen" ${w === "offen" ? "selected" : ""}>${esc(t("pg.bleibt_offen"))}</option>
-            <option value="eigen" ${eigen ? "selected" : ""}>${esc(t("pg.eigene_stellung"))}</option></select>
-          ${eigen ? `<label class="feld" style="flex-direction:row; align-items:center; gap:6px"><input type="number" min="1" max="99" data-a-stellung="${esc(r.entity_id)}" value="${Number(w)}" style="width:80px" aria-label="${esc(t("pg.prozent_offen"))}">${esc(t("pg.prozent_offen"))}</label>
-            <button type="button" class="knopf klein" data-a-jetzt="${esc(r.entity_id)}">${esc(t("pg.jetzt_uebernehmen"))}</button>` : ""}</div>`; }).join("")}</div>
+      ${rolloAbschnitt(a, vergeben)}
       <h2 style="margin-top:14px">${esc(t("pg.lichter"))}</h2>
-      <div class="liste">${(a.lichter || []).map((eid) => `<div><span class="n">${esc(lichtName(eid))} <span class="leise klein">${esc(eid)}</span></span>
+      <div class="liste">${(a.lichter || []).map((eid) => `<div><span class="n">${esc(lichtName(eid))}<br><span class="grau" style="font-size:.75rem">${esc(eid)}</span></span>
         <button type="button" class="knopf klein" data-a-licht-weg="${esc(eid)}">${esc(t("knopf.entfernen"))}</button></div>`).join("") || `<p class="leise klein">${esc(t("pg.lichter_leer"))}</p>`}</div>
       <input type="search" id="dlg-licht-suche" placeholder="${esc(t("pg.suche"))}" style="margin-top:8px; width:100%">
       <div class="treffer" id="dlg-licht-treffer" hidden></div>
@@ -1466,15 +1510,22 @@ async function ablaufDialog(i){
     if (ev.target.id !== "dlg-licht-suche") return;
     const q = ev.target.value.trim().toLowerCase(); const box = $("#dlg-licht-treffer");
     if (q.length < 2){ box.hidden = true; return; }
-    const treffer = LICHTER.filter((l) => !(a.lichter || []).includes(l.entity_id)
-      && (l.name.toLowerCase().includes(q) || l.entity_id.includes(q) || (l.bereich || "").toLowerCase().includes(q))).slice(0, 30);
+    const passend = LICHTER.filter((l) => !(a.lichter || []).includes(l.entity_id)
+      && (l.name.toLowerCase().includes(q) || l.entity_id.includes(q) || (l.bereich || "").toLowerCase().includes(q)));
+    const treffer = passend.filter((l) => !vergeben[l.entity_id]).slice(0, 30);
     box.hidden = !treffer.length;
-    box.innerHTML = treffer.map((l) => { const anderswo = vergeben[l.entity_id];
-      return `<button type="button" data-a-licht-neu="${esc(l.entity_id)}" ${anderswo ? "disabled" : ""}><span style="flex:1">${esc(l.name)}<br><span class="leise klein">${esc(l.entity_id)}${l.bereich ? " · " + esc(l.bereich) : ""}${anderswo ? " · " + esc(t("pg.in_ablauf", {name: anderswo})) : ""}</span></span><span class="leise klein">${esc(l.zustand)}</span></button>`; }).join("");
+    box.innerHTML = treffer.map((l) => `<button type="button" data-a-licht-neu="${esc(l.entity_id)}"><span style="flex:1">${esc(l.name)}<br><span class="grau" style="font-size:.75rem">${esc(l.entity_id)}${l.bereich ? " · " + esc(l.bereich) : ""}</span></span><span class="leise klein">${esc(l.zustand)}</span></button>`).join("")
+      + woandersText(passend.map((l) => l.entity_id), vergeben, "lichter");
+    box.hidden = !box.innerHTML;
   };
   inhalt.onclick = (ev) => {
     const k = ev.target.closest("button"); if (!k) return;
     if (k.dataset.vReiter){ const [teil, tag] = k.dataset.vReiter.split("."); REITER_V[teil] = tag; zeichne(); return; }
+    if (k.dataset.aArt){ const [eid, art] = k.dataset.aArt.split(":");
+      a.rollos[eid] = art === "offen" ? "offen" : (typeof a.rollos[eid] === "number" ? a.rollos[eid] : (jetztStellung(eid) ?? 50)); zeichne(); return; }
+    if (k.dataset.aRolloWeg){ delete a.rollos[k.dataset.aRolloWeg]; zeichne(); return; }
+    if (k.dataset.aRolloWahl !== undefined){ ROLLO_WAHL = true; zeichne(); return; }
+    if (k.dataset.aRolloNeu){ a.rollos = a.rollos || {}; a.rollos[k.dataset.aRolloNeu] = jetztStellung(k.dataset.aRolloNeu) ?? 50; ROLLO_WAHL = false; zeichne(); return; }
     if (k.dataset.aJetzt){ const n = jetztStellung(k.dataset.aJetzt);
       if (n === null) melden(t("pg.jetzt_unbekannt"), true); else { a.rollos[k.dataset.aJetzt] = n; zeichne(); } return; }
     if (k.dataset.aAlleJetzt !== undefined){

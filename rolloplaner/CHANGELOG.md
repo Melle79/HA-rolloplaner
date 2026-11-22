@@ -1,5 +1,18 @@
 # Änderungen
 
+## 3.5.1 – 22.11.2026
+
+* **Die Rollo-Liste im Weihnachts-Ablauf ist aufgeräumt:** nur die Rollos des
+  Ablaufs, nach Zimmer, je Zeile „jetzt x %“, Umschalter *offen | eigene*,
+  Zahlenfeld, *jetzt übernehmen* und Entfernen. „Normaler Plan“ ist kein
+  Eintrag mehr – das Rollo einfach nicht aufnehmen.
+* **„+ Rollo hinzufügen“** bietet nur Rollos an, die noch in keinem anderen
+  Ablauf sind; darunter steht, wie viele schon woanders stecken. Dasselbe gilt
+  für die Lichtersuche. Doppelte Vergabe lehnt der Planer weiter ab.
+* „Alle aktuellen Stellungen übernehmen“ ist ein kleiner Knopf neben der
+  Überschrift und erscheint nur, wenn es Rollos mit eigener Stellung gibt.
+* Am Handy steht der Name oben, die Bedienung darunter.
+
 ## 3.5.0 – 22.11.2026
 
 * **Rollostellung in der Weihnachtszeit frei einstellbar:** je Rollo

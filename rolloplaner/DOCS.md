@@ -95,8 +95,11 @@ einen **Abend**, jeweils mit Umschalter:
 * **Zeitraum** (ab 1. Advent oder feste Daten, bis einschließlich 06.01.) und
   *Jedes Jahr von selbst* gelten für alle Abläufe.
 * **Lichter und Steckdosen** – beliebige `light.` und `switch.`, mit Suche.
-* **Rollos, während das Licht brennt** – je Rollo *normaler Plan*, *bleibt
-  offen* oder *eigene Stellung* (frei 1–99 % offen). *Aktuelle übernehmen*
+* **Rollos, während das Licht brennt** – nur die Rollos, die zum Ablauf
+  gehören, nach Zimmer; je Rollo *offen* oder *eigene* Stellung (frei 1–99 %
+  offen). Wer den normalen Plan will, nimmt das Rollo nicht auf. *+ Rollo
+  hinzufügen* bietet nur Rollos an, die noch in keinem Ablauf stecken –
+  ebenso die Suche nach Lichtern. *Aktuelle übernehmen*
   trägt die Stellung ein, auf der das Rollo gerade steht; *Alle aktuellen
   Stellungen übernehmen* macht das für alle Rollos des Ablaufs mit eigener
   Stellung. Erst *Speichern* übernimmt.
